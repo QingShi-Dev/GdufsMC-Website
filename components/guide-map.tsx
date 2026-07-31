@@ -433,6 +433,9 @@ export function GuideMap() {
   //  - 退出全屏时清空
   useEffect(() => {
     if (isFullscreen && isPortrait) {
+      // 3 秒后自动关闭的延迟提示, 用 derived state 表达反而更绕;
+      // 只在 isFullscreen/isPortrait 变化时跑, cascading 不会失控
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setShowRotateHint(true);
       const t = setTimeout(() => setShowRotateHint(false), 3000);
       return () => clearTimeout(t);
@@ -456,7 +459,7 @@ export function GuideMap() {
     worldRef.current = world;
   }, [world]);
 
-  const commit = () => {
+  const commit = useCallback(() => {
     rafRef.current = null;
     const p = pendingRef.current;
     if (!p) return;
@@ -464,13 +467,16 @@ export function GuideMap() {
     setTx(p.tx);
     setTy(p.ty);
     setK(p.k);
-  };
-  const schedule = (tx: number, ty: number, k: number) => {
-    pendingRef.current = { tx, ty, k };
-    if (rafRef.current == null) {
-      rafRef.current = requestAnimationFrame(commit);
-    }
-  };
+  }, []);
+  const schedule = useCallback(
+    (tx: number, ty: number, k: number) => {
+      pendingRef.current = { tx, ty, k };
+      if (rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(commit);
+      }
+    },
+    [commit],
+  );
 
   const clampBounds = (tx: number, ty: number, k: number, vbW: number, vbH: number) => {
     const overflowX = Math.max(0, vbW * (k - 1));
@@ -528,7 +534,7 @@ export function GuideMap() {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, []);
+  }, [schedule]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     // 按钮点击不要抢 pointer capture — 否则 click 事件被重定向到容器,

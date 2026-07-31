@@ -21,7 +21,7 @@ const CACHE_PATTERNS = [
   /^\/images\/maps\/.*\.(webp|png|jpg|jpeg|avif)$/i,
 ];
 
-self.addEventListener("install", (event) => {
+self.addEventListener("install", () => {
   // 不预缓存, install 阶段 0 网络开销
   // 立即激活, 不等旧 SW (如果有) 退出
   self.skipWaiting();
