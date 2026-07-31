@@ -1,0 +1,115 @@
+# gdufsmc nginx config — 模板, 用 envsubst 替换 $DOMAIN
+# 由 setup.sh 复制到 /etc/nginx/sites-available/gdufsmc
+
+# ---------- HTTP: 重定向到 HTTPS (除了 certbot 验证路径) ----------
+server {
+    listen 80;
+    listen [::]:80;
+    server_name $DOMAIN www.$DOMAIN;
+
+    # certbot 验证用, 不要重定向
+    location /.well-known/acme-challenge/ {
+        root /var/www/certbot;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# ---------- HTTPS: 主站点 ----------
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name $DOMAIN www.$DOMAIN;
+
+    # SSL 证书 (install-cert.sh 之后才有)
+    ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+
+    # SSL 优化 — 走 Mozilla Intermediate 配置
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+    ssl_session_tickets off;
+
+    # 安全头 (Next.js 已经加了, 这里是 defense in depth — 即便绕过 Node 也兜底)
+    # CSP 不在这里加 — 让 Next.js 决定, 它对 inline script 状态更准
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "DENY" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+
+    # gzip (Brotli 需要编译 nginx --with-http_brotli, 标准 apt 版没带)
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 6;
+    gzip_types
+        text/plain
+        text/css
+        text/xml
+        application/json
+        application/javascript
+        application/xml+rss
+        application/atom+xml
+        image/svg+xml;
+
+    # 上传大小限制 (proxy 给 Node)
+    client_max_body_size 10M;
+
+    # ---------- 静态资源: nginx 直接发, 不走 Node ----------
+    # /public/images/* — 改图极不频繁, 长缓存
+    location /images/ {
+        alias /opt/gdufsmc/public/images/;
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # /public/icons/* — 几乎不变, 长缓存
+    location /icons/ {
+        alias /opt/gdufsmc/public/icons/;
+        expires 90d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # /_next/static/* — build 产物, 哈希文件名, 永久缓存
+    location /_next/static/ {
+        alias /opt/gdufsmc/.next/static/;
+        expires 365d;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+    }
+
+    # /sw.js — service worker, 必须在根路径, 不能长缓存 (用户可能想强制刷新)
+    location = /sw.js {
+        alias /opt/gdufsmc/public/sw.js;
+        add_header Cache-Control "no-cache, must-revalidate";
+        add_header Service-Worker-Allowed "/";
+    }
+
+    # favicon
+    location = /favicon.ico {
+        alias /opt/gdufsmc/app/favicon.ico;
+        access_log off;
+    }
+
+    # ---------- 其他: 反代到 Node ----------
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        # 不要 proxy_buffer, 让 Node 流式响应
+        proxy_buffering off;
+    }
+}
