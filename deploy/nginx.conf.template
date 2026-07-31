@@ -1,11 +1,25 @@
 # gdufsmc nginx config — 模板, 用 envsubst 替换 $DOMAIN
 # 由 setup.sh 复制到 /etc/nginx/sites-available/gdufsmc
 
+# ---------- www 子域名: 301 跳到 apex (DNS CAA SERVFAIL 时只签 apex 证书) ----------
+# 匹配更具体的 server_name 会先命中, 下面的 apex-only block 不会处理 www
+server {
+    listen 80;
+    listen 443 ssl http2;
+    server_name www.$DOMAIN;
+
+    # 同一份 apex 证书, www 走 HTTPS 但立即 301 走
+    ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
+
+    return 301 https://$DOMAIN$request_uri;
+}
+
 # ---------- HTTP: 重定向到 HTTPS (除了 certbot 验证路径) ----------
 server {
     listen 80;
     listen [::]:80;
-    server_name $DOMAIN www.$DOMAIN;
+    server_name $DOMAIN;
 
     # certbot 验证用, 不要重定向
     location /.well-known/acme-challenge/ {
@@ -21,7 +35,7 @@ server {
 server {
     listen 443 ssl http2;
     listen [::]:443 ssl http2;
-    server_name $DOMAIN www.$DOMAIN;
+    server_name $DOMAIN;
 
     # SSL 证书 (install-cert.sh 之后才有)
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
