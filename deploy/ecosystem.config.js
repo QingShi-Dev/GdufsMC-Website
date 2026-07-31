@@ -38,10 +38,11 @@ module.exports = {
         // 端口硬编码, 跟 nginx 反代一致
         PORT: "3000",
       },
-      // 日志
-      log_file: "/var/log/pm2/gdufsmc-combined.log",
-      error_file: "/var/log/pm2/gdufsmc-error.log",
-      out_file: "/var/log/pm2/gdufsmc-out.log",
+      // 日志 — 放 /opt/gdufsmc/logs/ 自包含 (ubuntu 有写权限)
+      // 不放 /var/log/pm2 是因为非 root 用户无法在 /var/log 下建目录
+      log_file: "/opt/gdufsmc/logs/gdufsmc-combined.log",
+      error_file: "/opt/gdufsmc/logs/gdufsmc-error.log",
+      out_file: "/opt/gdufsmc/logs/gdufsmc-out.log",
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
       // 合并日志: 单文件, 按天 logrotate
       merge_logs: true,

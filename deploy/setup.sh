@@ -49,9 +49,20 @@ fi
 echo "==> [5/6] 装 pnpm + PM2"
 npm install -g pnpm pm2
 
-echo "==> [6/6] 创建 app 目录 + 写 nginx 配置 + 防火墙"
+echo "==> [6/6] 创建 app 目录 + 日志目录 + 写 nginx 配置 + 防火墙"
 mkdir -p /opt/gdufsmc
-chown -R ubuntu:ubuntu /opt/gdufsmc 2>/dev/null || true
+mkdir -p /opt/gdufsmc/logs
+
+# 确保 ubuntu 用户存在 (阿里云某些镜像默认不带)
+if ! id ubuntu >/dev/null 2>&1; then
+  echo "    ubuntu 用户不存在, 自动创建 (sudo 权限)"
+  useradd -m -s /bin/bash ubuntu
+  usermod -aG sudo ubuntu
+fi
+
+# app 目录归 ubuntu 所有 (PM2 才能写日志)
+chown -R ubuntu:ubuntu /opt/gdufsmc
+chmod 755 /opt/gdufsmc
 
 # nginx 配置 (用 envsubst 替换 $DOMAIN 占位)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
