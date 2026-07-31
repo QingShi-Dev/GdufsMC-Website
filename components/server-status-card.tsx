@@ -15,6 +15,7 @@ import {
 } from "@tabler/icons-react";
 import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/mc-status-constants";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 const REFRESH_MS = 5_000;
 const CACHE_KEY = "mc-status-cache-v1";
@@ -156,7 +157,7 @@ function useServerStatuses() {
       // 主动 abort 不报错；其他错误才打日志
       if (e instanceof DOMException && e.name === "AbortError") return;
       if (mySeq !== seqRef.current) return;
-      console.error("status fetch failed", e);
+      logger.error("status fetch failed", e);
     } finally {
       // 关键：清理由"当前 in-flight 的请求"负责，不管它是不是 manual。
       // 典型场景：manual 请求 in-flight → 5s interval 触发新请求 → abort 旧的
@@ -258,7 +259,7 @@ function CopyButton({ text }: { text: string }) {
         },
         (err) => {
           // 剪贴板权限被拒 / 非 https 等情况
-          console.error("clipboard write failed", err);
+          logger.error("clipboard write failed", err);
         },
     );
   };

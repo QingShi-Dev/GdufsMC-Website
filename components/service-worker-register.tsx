@@ -10,6 +10,7 @@
  */
 
 import { useEffect } from "react";
+import { logger } from "@/lib/logger";
 
 export function ServiceWorkerRegister() {
   useEffect(() => {
@@ -21,13 +22,12 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register("/sw.js", { scope: "/" })
         .then((reg) => {
-          if (process.env.NODE_ENV !== "production") {
-            console.info("[SW] registered (dev):", reg.scope);
-          }
+          // dev 才看, prod 用 logger.debug 默认隐藏
+          logger.debug("[SW] registered", { scope: reg.scope });
         })
         .catch((err) => {
           // SW 注册失败不致命, 主流程照常工作
-          console.warn("[SW] registration failed:", err);
+          logger.warn("[SW] registration failed", err);
         });
     };
 

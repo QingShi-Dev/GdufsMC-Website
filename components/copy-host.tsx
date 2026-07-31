@@ -15,6 +15,7 @@
 import { useEffect, useRef, useState } from "react";
 import { IconCopy, IconCheck } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 const FEEDBACK_MS = 1200;
 
@@ -49,7 +50,7 @@ export function CopyHost({ host }: { host: string }) {
       (err) => {
         // 剪贴板权限被拒 / 非 https 等情况, 不做 textarea fallback
         // (移动端 Safari 用户多, 反馈更直接, 让用户手动复制)
-        console.error("clipboard write failed", err);
+        logger.error("clipboard write failed", err);
       },
     );
   };

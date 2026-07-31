@@ -29,6 +29,7 @@ import {
   IconRotate,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { logger } from "@/lib/logger";
 
 /* ============================== Types ============================== */
 
@@ -608,7 +609,7 @@ export function GuideMap() {
         const req = target.requestFullscreen?.();
         if (req && typeof req.then === "function") {
           return req.catch((err: unknown) => {
-            console.warn("[fullscreen] failed:", err);
+            logger.warn("[fullscreen] failed", err);
             return null;
           });
         }

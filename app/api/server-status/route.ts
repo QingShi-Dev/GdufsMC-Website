@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { queryAllServers, type ServerStatus } from "@/lib/mc-status";
+import { logger } from "@/lib/logger";
 
 // 实时数据：路由本身不缓存
 export const dynamic = "force-dynamic";
@@ -35,7 +36,8 @@ async function refresh(): Promise<void> {
       };
     } catch (err) {
       // 查询失败不要清空旧缓存；记下错误方便排查
-      console.error("[server-status] refresh failed:", err);
+      // 服务端保留完整 stack (运维需要); 不会回给客户端
+      logger.error("[server-status] refresh failed", err);
     } finally {
       inflight = null;
     }
