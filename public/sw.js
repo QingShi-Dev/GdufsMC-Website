@@ -53,6 +53,9 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
 
+  // 防御: 显式跳过所有 /api/* 路径 (虽然 CACHE_PATTERNS 也不会匹配, 但显式列出更安全)
+  if (url.pathname.startsWith("/api/")) return;
+
   // 只处理地图资源
   const shouldCache = CACHE_PATTERNS.some((p) => p.test(url.pathname));
   if (!shouldCache) return;

@@ -327,14 +327,15 @@ function MapCanvas({
         style={{ pointerEvents: "none" }}
       >
         {layer.images && layer.images.length > 0 ? (
+          // length > 0 已守门, [0] 必存在; ! 让 noUncheckedIndexedAccess 通过
           <>
             <image
               key="main-map"
-              href={layer.images[0].src}
-              x={layer.images[0].x}
-              y={layer.images[0].y}
-              width={layer.images[0].w}
-              height={layer.images[0].h}
+              href={layer.images[0]!.src}
+              x={layer.images[0]!.x}
+              y={layer.images[0]!.y}
+              width={layer.images[0]!.w}
+              height={layer.images[0]!.h}
               preserveAspectRatio="xMidYMid meet"
             />
             {layer.images.slice(1).map((img, i) => (
@@ -512,7 +513,9 @@ export function GuideMap() {
       const newK = clamp(curK * (1 + delta), 1, 8);
       if (newK === curK) return;
       const rect = el.getBoundingClientRect();
-      const { width: vbW, height: vbH } = worldRef.current.map;
+      const world = worldRef.current;
+      if (!world) return;
+      const { width: vbW, height: vbH } = world.map;
       const mouseVB = screenToVB(e.clientX, e.clientY, rect, vbW, vbH);
       const ratio = newK / curK;
       const rawTx = mouseVB.x - (mouseVB.x - curTx) * ratio;
@@ -544,7 +547,9 @@ export function GuideMap() {
     if (!el) return;
     if (!dragRef.current) return;
     const rect = el.getBoundingClientRect();
-    const { width: vbW, height: vbH } = worldRef.current.map;
+    const world = worldRef.current;
+    if (!world) return;
+    const { width: vbW, height: vbH } = world.map;
     const PAN_SPEED = 2;
     const dx = (e.clientX - dragRef.current.x) * (vbW / rect.width) * PAN_SPEED;
     const dy = (e.clientY - dragRef.current.y) * (vbH / rect.height) * PAN_SPEED;
@@ -574,7 +579,9 @@ export function GuideMap() {
     const curK = kRef.current;
     const curTx = txRef.current;
     const curTy = tyRef.current;
-    const { width: vbW, height: vbH } = worldRef.current.map;
+    const world = worldRef.current;
+    if (!world) return;
+    const { width: vbW, height: vbH } = world.map;
     const cxVB = vbW / 2;
     const cyVB = vbH / 2;
     const newK = clamp(curK * factor, 1, 8);

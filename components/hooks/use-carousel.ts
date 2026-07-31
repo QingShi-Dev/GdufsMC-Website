@@ -40,7 +40,8 @@ export function useCarousel<TContent, TStep extends CarouselStep<TContent>>(
   const [activeIdx, setActiveIdx] = useState(0);
   const [contentIdx, setContentIdx] = useState(0);
 
-  const active = steps[activeIdx];
+  // activeIdx 由 goTo 严格 bound, 必合法; ! 让 noUncheckedIndexedAccess 通过
+  const active = steps[activeIdx]!;
   const contents = active.images;
   const current = contents[contentIdx];
   const hasContent = contents.length > 0;
@@ -63,8 +64,9 @@ export function useCarousel<TContent, TStep extends CarouselStep<TContent>>(
     if (!hasContent || prevDisabled) return;
     if (isFirstContent) {
       const prevStepIdx = activeIdx - 1;
+      // 跨步后退: prevStepIdx 在 (0, activeIdx) 区间, 必合法
       setActiveIdx(prevStepIdx);
-      setContentIdx(steps[prevStepIdx].images.length - 1);
+      setContentIdx(steps[prevStepIdx]!.images.length - 1);
     } else {
       setContentIdx(contentIdx - 1);
     }

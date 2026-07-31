@@ -136,6 +136,8 @@ export function NewsList({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null;
 
   const [featured, ...rest] = items;
+  // items.length === 0 上面已守门, featured 一定存在
+  if (!featured) return null;
 
   return (
     <div className="space-y-4">

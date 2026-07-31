@@ -39,6 +39,16 @@ function parseView(raw: string | null): MapView {
 }
 
 export default function MapPage() {
+  // useSearchParams() 在 client component 里必须包 Suspense 才能正常 SSG
+  // 拆成 wrapper + inner, inner 才能用 useSearchParams
+  return (
+    <Suspense fallback={<div className="pt-28 sm:pt-32" />}>
+      <MapPageContent />
+    </Suspense>
+  );
+}
+
+function MapPageContent() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();

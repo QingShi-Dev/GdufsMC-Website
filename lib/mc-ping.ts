@@ -77,7 +77,12 @@ export function readVarInt(
     if (pos >= buf.length) {
       throw new Error("VarInt 读取越界");
     }
-    byte = buf[pos++];
+    const b = buf[pos];
+    if (b === undefined) {
+      throw new Error("VarInt 读取越界");
+    }
+    pos++;
+    byte = b;
     value |= (byte & 0x7f) << (7 * size);
     size += 1;
     if (size > 5) {
@@ -127,7 +132,9 @@ async function resolveHost(
       const dns = await import("node:dns");
       const srvs = await dns.promises.resolveSrv(srvName);
       if (srvs.length > 0) {
-        return { host: srvs[0].name, port: srvs[0].port };
+        // length > 0 已检查, [0] 必存在; 用 ! 让 noUncheckedIndexedAccess 通过
+        const first = srvs[0]!;
+        return { host: first.name, port: first.port };
       }
     } catch {
       // 没有 SRV 记录就 fallback 到 A 记录
@@ -137,7 +144,7 @@ async function resolveHost(
   try {
     const dns = await import("node:dns");
     const addrs = await dns.promises.resolve4(host);
-    if (addrs.length > 0) return { host: addrs[0], port };
+    if (addrs.length > 0) return { host: addrs[0]!, port };
   } catch {
     // fallback: 用 host 本身
   }
@@ -211,7 +218,9 @@ export async function queryMCServer(
         let need = 0;
         while (need < Math.min(5, recvBuf.length)) {
           need += 1;
-          if ((recvBuf[need - 1] & 0x80) === 0) break;
+          const peek = recvBuf[need - 1];
+          if (peek === undefined) break; // 边界内必有值, 这里只是让 TS 通过
+          if ((peek & 0x80) === 0) break;
         }
         if (recvBuf.length < need) return; // 数据不够，下次再说
         const { value, size } = readVarInt(recvBuf, 0);

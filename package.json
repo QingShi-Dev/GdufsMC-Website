@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "audit": "pnpm audit --prod --audit-level=high"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.45.0",

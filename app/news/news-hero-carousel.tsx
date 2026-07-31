@@ -94,6 +94,8 @@ export function NewsHeroCarousel({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null;
 
   const current = items[safeActive];
+  // safeActive 来自 modulo, 理论上必合法; 但 noUncheckedIndexedAccess 要求显式守门
+  if (!current) return null;
 
   return (
     <div
