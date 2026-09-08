@@ -1,5 +1,5 @@
 /**
- * 外部链接数据 — help 页"相关链接"section
+ * 外部链接数据 — guide 页"相关链接"section
  * pure data, 渲染成 EXTERNAL 卡片
  */
 

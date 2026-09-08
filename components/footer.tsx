@@ -53,7 +53,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
       <h4
           className={cn(
-              "text-xs font-semibold uppercase tracking-[0.18em] mb-4",
+              "text-[15px] sm:text-[16px] font-semibold uppercase tracking-[0.12em] mb-4",
               "text-slate-700",
           )}
       >
@@ -97,10 +97,10 @@ function QRCard({ type }: { type: Exclude<QrType, null> }) {
       <div>
         <div className="flex items-center gap-2 mb-1 justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={cfg.icon} alt="" className="w-4 h-4" />
-          <h3 className="text-sm font-bold text-slate-800">{cfg.title}</h3>
+          <img src={cfg.icon} alt="" className="w-5 h-5" />
+          <h3 className="text-[16px] font-bold text-slate-800">{cfg.title}</h3>
         </div>
-        <p className="text-[10px] text-slate-500 mb-2 text-center">{cfg.subtitle}</p>
+        <p className="text-[12px] text-slate-500 mb-2 text-center">{cfg.subtitle}</p>
         <div className="bg-slate-50 rounded-lg p-2 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -109,7 +109,7 @@ function QRCard({ type }: { type: Exclude<QrType, null> }) {
               className="w-full max-w-[200px] h-auto"
           />
         </div>
-        <p className="md:hidden text-[10px] text-slate-400 mt-2 text-center">长按或截图后扫描</p>
+        <p className="md:hidden text-[12px] text-slate-400 mt-2 text-center">长按或截图后扫描</p>
       </div>
   );
 }
@@ -191,7 +191,7 @@ function QRModal({
           role="dialog"
           aria-modal="true"
           aria-label={`${QR_CONFIG[type].title}二维码`}
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-500/50 backdrop-blur-sm"
           onClick={onClose}
       >
         <div
@@ -236,9 +236,9 @@ function ContactSection() {
 
 const NAV_ITEMS = [
   { href: "/", label: "首页" },
-  { href: "/map", label: "地图概览" },
+  { href: "/map", label: "地图总览" },
   { href: "/news", label: "新闻动态" },
-  { href: "/help", label: "游玩帮助" },
+  { href: "/guide", label: "游玩指南" },
 ];
 
 function QuickNav() {
@@ -254,7 +254,7 @@ function QuickNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                      "text-slate-600 hover:text-slate-900 transition-colors w-fit",
+                      "text-slate-600 hover:text-slate-900 transition-colors w-fit text-[15px] sm:text-[15px]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:rounded",
                   )}
               >
@@ -275,8 +275,8 @@ function LogoIntro() {
           <div
               className={cn(
                   "w-11 h-11 rounded-xl p-1 flex items-center justify-center",
-                  "bg-white/70", "shadow-md shadow-emerald-500/20",
-                  "group-hover:scale-105 group-hover:shadow-lg group-hover:shadow-emerald-500/30",
+                  "bg-white/70 backdrop-blur-sm border border-slate-200/70 group-hover:border-emerald-300/90",
+                  "group-hover:-translate-y-0.5 group-hover:shadow-lg group-hover:shadow-emerald-500/15",
                   "transition-all duration-200",
               )}
           >
@@ -284,15 +284,15 @@ function LogoIntro() {
             <img src="/icons/global/组织标识.jpg" className="w-full h-full object-fill rounded-xl" alt=""/>
           </div>
           <div>
-            <div className="font-bold text-slate-800 text-base leading-tight group-hover:text-emerald-700 transition-colors">
+            <div className="font-bold text-slate-700 text-[16px] sm:text-[18px] leading-tight group-hover:text-emerald-500 transition-colors">
               云城像素社
             </div>
-            <div className="text-[10px] text-slate-500 uppercase tracking-[0.2em] font-semibold mt-0.5">
+            <div className="text-[10px] sm:text-[11px] text-slate-500 uppercase tracking-[0.2em] font-semibold mt-0.5 ml-0.5">
               GDUFS·MC
             </div>
           </div>
         </Link>
-        <p className="text-sm text-slate-600 max-w-sm leading-relaxed mt-3">
+        <p className="text-[14px] sm:text-[16px] text-slate-600 max-w-sm leading-relaxed mt-3">
           广外人的 Minecraft 服务器。一砖一瓦，都是回忆。
         </p>
       </div>
@@ -323,8 +323,7 @@ const SERVER_GROUPS: ServerGroup[] = [
     bandwidth: "无限带宽",
     recommended: true,
     servers: [
-      { host: "mc.gdufscraft.top", version: "1.21.8 原版" },
-      { host: "create.gdufscraft.top", version: "1.21.1 NeoForge" },
+      { host: "mc.gdufscraft.top", version: "26.2 原版" },
     ],
   },
   {
@@ -332,16 +331,14 @@ const SERVER_GROUPS: ServerGroup[] = [
     bandwidth: "24M",
     recommended: true,
     servers: [
-      { host: "mc2.gdufscraft.top", version: "1.21.8 原版" },
-      { host: "create2.gdufscraft.top", version: "1.21.1 NeoForge" },
+      { host: "mc2.gdufscraft.top", version: "26.2 原版" },
     ],
   },
   {
     line: "公网备线",
     bandwidth: "3M",
     servers: [
-      { host: "mc3.gdufscraft.top", version: "1.21.8 原版" },
-      { host: "create3.gdufscraft.top", version: "1.21.1 NeoForge" },
+      { host: "mc3.gdufscraft.top", version: "26.2 原版" },
     ],
   },
   {
@@ -363,13 +360,14 @@ function ServerGroupCard({
   return (
       <li
           className={cn(
+              "flex flex-col justify-center",
               "rounded-lg px-3 py-2 transition-colors",
               "bg-white/60 border border-slate-200/60",
               "hover:border-slate-300/80 hover:bg-white/80",
           )}
       >
-        <div className="flex items-center justify-between gap-2 mb-2">
-        <span className={cn("text-[10px] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-500")}>
+        <div className="flex items-center justify-between gap-2 mb-1.5">
+        <span className={cn("text-[12px] sm:text-[14px] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-500")}>
           {line}
           {bandwidth && (
               <span
@@ -383,20 +381,20 @@ function ServerGroupCard({
           )}
         </span>
           {recommended && (
-              <span className="flex items-center gap-1 text-[9px] text-emerald-600 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            推荐
-          </span>
+              <span className="flex items-center text-center gap-1 text-[12px] sm:text-[12px] text-emerald-600 font-medium">
+                <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
+                推荐
+              </span>
           )}
         </div>
         <div className="space-y-1.5">
           {servers.map((s) => (
               <div key={s.host}>
-                <div className="flex font-mono text-xs text-slate-800 justify-between">
+                <div className="flex font-mono text-[13px] sm:text-[14px] text-slate-800 justify-between">
                   <span className="truncate">{s.host}</span>
-                  <span className="text-[10px] text-slate-500 flex-shrink-0">
-                {s.version}
-              </span>
+                  <span className="text-[11px] sm:text-[13px] text-slate-500 flex-shrink-0">
+                      {s.version}
+                  </span>
                 </div>
               </div>
           ))}
@@ -444,7 +442,7 @@ export function SiteFooter() {
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-5 sm:pt-12 sm:pb-6">
             {/* 桌面 Row 1：LogoIntro+Contact (左) | QuickNav (右) */}
             <div className="hidden md:grid md:grid-cols-2 md:gap-8 md:items-start md:mb-8">
-              <div className="flex flex-col gap-6">
+              <div className="flex flex-col gap-6.5">
                 <LogoIntro />
                 <ContactSection />
               </div>
@@ -457,7 +455,7 @@ export function SiteFooter() {
             </div>
 
             {/* 服务器地址（桌面 Row 2 / 移动端中间） */}
-            <div className="mt-6 md:mt-0">
+            <div className="mt-8 md:mt-0">
               <SectionTitle>服务器地址 · MUA验证</SectionTitle>
               <ServerList />
             </div>
@@ -475,8 +473,8 @@ export function SiteFooter() {
             {/* 版权居中*/}
             <div
                 className={cn(
-                    "mt-8 pt-4 border-t border-slate-200/60",
-                    "text-center text-xs text-slate-500",
+                    "mt-6 sm:mt-8 pt-4 border-t border-slate-200/60",
+                    "text-center text-xs sm:text-[13px] text-slate-500",
                 )}
             >
             <span className="font-semibold text-slate-600">

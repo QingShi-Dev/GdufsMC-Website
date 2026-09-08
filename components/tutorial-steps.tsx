@@ -10,11 +10,11 @@
  * - A11y: role="region" + aria-roledescription="carousel" + 文字区 aria-live
  *
  * 数据契约 (Step / StepContent / StepLink / StepPanel): 同之前,
- * - images[0] 可以是 panel (替代图, 占 aspect-video 容器)
+ * - images[0] 可以是 panel (替代图, 占 aspect-[16/10] 容器)
  * - textContent[i] 对应 images[i], 元素 string 或 ReactNode (含 <a>/<CopyHost>)
  */
 
-import { Children, useState, type KeyboardEvent, type ReactNode } from "react";
+import { Children, useCallback, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { IconChevronLeft, IconChevronRight, IconExternalLink, IconLock } from "@tabler/icons-react";
 import { useCarousel } from "@/components/hooks/use-carousel";
 import { cn } from "@/lib/utils";
@@ -82,7 +82,51 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
   // (之前 useEffect + setState 触发 react-hooks/set-state-in-effect 警告)
   const [imgLoaded, setImgLoaded] = useState(false);
 
-  // ---- 3. 键盘导航: focus 在 carousel 区域时, ArrowLeft/Right 翻页 ----
+  // ---- 3. 顶部对齐滚动: 鼠标点击步骤 / 上下页时, 把整个 tutorial-steps 组件
+  //          顶部滚到 header 下方 (留出适当间距), 移动 / 桌面一致 ----
+  // 故意只挂在 click handler, 不挂键盘 handler: 键盘用户可能正用 Tab 定位到侧栏,
+  // 强制滚动会把焦点带出可视区. 不用 scrollIntoView({ block: 'start' }) 因为:
+  //   (a) header 是 fixed top-0, scrollIntoView 不知道 header 存在, 元素顶会
+  //       被 header 压住
+  //   (b) 想留出视觉间距 (header 跟组件之间有点呼吸感)
+  // 改成手算: 累加 offsetTop 拿 natural 文档位置, 动态量 header 高度
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const scrollComponentToTopUnderHeader = useCallback(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+
+    // 动态量 fixed header 高度 (匹配 <header className="fixed top-0 inset-x-0 z-50">)
+    const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
+    const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
+
+    // 跟 header 之间的视觉间距 — 移动端 14px, 桌面端 24px
+    // 跟 Tailwind 断点一致: < sm (640px) 用 14, >= sm 用 24
+    const TOP_GAP = window.innerWidth >= 640 ? 24 : 14;
+
+    // 累加 offsetTop 拿到 element 在 document 里的 natural 顶部位置
+    let naturalTop = 0;
+    let node: HTMLElement | null = el;
+    while (node) {
+      naturalTop += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+
+    // 目标: 整个组件顶部贴 header 下沿, 留出 TOP_GAP 间距
+    const targetVisualTop = headerHeight + TOP_GAP;
+    const targetScrollY = Math.max(0, naturalTop - targetVisualTop);
+
+    // 尊重 prefers-reduced-motion
+    const reducedMotion =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    window.scrollTo({
+      top: targetScrollY,
+      behavior: reducedMotion ? "auto" : "smooth",
+    });
+  }, []);
+
+  // ---- 4. 键盘导航: focus 在 carousel 区域时, ArrowLeft/Right 翻页 ----
   const onCarouselKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (e.key === "ArrowLeft") {
       e.preventDefault();
@@ -100,27 +144,33 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
   };
 
   return (
-    <div className="mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] gap-6 lg:gap-8 items-start">
+    <div
+      ref={carouselRef}
+      className="mt-6 sm:mt-10 grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.8fr)] gap-4 sm:gap-6 lg:gap-8 items-start"
+    >
       {/* ---- 左栏: 4 步 (图标 + 序号+标题一行 + 描述, 竖向) ---- */}
-      <ol className="flex flex-col gap-5">
+      <ol className="flex flex-col gap-1 md:gap-3.5">
         {steps.map((s, i) => {
           const isActive = i === activeIdx;
           return (
             <li key={s.title}>
               <button
-                onClick={() => goTo(i)}
+                onClick={() => {
+                  goTo(i);
+                  scrollComponentToTopUnderHeader();
+                }}
                 aria-current={isActive ? "step" : undefined}
                 className={cn(
-                  "group w-full text-left flex items-start gap-2.5 py-2 px-3 -mx-3 rounded-xl transition-colors",
+                  "group w-full text-left flex items-center gap-3 sm:gap-3.5 py-1.5 sm:pt-3 sm:pb-2.5 px-3 sm:px-3.5 md:-mx-3 rounded-xl transition-colors",
                   isActive
                     ? "bg-sky-100"
-                    : "hover:bg-slate-50",
+                    : "hover:bg-slate-100/80",
                 )}
               >
                 {/* 图标 (左, 小尺寸) */}
                 <span
                   className={cn(
-                    "w-8 h-8 rounded-md flex items-center justify-center flex-shrink-0 p-0.5 transition-colors",
+                    "w-8 h-8 sm:w-9.5 sm:h-9.5 rounded-md flex items-center justify-center flex-shrink-0 p-0.5",
                     isActive ? "bg-white shadow-sm border border-slate-200/80" : "bg-slate-100",
                   )}
                 >
@@ -133,28 +183,29 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
                 </span>
                 {/* 序号 + 标题一行 / 描述下一行 */}
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-baseline gap-2">
+                  <div className="flex items-baseline gap-1.5">
                     <span
                       className={cn(
-                        "font-bold tracking-tighter tabular-nums leading-none transition-colors text-sm sm:text-base flex-shrink-0",
-                        isActive ? "text-slate-800" : "text-slate-300 group-hover:text-slate-400",
+                        "font-bold tracking-tighter tabular-nums leading-none transition-colors text-base flex-shrink-0",
+                        isActive ? "text-slate-800" : "text-slate-400 group-hover:text-slate-500",
                       )}
                     >
                       {String(i + 1).padStart(2, "0")}
                     </span>
-                    <h3
+                    <span
                       className={cn(
-                        "font-semibold text-sm sm:text-base transition-colors truncate",
-                        isActive ? "text-slate-900" : "text-slate-600 group-hover:text-slate-800",
+                        "font-semibold text-base sm:text-[17px] transition-colors truncate",
+                        isActive ? "text-slate-900" : "text-slate-500 group-hover:text-slate-600",
                       )}
                     >
                       {s.title}
-                    </h3>
+                    </span>
                   </div>
                   <p
                     className={cn(
-                      "text-xs leading-relaxed transition-colors mt-1",
-                      isActive ? "text-slate-600" : "text-slate-500",
+                        "hidden sm:block",
+                        "text-[15px] leading-relaxed transition-colors",
+                        isActive ? "text-slate-600" : "text-slate-500",
                     )}
                   >
                     {s.desc}
@@ -180,7 +231,7 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
           {hasContent && current ? (
             current.type === "image" ? (
               <div
-                className="relative aspect-video bg-slate-50 overflow-hidden"
+                className="relative aspect-[16/10] bg-slate-50 overflow-hidden"
                 role="group"
                 aria-roledescription="slide"
                 aria-label={`${active.title} 第 ${contentIdx + 1} / ${contents.length} 张`}
@@ -210,21 +261,20 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
                 />
               </div>
             ) : (
-              /* panel — 占图片区 (aspect-video) 跟原皮肤站 section 同样的卡片框体 */
+              /* panel — 占图片区 (aspect-[16/10] 跟图片区同高, carousel 切换不跳布局) */
               <div
-                className="relative aspect-video bg-gradient-to-br from-slate-50/40 to-white p-6 flex flex-col justify-center overflow-hidden"
+                className="relative aspect-[16/10] bg-gradient-to-br from-slate-50/40 to-white p-4 sm:p-6 flex flex-col justify-center overflow-hidden"
                 role="group"
                 aria-roledescription="slide"
                 aria-label={`${active.title} 链接面板`}
               >
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="font-semibold text-base text-slate-800">
+                  <span className="font-semibold text-[16px] sm:text-[17px] text-slate-800">
                     {current.panel.title}
                   </span>
                   {current.panel.subtitle && (
                     <>
-                      <span className="text-slate-300">·</span>
-                      <span className="text-xs text-slate-500">
+                      <span className="text-[14px] sm:text-[15px] text-slate-500 ml-0.5">
                         {current.panel.subtitle}
                       </span>
                     </>
@@ -232,7 +282,7 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
                 </div>
                 <div
                   className={cn(
-                    "grid gap-2",
+                    "grid gap-1 sm:gap-2",
                     current.panel.links.length === 1
                       ? "grid-cols-1"
                       : "grid-cols-1 sm:grid-cols-2",
@@ -245,36 +295,36 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       className={cn(
-                        "group relative block p-3.5 rounded-xl border transition-all overflow-hidden",
+                        "group relative block px-3.5 py-2 sm:p-3.5 rounded-xl border transition-all overflow-hidden",
                         l.primary
-                          ? "bg-gradient-to-br from-sky-50 to-purple-50 border-sky-500/25 hover:border-sky-500/85"
-                          : "bg-white border-slate-200/80 hover:border-slate-300/80",
+                          ? "bg-gradient-to-br from-sky-50 to-purple-50 border-blue-500/25 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all"
+                          : "bg-white border-slate-200 hover:border-blue-300/90 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all",
                         l.wide && "sm:col-span-2",
                       )}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold flex items-center gap-1.5 text-sm text-slate-900">
-                            <span className="truncate">{l.label}</span>
+                          <div className="font-semibold flex items-center gap-1.5 text-[15px] sm:text-[16px] text-slate-800">
+                            <span className="group-hover:text-blue-500 transition-colors truncate">{l.label}</span>
                             {l.primary && (
-                              <span className="text-[9px] px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium flex-shrink-0">
+                              <span className="text-[11px] sm:text-[12px] px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium flex-shrink-0">
                                 推荐
                               </span>
                             )}
                             {l.password && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[12px] font-mono px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
                                 <IconLock className="w-2.5 h-2.5" />
                                 {l.password}
                               </span>
                             )}
                           </div>
                           {l.desc && (
-                            <div className="text-xs text-slate-500 mt-1 line-clamp-2">
+                            <div className="hidden sm:flex text-[13px] sm:text-[14px] text-slate-500 mt-0.5 line-clamp-2">
                               {l.desc}
                             </div>
                           )}
                         </div>
-                        <IconExternalLink className="w-3.5 h-3.5 text-slate-400 group-hover:text-sky-600 transition-colors flex-shrink-0 mt-0.5" />
+                        <IconExternalLink className="w-4 h-4 text-slate-400 group-hover:text-sky-600 transition-colors flex-shrink-0 mt-0.5" />
                       </div>
                     </a>
                   ))}
@@ -282,9 +332,9 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
               </div>
             )
           ) : (
-            /* step 无 content (空数组) — 占位 */
+            /* step 无 content (空数组) — 占位 (aspect-[16/10] 跟图片/panel 同高, 不跳布局) */
             <div
-              className="relative aspect-video flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/60"
+              className="relative aspect-[16/10] flex items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100/60"
               role="group"
               aria-roledescription="slide"
               aria-label="本步骤暂无内容"
@@ -306,7 +356,7 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
           <div
             aria-live="polite"
             aria-atomic="true"
-            className="px-4 py-3 bg-white border-t border-slate-200/80 min-h-[3rem]"
+            className="px-3 py-2 sm:px-4 sm:py-3 bg-white border-t border-slate-200/80 min-h-[3rem]"
           >
             {(() => {
               const text = active.textContent?.[contentIdx];
@@ -319,10 +369,10 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
               }
               return (
                 <div className="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[11px] font-mono font-semibold flex items-center justify-center mt-0.5 tabular-nums border border-slate-200/60">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[12px] sm:text-[14px] font-mono font-semibold flex items-center justify-center mt-0.5 tabular-nums border border-slate-200/60">
                     {String(contentIdx + 1).padStart(2, "0")}
                   </span>
-                  <div className="flex-1 pt-0.5">{Children.toArray(text)}</div>
+                  <div className="flex-1 pt-0.5 text-[15px] sm:text-[16px]">{Children.toArray(text)}</div>
                 </div>
               );
             })()}
@@ -332,47 +382,53 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
           {hasContent && (
             <>
               <div
-                className="flex items-center justify-between px-3 py-2 bg-white/70 border-t border-slate-200/80"
+                className="flex items-center justify-between px-2 py-1 sm:px-3 sm:py-2 bg-white/70 border-t border-slate-200/80"
                 role="group"
                 aria-label="教程图翻页"
               >
                 <button
-                  onClick={prev}
+                  onClick={() => {
+                    prev();
+                    scrollComponentToTopUnderHeader();
+                  }}
                   disabled={prevDisabled}
                   aria-label="上一张教程图"
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                     prevDisabled
                       ? "text-slate-300 cursor-not-allowed"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100",
+                      : "text-slate-500 hover:text-slate-600 hover:bg-slate-200/60",
                   )}
                 >
-                  <IconChevronLeft className="w-4 h-4" />
+                  <IconChevronLeft className="w-5 h-5" />
                 </button>
 
                 <span
-                  className="text-[14px] font-mono text-slate-400 tabular-nums"
+                  className="text-[15px] sm:text-[16px] font-mono text-slate-400 tabular-nums"
                   aria-current="true"
                 >
                   {contentIdx + 1} / {contents.length}
                 </span>
 
                 <button
-                  onClick={next}
+                  onClick={() => {
+                    next();
+                    scrollComponentToTopUnderHeader();
+                  }}
                   disabled={nextDisabled}
                   aria-label="下一张教程图"
                   className={cn(
                     "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
                     nextDisabled
                       ? "text-slate-300 cursor-not-allowed"
-                      : "text-slate-500 hover:text-slate-800 hover:bg-slate-100",
+                      : "text-slate-500 hover:text-slate-600 hover:bg-slate-200/60",
                   )}
                 >
-                  <IconChevronRight className="w-4 h-4" />
+                  <IconChevronRight className="w-5 h-5" />
                 </button>
               </div>
               {/* 边界提示 + 键盘提示 */}
-              <div className="px-3 py-1.5 text-[10px] text-slate-400 text-center bg-white/40 border-t border-slate-100">
+              <div className="px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] text-slate-400 text-center bg-white/40 border-t border-slate-100">
                 左右按钮点击翻页
               </div>
             </>

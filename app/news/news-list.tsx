@@ -1,6 +1,6 @@
 /**
  * News 列表 — 最新 1 条大卡 + 后续 3 列 grid
- * 风格: 跟 home FEATURES / help SERVERS 卡片一致
+ * 风格: 跟 home FEATURES / guide SERVERS 卡片一致
  *  - rounded-2xl bg-white border hover 渐变光晕
  *  - cover 缩略图 aspect-video
  *  - 暗色 category 标签 + 时间

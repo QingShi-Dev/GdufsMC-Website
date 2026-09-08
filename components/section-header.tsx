@@ -43,7 +43,7 @@ export function SectionHeader({
       )}
       <h2
         className={cn(
-          "text-3xl sm:text-4xl font-bold tracking-tight text-balance",
+          "text-3xl sm:text-[38px] font-bold tracking-tight text-balance",
           isLight ? "text-slate-900" : "text-white"
         )}
       >
@@ -52,7 +52,7 @@ export function SectionHeader({
       {description && (
         <p
           className={cn(
-            "mt-3 leading-relaxed text-balance",
+            "mt-3 sm:text-[18px] leading-relaxed text-balance",
             isLight ? "text-slate-600" : "text-white/55",
             align === "center" && "max-w-2xl mx-auto"
           )}

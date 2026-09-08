@@ -37,23 +37,14 @@ export interface ServerTarget {
  * - 校园网地址公网 ping 不通，所以查询会超时，但展示上仍保留，方便校内同学对照。
  */
 export const SERVER_TARGETS: ServerTarget[] = [
-  // 纯生存（原版 1.21.8）
-  { key: "survival-campus", group: "survival", label: "生存服 校园网", desc: "原版 1.21.8 · 无限带宽", host: "mc.gdufscraft.top", port: DEFAULT_MC_PORT, campusOnly: true, order: 0 },
-  { key: "survival-main", group: "survival", label: "生存服 公网主线", desc: "原版 1.21.8 · 24M", host: "mc2.gdufscraft.top", port: DEFAULT_MC_PORT, order: 1 },
-  { key: "survival-backup", group: "survival", label: "生存服 公网备线", desc: "原版 1.21.8 · 3M", host: "mc3.gdufscraft.top", port: DEFAULT_MC_PORT, order: 2 },
-
-  // 机械动力：航空学（1.21.1-NeoForge）
-  { key: "create-campus", group: "create", label: "航空学 校园网", desc: "1.21.1-NeoForge · 无限带宽", host: "create.gdufscraft.top", port: DEFAULT_MC_PORT, campusOnly: true, order: 0 },
-  { key: "create-main", group: "create", label: "航空学 公网主线", desc: "1.21.1-NeoForge · 24M", host: "create2.gdufscraft.top", port: DEFAULT_MC_PORT, order: 1 },
-  { key: "create-backup", group: "create", label: "航空学 公网备线", desc: "1.21.1-NeoForge · 3M", host: "create3.gdufscraft.top", port: DEFAULT_MC_PORT, order: 2 },
-
-  // 整合包 BetterMC5
-  { key: "bmc", group: "bmc", label: "整合包 BMC", desc: "BetterMC5", host: "bmc.gdufscraft.top", port: DEFAULT_MC_PORT, maintenance: true, order: 0 },
-
+  // 群组服（原版 26.2）
+  { key: "survival-campus", group: "survival", label: "群组服 校园网", desc: "", host: "mc.gdufscraft.top", port: DEFAULT_MC_PORT, campusOnly: true, order: 0 },
+  { key: "survival-main", group: "survival", label: "群组服 公网主线", desc: "", host: "mc2.gdufscraft.top", port: DEFAULT_MC_PORT, order: 1 },
+  { key: "survival-backup", group: "survival", label: "群组服 公网备线", desc: "", host: "mc3.gdufscraft.top", port: DEFAULT_MC_PORT, order: 2 },
   // 粤高联联合群组门户
-  { key: "gh-mua", group: "hemc", label: "联合群组门户 - 1.21", desc: "MUA 联合服务器", host: "mc.ghm-mua.org", port: DEFAULT_MC_PORT, order: 0 },
+  { key: "gh-mua", group: "hemc", label: "联合群组门户", desc: "- 1.21", host: "mc.ghm-mua.org", port: DEFAULT_MC_PORT, order: 0 },
   // 粤高联广州大学城复原项目
-  { key: "hemc", group: "hemc", label: "复原项目 - 1.20.1", desc: "原版 1.20.1", host: "hemc.ghm-mua.org", port: DEFAULT_MC_PORT, order: 1 },
+  { key: "hemc", group: "hemc", label: "大学城复原项目", desc: "- 1.20.1", host: "hemc.ghm-mua.org", port: DEFAULT_MC_PORT, order: 1 },
 ];
 
 export interface ServerStatus {

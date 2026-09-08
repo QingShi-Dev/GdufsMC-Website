@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 const NAV_ITEMS = [
     { href: "/", label: "首页" },
     { href: "/map", label: "地图总览" },
-    { href: "/news", label: "最新动态" },
-    { href: "/help", label: "游玩指南" },
+    { href: "/news", label: "新闻动态" },
+    { href: "/guide", label: "游玩指南" },
 ];
 
 /* 史莱姆 svg */
@@ -324,7 +324,7 @@ export function HeaderNav() {
                 className="relative w-full"
                 style={{
                     background:
-                        "linear-gradient(180deg, rgba(186, 240, 253, 0.6) 0%, rgba(224, 242, 254, 0.25) 100%)",
+                        "linear-gradient(180deg, rgba(186, 240, 253, 0.7) 0%, rgba(224, 242, 254, 0.45) 100%)",
                     backdropFilter: "blur(14px) saturate(180%)",
                     WebkitBackdropFilter: "blur(14px) saturate(180%)",
                     borderBottom: "1px solid rgba(255, 255, 255, 0.2)",
@@ -338,10 +338,10 @@ export function HeaderNav() {
                         className="relative flex flex-col cursor-pointer z-10 group select-none"
                         aria-label="云城像素社 - 返回首页"
                     >
-                        <div className="font-bold text-slate-700 text-lg tracking-tight leading-none pt-2">
+                        <div className="font-bold text-slate-700 text-[20px] md:text-[21px] tracking-tight leading-none pt-2">
                             云城像素社
                         </div>
-                        <div className="text-[10px] text-slate-500 text-center uppercase tracking-[0.2em] font-semibold mt-0.5">
+                        <div className="text-[10px] md:text-[11px] text-slate-500 text-center uppercase tracking-[0.2em] font-semibold mt-0.5">
                             GDUFS·MC
                         </div>
 
@@ -378,7 +378,7 @@ export function HeaderNav() {
                                     href={item.href}
                                     onClick={lockNavSwitching}
                                     className={cn(
-                                        "relative px-4 py-2 text-base font-semibold rounded-lg transition-colors",
+                                        "relative px-4 py-2 text-lg font-semibold rounded-lg transition-colors",
                                         active
                                             ? "text-emerald-500 text-shadow-2xs"
                                             : "text-slate-700 text-shadow-2xs hover:text-slate-950 hover:bg-white/40"
@@ -531,8 +531,8 @@ export function HeaderNav() {
                                             className={cn(
                                                 "block px-4 py-3 rounded-lg text-base font-semibold",
                                                 i === activeIndex
-                                                    ? "text-emerald-500 bg-emerald-50"
-                                                    : "text-slate-700 hover:bg-slate-100"
+                                                    ? "text-emerald-500 text-shadow-2xs bg-emerald-100/70"
+                                                    : "text-slate-700 text-shadow-2xs hover:bg-slate-100"
                                             )}
                                         >
                                             {item.label}

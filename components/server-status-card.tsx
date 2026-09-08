@@ -11,7 +11,6 @@ import {
   IconUsers,
   IconBolt,
   IconChevronDown,
-  IconAlertTriangle,
 } from "@tabler/icons-react";
 import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/mc-status-constants";
 import { cn } from "@/lib/utils";
@@ -20,7 +19,7 @@ import { logger } from "@/lib/logger";
 const REFRESH_MS = 5_000;
 const CACHE_KEY = "mc-status-cache-v1";
 const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // localStorage 缓存 5 分钟
-const GROUP_ORDER: ServerGroup[] = ["survival", "create", "hemc", "bmc"];
+const GROUP_ORDER: ServerGroup[] = ["survival", "hemc"];
 
 // ---- 刷新按钮状态机时序 ----
 // 点击 → 旋转 ROTATION_MS → 显示"已刷新" → 再等 SUCCESS_DISPLAY_MS → 回 idle
@@ -28,20 +27,6 @@ const GROUP_ORDER: ServerGroup[] = ["survival", "create", "hemc", "bmc"];
 const ROTATION_MS = 500;
 const SUCCESS_DISPLAY_MS = 2_000;
 const LOCKOUT_MS = ROTATION_MS + SUCCESS_DISPLAY_MS;
-
-/** 响应式断点 hook（SSR 安全；用 useSyncExternalStore 避免 setState in effect 报错） */
-function useMediaQuery(query: string): boolean {
-  return useSyncExternalStore(
-      (callback) => {
-        if (typeof window === "undefined") return () => {};
-        const mq = window.matchMedia(query);
-        mq.addEventListener("change", callback);
-        return () => mq.removeEventListener("change", callback);
-      },
-      () => (typeof window === "undefined" ? false : window.matchMedia(query).matches),
-      () => false, // SSR 快照：默认桌面
-  );
-}
 
 interface StatusResponse {
   servers: ServerStatusT[];
@@ -268,10 +253,10 @@ function CopyButton({ text }: { text: string }) {
       <button
           type="button"
           onClick={handleClick}
-          className="inline-flex items-center gap-1 px-1.5 py-0.5 text-[10px] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+          className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] sm:text-[13px] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
           aria-label="复制地址"
       >
-        <IconCopy className="w-2.5 h-2.5" />
+        <IconCopy className="w-3.5 h-3.5" />
         {copied ? "已复制" : text}
       </button>
   );
@@ -281,29 +266,27 @@ function GroupSection({
                         group,
                         servers,
                         loading = false,
-                        isMobile = false,
                       }: {
   group: ServerGroup;
   servers: ServerStatusT[];
   loading?: boolean;
-  isMobile?: boolean;
 }) {
   // 派生 state：userOverride=null 时用默认，用户的显式选择会一直保留
   // 默认：移动端全部展开，桌面端只有 BMC 折叠（HEMC 不再默认折叠）
   const [userOverride, setUserOverride] = useState<boolean | null>(null);
-  const defaultOpen = isMobile ? true : group !== "bmc";
+  const defaultOpen = true;
   const open = userOverride ?? defaultOpen;
   const meta = GROUP_META[group];
   const anyOnline = servers.some((s) => s.online);
   const allCampus = servers.every((s) => s.campusOnly);
 
   return (
-      <div className="rounded-xl bg-white/50 border border-slate-200/70 overflow-hidden">
+      <div className="overflow-hidden">
         <button
             type="button"
             onClick={() => setUserOverride(!open)}
             aria-expanded={open}
-            className="w-full flex items-center justify-between gap-2 px-3 py-2 hover:bg-white/70 transition-colors"
+            className="w-full flex items-center justify-between gap-2 px-1.5 sm:px-3 py-2 hover:bg-white/70 transition-colors"
         >
           <div className="flex items-center gap-2 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 4 个本地静态小 SVG，无需 next/image 优化 */}
@@ -313,7 +296,10 @@ function GroupSection({
                 aria-hidden="true"
                 className="w-5 h-5 flex-shrink-0"
             />
-            <span className="text-xs font-semibold text-slate-800 truncate">{meta.label}</span>
+            <div className="flex flex-col md:flex-row items-start md:items-center gap-0 md:gap-1.5">
+              <span className="text-[14px] sm:text-[15px] font-semibold text-slate-800 truncate">{meta.label}</span>
+              <span className="text-[14px] sm:text-[15px] font-semibold text-slate-800 truncate">{meta.desc}</span>
+            </div>
           </div>
           <div className="flex items-center gap-1.5">
           <span
@@ -327,7 +313,7 @@ function GroupSection({
               )}
           />
             <span
-                className="text-[9px] px-1.5 py-px rounded bg-slate-100 text-slate-500 font-mono tracking-tight"
+                className="text-[12px] sm:text-[13px] md:px-1.5 py-px rounded  text-slate-600 font-normal tracking-tight whitespace-nowrap"
                 title={meta.needMUA ? "需 MUA 联合群组验证" : "无需 MUA 验证"}
             >
               {meta.needMUA ? "MUA 验证" : "无需验证"}
@@ -347,12 +333,12 @@ function GroupSection({
                   transition={{ duration: 0.2 }}
                   className="overflow-hidden"
               >
-                <div className="p-2 pt-1 space-y-1.5">
+                <div className="p-0.5 sm:p-2 pt-1 space-y-1.5">
                   {servers.length > 0 ? (
                       servers.map((s) => <ServerRow key={s.key} s={s} />)
                   ) : (
-                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[10px] text-slate-400 text-center">
-                        {loading ? "检查中..." : "暂无数据"}
+                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[12px] text-slate-400 text-center">
+                        {loading ? "检查通讯中..." : "暂无数据"}
                       </div>
                   )}
                 </div>
@@ -369,12 +355,19 @@ function ServerRow({ s }: { s: ServerStatusT }) {
         <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50/80 border border-dashed border-emerald-300/70">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-medium text-emerald-900">{s.label}</span>
-              <span className="text-[9px] px-1 py-px rounded bg-emerald-200 text-emerald-800 border border-emerald-300">仅校内</span>
+              <span className="text-[13px] sm:text-[14px] font-medium text-emerald-900">{s.label}</span>
+              <span className="hidden md:flex text-[11px] px-1 py-px ml-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">仅限校内</span>
             </div>
-            <div className="font-mono text-[10px] text-emerald-700/80 mt-0.5">{s.host}</div>
+            <div className="font-light text-[12px] sm:text-[13px] text-emerald-700/80 mt-0.5">{s.host}</div>
           </div>
-          <CopyButton text={s.host} />
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {s.campusOnly && (
+                <span className="flex md:hidden text-[10px] px-1 py-px mt-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">
+                    仅限校内
+                  </span>
+            )}
+            <CopyButton text={s.host} />
+          </div>
         </div>
     );
   }
@@ -388,38 +381,52 @@ function ServerRow({ s }: { s: ServerStatusT }) {
                   : "bg-red-50/70 border-red-200/70"
           )}
       >
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-            <span
-                className={cn(
-                    "w-1.5 h-1.5 rounded-full flex-shrink-0",
-                    s.online ? "bg-emerald-500 animate-pulse" : "bg-red-500"
-                )}
-            />
-              <span className="text-xs font-medium text-slate-800 truncate">{s.label}</span>
-              {s.maintenance && (
-                  <span className="text-[9px] px-1 py-px rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
-                  停服调整
+              <span
+                  className={cn(
+                      "w-1.5 h-1.5 rounded-full flex-shrink-0",
+                      s.online ? "bg-emerald-500 animate-pulse" : "bg-red-500"
+                  )}
+              />
+              <span className="flex flex-col md:flex-row gap-0.5 md:gap-1">
+                <span className="text-[13px] sm:text-[14px] font-medium text-slate-800 truncate overflow-visible">{s.label}</span>
+                <span className="text-[11px] sm:text-[14px] font-medium text-slate-800">{s.desc}</span>
+              </span>
+              {!s.online && (
+                  <span className="hidden md:flex text-[11px] px-1 py-px ml-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
+                  离线
                 </span>
               )}
             </div>
-            <div className="font-mono text-[10px] text-slate-500 mt-0.5 truncate">{s.host}</div>
-          </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0">
-            {s.online ? (
-                <>
-              <span className="flex items-center gap-0.5 text-[10px] text-slate-600 font-mono">
+            <div className="flex items-center gap-1.5 flex-shrink-0 ml-1.5">
+              <span className="flex items-center gap-0.5 text-[12px] sm:text-[13px] text-slate-600 font-mono">
                 <IconUsers className="w-2.5 h-2.5" />
-                {s.players?.online ?? 0}
-                <span className="text-slate-400">/{s.players?.max ?? 0}</span>
+                  {s.online ? (
+                    <>
+                      {s.players?.online ?? 0}
+                      <span className="text-slate-400">/{s.players?.max ?? 0}</span>
+                    </>
+                  ) : (
+                    <>
+                      -
+                      <span className="text-slate-400">/-</span>
+                    </>
+                  )}
               </span>
-                  <span className="flex items-center gap-0.5 text-[10px] text-slate-600 font-mono">
+              <span className="flex items-center gap-0.5 text-[12px] text-slate-600 font-mono">
                 <IconBolt className="w-2.5 h-2.5" />
-                    {s.latencyMs}
+                {s.online ? s.latencyMs : "--"}
               </span>
-                </>
-            ) : null}
+            </div>
+          </div>
+          <div className="flex flex-col items-end gap-1 flex-shrink-0">
+            {!s.online && (
+                <span className="flex md:hidden text-[10px] px-1 py-px mt-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
+                离线
+              </span>
+            )}
             <CopyButton text={s.host} />
           </div>
         </div>
@@ -438,8 +445,6 @@ export function ServerStatusCard() {
     stopAutoRefresh,
     bumpAutoRefresh,
   } = useServerStatuses();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
-
   // 一进入页面就启动自动刷新（首次 fetch + 5s 轮询），路由变化时重启
   useEffect(() => {
     startAutoRefresh();
@@ -497,8 +502,6 @@ export function ServerStatusCard() {
     // 始终返回完整结构，缺数据时给空数组（渲染"检查中..."）
     const map: Record<ServerGroup, ServerStatusT[]> = {
       survival: [],
-      create: [],
-      bmc: [],
       hemc: [],
     };
     if (data) {
@@ -537,22 +540,22 @@ export function ServerStatusCard() {
           }}
           className="relative w-full max-w-xl mx-auto"
       >
-        <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl p-4 sm:p-5 shadow-2xl shadow-slate-900/10">
+        <div className="bg-white/60 backdrop-blur-xl border border-white/40 rounded-2xl p-3 sm:p-4 sm:p-5 shadow-2xl shadow-slate-900/10">
           {/* header */}
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2.5">
               <div className="relative">
                 {onlineCount > 0 ? (
-                    <IconCircleCheckFilled className="w-4.5 h-4.5 text-emerald-400" />
+                    <IconCircleCheckFilled className="w-6.5 h-6.5 text-emerald-400" />
                 ) : (
-                    <IconCircleXFilled className="w-4.5 h-4.5 text-red-400" />
+                    <IconCircleXFilled className="w-6.5 h-6.5 text-red-400" />
                 )}
               </div>
               <div>
-                <div className="text-sm font-semibold flex items-center gap-2 text-slate-800">
-                  实时状态
+                <div className="text-[16px] sm:text-[17px] font-semibold flex items-center text-slate-800">
+                  <span>实时状态</span>
                 </div>
-                <div className="text-[11px] text-slate-500">
+                <div className="text-[12px] sm:text-[13px] text-slate-600">
                   {loading
                       ? "正在查询…"
                       : `${onlineCount}条公网线路 正常运行`}
@@ -578,11 +581,11 @@ export function ServerStatusCard() {
                           default: { type: "spring", stiffness: 420, damping: 22, mass: 0.7 },
                           opacity: { duration: 0.16, ease: "easeOut" },
                         }}
-                        className="absolute right-full mr-1.5 top-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300/70 text-emerald-700 text-[10px] font-medium whitespace-nowrap shadow-sm shadow-emerald-500/10"
+                        className="absolute right-full mr-1.5 top-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300/70 text-emerald-700 text-[12px] sm:text-[13px] font-medium whitespace-nowrap shadow-sm shadow-emerald-500/10"
                         role="status"
                         aria-live="polite"
                     >
-                      <IconCircleCheckFilled className="w-2.5 h-2.5 flex-shrink-0" />
+                      <IconCircleCheckFilled className="w-3.5 h-3.5 flex-shrink-0" />
                       已刷新
                     </motion.div>
                 )}
@@ -594,11 +597,11 @@ export function ServerStatusCard() {
                   aria-label="刷新状态"
                   aria-busy={phase === "spinning"}
                   className={cn(
-                      "p-1.5 rounded-lg transition-colors",
+                      "p-1.5 flex items-center rounded-lg transition-colors",
                       // 锁定窗口内：去 hover、cursor 默认、略微变灰暗示不可点
                       phaseLocked
-                          ? "text-slate-400 cursor-default"
-                          : "text-slate-500 hover:bg-slate-100 hover:text-slate-700 cursor-pointer",
+                          ? "text-slate-500 cursor-default"
+                          : "text-slate-600 hover:bg-slate-100 hover:text-slate-700 cursor-pointer",
                   )}
               >
                 {/*
@@ -621,14 +624,13 @@ export function ServerStatusCard() {
           {/* groups - 始终渲染结构（无骨架） */}
           <div className="space-y-2">
             {GROUP_ORDER.map((g) => (
-                <GroupSection key={g} group={g} servers={grouped[g]} loading={loading} isMobile={isMobile} />
+                <GroupSection key={g} group={g} servers={grouped[g]} loading={loading} />
             ))}
           </div>
 
           {/* tip */}
-          <div className="mt-3 pt-3 border-t border-slate-200/70 flex items-start gap-1.5 text-[10px] text-slate-500">
-            <IconAlertTriangle className="w-3 h-3 mt-px flex-shrink-0 text-slate-500" />
-            <span>校园网地址外网不可达；推荐优先用 24M 公网主线，3M 备线仅作应急。</span>
+          <div className="mt-3 pt-3 border-t border-slate-200/70 flex items-center gap-1.5 text-[12px] sm:text-[13px] text-slate-600">
+            <span className="px-2">校园网地址外网无法连接；推荐优先使用公网主线，备线仅作应急。</span>
           </div>
         </div>
       </motion.div>

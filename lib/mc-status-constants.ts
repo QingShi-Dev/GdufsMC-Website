@@ -9,7 +9,7 @@
  * 文件内**禁止**引入任何 node:* / fs / child_process 等 server-only 模块。
  */
 
-export type ServerGroup = "survival" | "create" | "bmc" | "hemc";
+export type ServerGroup = "survival" | "hemc";
 
 /**
  * 前端消费的状态形状。
@@ -51,14 +51,13 @@ export const QUERY_CONCURRENCY = 6;
  */
 export interface GroupMeta {
   label: string;
+  desc: string;
   svg: string;
   /** 是否需要 MUA 联合群组验证（除 BMC 外都需） */
   needMUA: boolean;
 }
 
 export const GROUP_META: Record<ServerGroup, GroupMeta> = {
-  survival: { label: "纯净生存 · 原版 1.21.8", svg: "/icons/home/生存服图标.svg", needMUA: true },
-  create: { label: "创造 · 机械动力航空学 · 1.21.1-NeoForge", svg: "/icons/home//航空学图标.svg", needMUA: true },
-  bmc: { label: "整合包生存 · BetterMC5", svg: "/icons/home//整合包图标.svg", needMUA: false },
-  hemc: { label: "粤高联 · 联合服务器", svg: "/icons/home//粤高联图标.svg", needMUA: true },
+  survival: { label: "纯净生存 · 镜像创造", desc: "· 小游戏 - 26.2", svg: "/icons/home/生存服图标.svg", needMUA: true },
+  hemc: { label: "粤高联 · 联合服务器", desc: "", svg: "/icons/home//粤高联图标.svg", needMUA: true },
 };

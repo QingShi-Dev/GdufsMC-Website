@@ -70,7 +70,7 @@ export function CopyHost({ host }: { host: string }) {
       )}
       aria-label={copied ? "已复制" : `复制 ${host}`}
     >
-      <span>{host}</span>
+      <span className="sm:text-[14px]">{host}</span>
       {copied ? (
         <IconCheck className="w-3 h-3" stroke={2.5} />
       ) : (

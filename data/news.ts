@@ -1,5 +1,5 @@
 /**
- * News 数据 — help/news 页"新闻动态"section
+ * News 数据 — guide/news 页"新闻动态"section
  * - 6 条 news, 按时间倒序排列 (最新在前)
  * - cover 是首屏轮播图, 跟 home 主题 (服务器/世界) 一致
  * - pure data, 渲染成 list + 轮播图
