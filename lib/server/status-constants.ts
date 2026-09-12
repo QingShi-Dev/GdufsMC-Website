@@ -2,8 +2,8 @@
  * 客户端和服务端共享的常量与类型。
  *
  * 为什么独立成文件：
- * lib/mc-status.ts 会 import node:net（通过 mc-ping），
- * 如果客户端组件从 mc-status.ts 取常量，Turbopack 会把 node:net 拉进 client bundle 然后报错。
+ * lib/server-status.ts 会 import node:net（通过 server-ping），
+ * 如果客户端组件从 server-status.ts 取常量，Turbopack 会把 node:net 拉进 client bundle 然后报错。
  * 把"无副作用、纯数据"的部分抽到这里，client 可以直接 import，server 端再 re-export。
  *
  * 文件内**禁止**引入任何 node:* / fs / child_process 等 server-only 模块。
@@ -13,10 +13,10 @@ export type ServerGroup = "survival" | "hemc";
 
 /**
  * 前端消费的状态形状。
- * 服务端 lib/mc-status.ts 里同名接口是它的"权威定义"，这里再 re-declare 一遍
+ * 服务端 lib/server-status.ts 里同名接口是它的"权威定义"，这里再 re-declare 一遍
  * 是为了让客户端组件可以纯类型引用，不被强制拉进 server-only 模块的 import 链。
  *
- * 如果改了 mc-status.ts 里的 ServerStatus，必须同步这里（单一数据源是前者）。
+ * 如果改了 server-status.ts 里的 ServerStatus，必须同步这里（单一数据源是前者）。
  */
 export interface ServerStatus {
   key: string;

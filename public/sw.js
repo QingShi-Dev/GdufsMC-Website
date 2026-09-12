@@ -34,7 +34,7 @@ self.addEventListener("activate", (event) => {
       const keys = await caches.keys();
       await Promise.all(
         keys
-          .filter((k) => k.startsWith("mc-maps-") && k !== CACHE_NAME)
+          .filter((k) => k.startsWith("server-maps-") && k !== CACHE_NAME)
           .map((k) => caches.delete(k)),
       );
       // 立即接管所有 open clients (用户已经在浏览的页面), 不用刷新

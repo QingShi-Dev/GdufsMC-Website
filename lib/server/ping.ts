@@ -172,7 +172,7 @@ export async function queryMCServer(
   const handshakeHost = isIP(resolved.host) === 6 ? `[${resolved.host}]` : resolved.host;
 
   // 计时点放在 socket 构造之前，DNS 解析的耗时不算 latency
-  // （mc-status 会拿这个 latency 展示给玩家，必须是纯网络耗时）
+  // （server-status 会拿这个 latency 展示给玩家，必须是纯网络耗时）
   const socket = new Socket();
   socket.setNoDelay(true);
   let start = 0; // 在 socket.connect 之后同步打点（DNS 已完成）

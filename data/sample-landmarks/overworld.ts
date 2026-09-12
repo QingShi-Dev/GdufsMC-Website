@@ -1,7 +1,7 @@
 // 主世界 (overworld) 地标样本数据
 //
-// 数据格式见 lib/new-guide-map-landmarks.ts 里的 NewLandmark
-// 跟 lib/sample-landmarks/index.ts 合并后作为 SAMPLE_LANDMARKS 暴露给 app/map/page.tsx
+// 数据格式见 @/lib/map/landmarks 里的 NewLandmark
+// 跟 ./index.ts 合并后作为 SAMPLE_LANDMARKS 暴露给 app/map/page.tsx
 //
 // 激进改动 (2026-09-11): 统一 NewLandmark 字段, 但保留 kind 作为分类标签
 //  - 没图: 就只显示名字 (要弹窗就显式 popup: true)
@@ -11,9 +11,9 @@
 //    (不要求 landmarksVisible=true, 开了交通就能看到站名)
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
-import type { NewWorldId } from "../map/loader";
+import type { NewWorldId } from "@/lib/map/loader";
 
-import type { NewLandmark } from "../map/landmarks";
+import type { NewLandmark } from "@/lib/map/landmarks";
 
 export const OVERWORLD_LANDMARKS: NewLandmark[] = [
 

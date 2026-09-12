@@ -17,7 +17,7 @@
  *
  * 改完保存, dev server 自动重渲染.
  */
-import type { NewTransitDimension } from "../map/transit";
+import type { NewTransitDimension } from "@/lib/map/transit";
 
 const nether: NewTransitDimension = {
   stations: [],

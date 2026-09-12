@@ -8,7 +8,7 @@
  *  - 这里只剩"画线 + 画站点圆/胶囊"需要的几何/样式
  *  - 站点的 (x, z) 跟地标里的同名 landmark 重合 (visual coupling)
  */
-import type { NewTransitDimension } from "../map/transit";
+import type { NewTransitDimension } from "@/lib/map/transit";
 
 const overworld: NewTransitDimension = {
   // 全维度统一默认值 — 改这里, 全维度所有站/标签都跟着变

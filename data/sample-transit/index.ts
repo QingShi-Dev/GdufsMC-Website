@@ -5,7 +5,7 @@
  */
 import overworld from "./overworld";
 import { nether, end } from "./other-dims";
-import type { NewTransitGroups } from "../map/transit";
+import type { NewTransitGroups } from "@/lib/map/transit";
 
 export const SAMPLE_TRANSIT: NewTransitGroups = {
   overworld,

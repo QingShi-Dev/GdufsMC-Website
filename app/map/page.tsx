@@ -1,8 +1,8 @@
 import { GuideMap } from "@/components/map/guide-map";
 import { MapTabs } from "@/components/map/map-tabs";
 import { loadMapData } from "@/lib/map/loader";
-import { SAMPLE_LANDMARKS } from "@/lib/sample-landmarks";
-import { SAMPLE_TRANSIT } from "@/lib/sample-transit";
+import { SAMPLE_LANDMARKS } from "@/data/sample-landmarks";
+import { SAMPLE_TRANSIT } from "@/data/sample-transit";
 
 /**
  * new-guide-map 示例页

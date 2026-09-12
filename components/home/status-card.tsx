@@ -12,12 +12,12 @@ import {
   IconBolt,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/mc/status-constants";
+import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/server/status-constants";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 
 const REFRESH_MS = 5_000;
-const CACHE_KEY = "mc-status-cache-v1";
+const CACHE_KEY = "server-status-cache-v1";
 const CACHE_MAX_AGE_MS = 5 * 60 * 1000; // localStorage 缓存 5 分钟
 const GROUP_ORDER: ServerGroup[] = ["survival", "hemc"];
 

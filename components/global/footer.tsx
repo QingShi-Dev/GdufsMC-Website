@@ -323,7 +323,7 @@ const SERVER_GROUPS: ServerGroup[] = [
     bandwidth: "无限带宽",
     recommended: true,
     servers: [
-      { host: "mc.gdufscraft.top", version: "26.2 原版" },
+      { host: "server.gdufscraft.top", version: "26.2 原版" },
     ],
   },
   {
@@ -345,7 +345,7 @@ const SERVER_GROUPS: ServerGroup[] = [
     line: "粤高联",
     bandwidth: "联合服务器",
     servers: [
-      { host: "mc.ghm-mua.org", version: "联合门户群组" },
+      { host: "server.ghm-mua.org", version: "联合门户群组" },
       { host: "hemc.ghm-mua.org", version: "复原项目" },
     ],
   },

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { queryAllServers, type ServerStatus } from "@/lib/mc/status";
+import { queryAllServers, type ServerStatus } from "@/lib/server/status";
 import { logger } from "@/lib/logger";
 
 // 实时数据：路由本身不缓存
