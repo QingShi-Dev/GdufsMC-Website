@@ -210,12 +210,12 @@ export interface NewTransitStyleDefaults extends NewTransitLabelFields {
   /** 线路圆角全局默认 */
   lineCornerRadius?: number;
   lineCornerRadiusScale?: NewTransitScale;
-  /* ---- 珍珠炮 transit (末地专用) 全局默认 ---- */
+  /* ---- 珍珠炮 transit (下界专用) 全局默认 ---- */
   /** 抛物线颜色 (默认 #2ccdb1) */
   pearlColor?: string;
-  /** 虚线单段长度 (world units, 默认 8) — 整条抛物线均匀虚线 */
+  /** 虚线单段长度 (world units, 默认 80) — 整条抛物线均匀虚线 */
   pearlDashLength?: number;
-  /** 虚线间隔 (world units, 默认 6) */
+  /** 虚线间隔 (world units, 默认 60) */
   pearlDashSpacing?: number;
   /** 整条线透明度 (0-1, 默认 0.85) */
   pearlOpacity?: number;
@@ -223,10 +223,6 @@ export interface NewTransitStyleDefaults extends NewTransitLabelFields {
    *  - 偏移量 = curvature × 起点到终点的距离 (即 viewBox 距离)
    *  - 每条线自己可以在 NewPearlLine.style.curvature 覆盖 */
   pearlCurvature?: number;
-  /** 珍珠炮起点圆半径 (world units, 默认 4) */
-  pearlCannonRadius?: number;
-  /** 接收点圆半径 (world units, 默认 3) */
-  pearlReceiverRadius?: number;
   /** 单条线线宽 (world units, 默认 2) — 跟普通 line width 同款, 走 cssScaled */
   pearlLineWidth?: number;
   /** 单条线线宽缩放 (默认 0.5 — 缩放时线宽变化小一点, 跟普通线路一致感) */
@@ -245,10 +241,11 @@ export interface NewTransitDimension {
   lines: NewLine[];
   stations: NewTransitStation[];
   /**
-   * 珍珠炮 transit 线路 (末地用, 主世界/下界不挂)
+   * 珍珠炮 transit 线路 (下界用, 主世界/末地不挂)
    *  - 一门珍珠炮 + 若干接收点
-   *  - 起点到每个终点用一条抛物线相连 (中间是虚线)
+   *  - 起点到每个终点用一条抛物线相连 (淡绿色虚线)
    *  - 颜色默认 #2ccdb1
+   *  - 渲染只画线, 不画起点/终点圆
    */
   pearls?: NewPearlLine[];
   /** 单维度全局默认 (统一控制站标/字号/距离/线宽) */

@@ -173,14 +173,14 @@ export function NewTransitLines({ lines, k, toVB, defaults }: NewTransitLinesPro
   );
 }
 
-/* ============================== Pearl Lines (SVG, 进 <g>, 末地珍珠炮) ============================== */
+/* ============================== Pearl Lines (SVG, 进 <g>, 下界珍珠炮) ============================== */
 
 /**
- * 珍珠炮 transit 抛物线 + 起点/终点圆 — 全 SVG 进 <g>
+ * 珍珠炮 transit 抛物线 — 全 SVG 进 <g>
  *  - 抛物线: 二次贝塞尔, control point = 中点 + 垂直偏移 (偏移 = curvature × 距离)
- *  - 颜色默认 #2ccdb1, 虚线 (stroke-dasharray, dashLength/dashSpacing 可调)
+ *  - 颜色默认 #2ccdb1 (淡绿色), 虚线 (stroke-dasharray, dashLength/dashSpacing 可调)
  *  - 透明度可调
- *  - 起点/终点画圆 (cannon 略大, receiver 略小)
+ *  - 只画虚线, 不画起点/终点圆, 不加白色描边 (用户: "只显示淡绿色虚线")
  *  - 全部走 viewBox 坐标 + vector-effect: non-scaling-stroke, 缩放时线宽恒定
  *  - 跟 NewTransitLines 同款: SVG 进 <g>, 跟地图 transform 同步动
  */
@@ -209,29 +209,15 @@ function PearlSVG({
   const color = pearl.style?.color ?? defaults?.pearlColor ?? "#2ccdb1";
   const opacity = pearl.style?.opacity ?? defaults?.pearlOpacity ?? 0.85;
   const curvature = pearl.style?.curvature ?? defaults?.pearlCurvature ?? 0.3;
-  // 抛物线宽度跟 NewTransitLines 同款: cssScaled + 屏幕恒定 (vector-effect)
+  // 抛物线宽度: cssScaled + 屏幕恒定 (vector-effect)
   const baseW = pearl.style?.lineWidthBase ?? defaults?.pearlLineWidth ?? 2;
   const scaleW = pearl.style?.lineWidthScale ?? defaults?.pearlLineWidthScale ?? 0.5;
   const maxW = pearl.style?.lineWidthMax ?? defaults?.pearlLineWidthMax;
   const wRaw = cssScaled(baseW, scaleW, k);
   const w = maxW !== undefined ? Math.min(wRaw, maxW) : wRaw;
-  // 虚线长度也用 cssScaled (跟普通线宽同款, 缩放时跟着变 — 但不能太大, 加个 cap)
-  // dashLength 跟 line width 是不同维度 (线宽 px, dash vb units), 这里保持 vb units 不缩放
-  // 这样 zoom 100% → 100% 时虚线密度感一致, 不会因为缩放变得过密或过疏
+  // 虚线: 保持 world units 不缩放 — 缩放时虚线密度感一致
   const dashLength = pearl.style?.dashLength ?? defaults?.pearlDashLength ?? 80;
   const dashSpacing = pearl.style?.dashSpacing ?? defaults?.pearlDashSpacing ?? 60;
-
-  // 起点/终点圆半径 (world units, 跟 station 同款 cssScaled 公式)
-  const cannonR = cssScaled(
-    pearl.style?.cannonRadius ?? defaults?.pearlCannonRadius ?? 6,
-    0.5,
-    k,
-  );
-  const receiverR = cssScaled(
-    pearl.style?.receiverRadius ?? defaults?.pearlReceiverRadius ?? 4,
-    0.5,
-    k,
-  );
 
   return (
     <g data-transit-pearl-line data-pearl-id={pearl.id}>
@@ -245,6 +231,7 @@ function PearlSVG({
         const dx = endVb.vx - startVb.vx;
         const dy = endVb.vy - startVb.vy;
         const dist = Math.hypot(dx, dy);
+        if (dist < 1) return null; // 起点终点重合, 跳过
         // 垂直方向 (逆时针 90°)
         const px = -dy;
         const py = dx;
@@ -253,62 +240,28 @@ function PearlSVG({
         const cpx = mx + (px / dist) * offset;
         const cpy = my + (py / dist) * offset;
         const d = `M ${startVb.vx.toFixed(1)} ${startVb.vy.toFixed(1)} Q ${cpx.toFixed(1)} ${cpy.toFixed(1)} ${endVb.vx.toFixed(1)} ${endVb.vy.toFixed(1)}`;
+        // 单 path, 虚线 + 淡绿色, 无白色描边
         return (
-          <g key={rec.id}>
-            {/* 白色外描边 (跟 NewTransitLines 同款, 1.5 屏恒定) */}
-            <path
-              d={d}
-              stroke="white"
-              strokeWidth={w + 1.5}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={opacity}
-              vectorEffect="non-scaling-stroke"
-            />
-            {/* 主线 (虚线) */}
-            <path
-              d={d}
-              stroke={color}
-              strokeWidth={w}
-              fill="none"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              opacity={opacity}
-              strokeDasharray={`${dashLength} ${dashSpacing}`}
-              vectorEffect="non-scaling-stroke"
-            />
-            {/* 接收点 (终点圆) */}
-            <circle
-              cx={endVb.vx}
-              cy={endVb.vy}
-              r={receiverR}
-              fill={color}
-              stroke="white"
-              strokeWidth={1.5}
-              opacity={opacity}
-              vectorEffect="non-scaling-stroke"
-            />
-          </g>
+          <path
+            key={rec.id}
+            d={d}
+            stroke={color}
+            strokeWidth={w}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            opacity={opacity}
+            strokeDasharray={`${dashLength} ${dashSpacing}`}
+            vectorEffect="non-scaling-stroke"
+          />
         );
       })}
-      {/* 起点圆 (cannon) — 单独画, 不进 receivers 循环, 保证 z-order 在所有抛物线之上 */}
-      <circle
-        cx={startVb.vx}
-        cy={startVb.vy}
-        r={cannonR}
-        fill={color}
-        stroke="white"
-        strokeWidth={2}
-        opacity={opacity}
-        vectorEffect="non-scaling-stroke"
-      />
     </g>
   );
 }
 
 export function NewPearlLines({ pearls, k, currentZoom, toVB, defaults }: NewPearlLinesProps) {
-  // 缩放阈值: 低于 TRANSIT_PEARL_MIN_ZOOM 不画 (跟 station 类似, 但珍珠炮门槛低很多)
+  // 缩放阈值: 低于 TRANSIT_PEARL_MIN_ZOOM 不画 (珍珠炮门槛低, 任何缩放都可见)
   if (currentZoom < TRANSIT_PEARL_MIN_ZOOM) return null;
   if (pearls.length === 0) return null;
   return (
