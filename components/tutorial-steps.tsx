@@ -161,7 +161,7 @@ export function TutorialSteps({ steps }: { steps: Step[] }) {
                 }}
                 aria-current={isActive ? "step" : undefined}
                 className={cn(
-                  "group w-full text-left flex items-center gap-3 sm:gap-3.5 py-1.5 sm:pt-3 sm:pb-2.5 px-3 sm:px-3.5 md:-mx-3 rounded-xl transition-colors",
+                  "group w-full text-left flex items-center gap-3 sm:gap-3.5 py-1.5 sm:pt-3 sm:pb-2.5 px-3 sm:px-3.5 xl:-mx-3 rounded-xl transition-colors",
                   isActive
                     ? "bg-sky-100"
                     : "hover:bg-slate-100/80",

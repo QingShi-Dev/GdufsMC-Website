@@ -1,12 +1,15 @@
 import { NewGuideMap } from "@/components/new-guide-map";
 import { MapViewTabs } from "@/components/map-view-tabs";
 import { loadNewGuideMapData } from "@/lib/new-guide-map-data";
+import { SAMPLE_LANDMARKS } from "@/lib/sample-landmarks";
+import { SAMPLE_METRO } from "@/lib/sample-metro";
 
 /**
  * new-guide-map 示例页
  * - server component: 读 public/images/maps/20260907/ 拼成 NewWorldMeta[]
  * - client component: <NewGuideMap worlds={...} /> 接管 zoom/pan/fullscreen
  * - 顶部 tabs 跟 /map 页共用 MapViewTabs, 群系地图 tab 标题右侧带短 URL
+ * - landmarks 用 SAMPLE_LANDMARKS, metro 用 SAMPLE_METRO, 后续用户按格式自填
  */
 export default function NewGuideMapPage() {
   const worlds = loadNewGuideMapData();
@@ -16,7 +19,11 @@ export default function NewGuideMapPage() {
       <div className="mx-auto max-w-7xl">
         <MapViewTabs />
         <div className="sm:mt-12">
-          <NewGuideMap worlds={worlds} />
+          <NewGuideMap
+            worlds={worlds}
+            landmarks={SAMPLE_LANDMARKS}
+            metro={SAMPLE_METRO}
+          />
         </div>
       </div>
     </div>

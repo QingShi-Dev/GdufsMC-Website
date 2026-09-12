@@ -15,7 +15,7 @@ const overworld: NewMetroDimension = {
   style: {
     // 普通站
     stationRadius: 4,
-    stationRadiusScale: 0.3,
+    stationRadiusScale: 0.12,
     // 换乘站 — 强烈建议每个换乘站单独设 length/lengthScale
     stationLength: 14,
     stationLengthScale: 0.3,
@@ -24,7 +24,7 @@ const overworld: NewMetroDimension = {
     // 线路
     lineWidth: 2,
     lineWidthScale: 0.7,
-    lineWidthMax: 5,
+    lineWidthMax: 6,
     lineCornerRadius: 200,
     lineCornerRadiusScale: 0.3,
   },
@@ -34,12 +34,12 @@ const overworld: NewMetroDimension = {
       id: "1-1/2-2",
       kind: "transfer",
       x: 47,
-      z: -12,
+      z: -6,
       rotation: 90, // 竖向
-      length: 20,
-      lengthScale: 0.3,
-      width: 7,
-      widthScale: 0.3,
+      length: 16,
+      lengthScale: 0.25,
+      width: 6,
+      widthScale: 0.25,
     },
     {
       id: "1-2",
@@ -54,9 +54,9 @@ const overworld: NewMetroDimension = {
       z: -294,
       rotation: 90,
       length: 18,
-      lengthScale: 0.3,
+      lengthScale: 0.25,
       width: 6,
-      widthScale: 0.3,
+      widthScale: 0.25,
     },
     {
       id: "1-4",

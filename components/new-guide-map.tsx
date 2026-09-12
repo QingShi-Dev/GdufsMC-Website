@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import type { ReactNode } from "react";
 import {
   IconArrowsMaximize,
   IconArrowsMinimize,
@@ -22,6 +23,10 @@ import {
   IconMinus,
   IconDeviceMobile,
   IconRotate,
+  IconMapPin,
+  IconMapPinOff,
+  IconBus,
+  IconBusOff,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -34,6 +39,17 @@ import type {
 } from "@/lib/new-guide-map-data";
 // TILE_PX 在 client 也需要, 单独从 constants 文件 import (data 文件是 server-only)
 import { TILE_PX } from "@/lib/new-guide-map-constants";
+import type {
+  NewLandmark,
+  NewLandmarkGroups,
+} from "@/lib/new-guide-map-landmarks";
+import { NewGuideMapLandmarks } from "./new-guide-map-landmarks";
+import { LandmarkPopup } from "./landmark-popup";
+import type { NewMetroGroups } from "@/lib/new-metro-types";
+import {
+  NewMetroLines,
+  NewMetroStations,
+} from "./new-metro-overlay";
 
 /* ============================== Sub-components ============================== */
 
@@ -43,11 +59,21 @@ function WorldTabs({
   value,
   onChange,
   preloadWorld,
+  landmarksVisible,
+  onToggleLandmarks,
+  metroVisible,
+  onToggleMetro,
 }: {
   worlds: NewWorldMeta[];
   value: NewWorldId;
   onChange: (id: NewWorldId) => void;
   preloadWorld: (id: NewWorldId) => void;
+  /** 是否显示地标 — 用来高亮 tab 栏里的地标开关 */
+  landmarksVisible: boolean;
+  onToggleLandmarks: () => void;
+  /** 是否显示交通 (地铁网络) — 用来高亮 tab 栏里的交通开关 */
+  metroVisible: boolean;
+  onToggleMetro: () => void;
 }) {
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
@@ -84,6 +110,53 @@ function WorldTabs({
           </button>
         );
       })}
+      {/* 地标开关 — 紧贴末地 tab 右边, 不跟右上角坐标 (absolute right-3) 抢位置
+          不用 ml-auto 是为了避免跟坐标位置重叠; 坐标是 absolute 浮在 right-3,
+          开关用 ml-auto 会被推到最右, 跟坐标撞在一起 */}
+      <button
+        type="button"
+        onClick={onToggleLandmarks}
+        aria-label={landmarksVisible ? "隐藏地标" : "显示地标"}
+        aria-pressed={landmarksVisible}
+        className={cn(
+          "ml-2 sm:ml-4",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
+          "transition-all flex items-center gap-1.5",
+          landmarksVisible
+            ? "bg-slate-800 text-white"
+            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+        )}
+      >
+        {landmarksVisible ? (
+          <IconMapPin className="w-3.5 h-3.5" />
+        ) : (
+          <IconMapPinOff className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">地标</span>
+      </button>
+      {/* 交通 (地铁网络) 开关 — 紧贴地标开关右边, 同样不挤坐标 */}
+      <button
+        type="button"
+        onClick={onToggleMetro}
+        aria-label={metroVisible ? "隐藏交通" : "显示交通"}
+        aria-pressed={metroVisible}
+        className={cn(
+          // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留
+          "lg:mr-72",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
+          "transition-all flex items-center gap-1.5",
+          metroVisible
+            ? "bg-slate-800 text-white"
+            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+        )}
+      >
+        {metroVisible ? (
+          <IconBus className="w-3.5 h-3.5" />
+        ) : (
+          <IconBusOff className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">交通</span>
+      </button>
     </div>
   );
 }
@@ -117,6 +190,8 @@ function MapCanvas({
   k,
   isFullscreen,
   isMobile,
+  isPanning,
+  metroInWorld,
 }: {
   layer: NewMapLayer;
   tx: number;
@@ -125,6 +200,15 @@ function MapCanvas({
   isFullscreen: boolean;
   /** < sm (640px) 用 slice, 否则 meet. SSR 时默认 false (走 meet, 跟 server 一致) */
   isMobile: boolean;
+  /** 正在做"点 region 跳视角"的过渡动画 — true 时 SVG g 挂 transition,
+   *  让 transform 平滑插值; false 时 (用户拖拽/滚轮) 无 transition, 保持直接手感 */
+  isPanning: boolean;
+  /**
+   * 地铁线 + 站点 (世界坐标 SVG) — 在 <g transform> 内部渲染, 跟着地图 transform 走
+   *  - 点 region 跳视角时, 跟地图内容一起走 500ms CSS transition, 跟地标 label 同频道
+   *  - 不传就不渲染 (默认空)
+   */
+  metroInWorld?: () => ReactNode;
 }) {
   // 移动端 (< sm, 640px): slice 模式 — 容器因 minHeight 比 viewBox 矮胖,
   //   meet 会留上下大量 slate-900 背景; slice 让 viewBox 填满容器
@@ -141,6 +225,7 @@ function MapCanvas({
     >
       <g
         transform={`translate(${tx} ${ty}) scale(${k})`}
+        className={isPanning ? "transition-transform duration-500 ease-in-out" : ""}
         style={{ pointerEvents: "none" }}
       >
         {layer.tiles.map((t) => (
@@ -192,6 +277,9 @@ function MapCanvas({
           height={layer.height}
           fill="transparent"
         />
+        {/* 地铁线 + 站点 (世界坐标) — 跟地图内容同一个 <g transform>, 点 region 跳视角
+            走 500ms CSS transition 时一起平滑移动, 跟地标 label 同频道 */}
+        {metroInWorld && metroInWorld()}
       </g>
     </svg>
   );
@@ -239,30 +327,186 @@ const MAX_ZOOM: Record<NewWorldId, number> = {
   end: 6,
 };
 
+/**
+ * 屏幕坐标 → viewBox 坐标 (考虑 SVG meet/slice 的 scale + 居中 offset)
+ *
+ * 之前没考虑 offset 是个 bug — 容器永远用主世界 13:6 比例, 下界 (5:2) 和
+ * 末地 (3:2) 的 viewBox 跟容器比例不匹配, SVG `meet` 模式会留黑边 (或 slice
+ * 模式裁切), 老的公式 ((clientX - rect.left) * vbW / rect.width) 假设了
+ * svg 占满整个 container, 算出来的 viewBox 坐标就偏了一段 offsetX/Y
+ *
+ * 后果: 下界/末地滚轮缩放 zoom 中心点错, 右上角坐标也错. 切到主世界
+ * 比例对得上, 数字又对了 → 表现为"切个地图就好了"
+ *
+ * 现在跟 worldToScreenFactory 用同一套 parScale + offset 公式, 跟 SVG
+ * 渲染完全对得回来
+ */
 const screenToVB = (
   clientX: number,
   clientY: number,
   rect: { left: number; top: number; width: number; height: number },
   vbW: number,
   vbH: number,
-) => ({
-  x: ((clientX - rect.left) * vbW) / rect.width,
-  y: ((clientY - rect.top) * vbH) / rect.height,
-});
+  isSlice: boolean = false,
+) => {
+  const cw = rect.width;
+  const ch = rect.height;
+  if (cw === 0 || ch === 0) return { x: 0, y: 0 };
+  const scale = isSlice
+    ? Math.max(cw / vbW, ch / vbH)
+    : Math.min(cw / vbW, ch / vbH);
+  const offsetX = (cw - vbW * scale) / 2;
+  const offsetY = (ch - vbH * scale) / 2;
+  return {
+    x: (clientX - rect.left - offsetX) / scale,
+    y: (clientY - rect.top - offsetY) / scale,
+  };
+};
+
+/**
+ * MC 世界坐标 (x, z) → viewBox 空间 (vbX, vbY)
+ * 纯几何转换, 不依赖 viewBox 尺寸或屏幕尺寸 — 给 panTo / worldToScreenFactory 共用
+ *
+ * 跟 MapCanvas 里 SVG <g> 的 transform 前一步对齐: viewBox 空间里的点 (vbX, vbY)
+ * 才是后续能直接用 tx/ty/k 变换的输入。
+ */
+function worldToVB(
+  worldX: number,
+  worldZ: number,
+  world: NewWorldMeta,
+): { vx: number; vy: number } | null {
+  for (let i = 0; i < world.map.tiles.length; i++) {
+    const t = world.map.tiles[i];
+    if (!t) continue;
+    if (
+      worldX >= t.x &&
+      worldX < t.x + TILE_PX &&
+      worldZ >= t.z &&
+      worldZ < t.z + TILE_PX
+    ) {
+      return {
+        vx: t.vbX + (worldX - t.x),
+        vy: t.vbY + (worldZ - t.z),
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * MC 世界坐标 (x, z) → 当前容器内 CSS 像素 (left, top)
+ * 给地标 HTML 标签用的 — 跟 MapCanvas 的 SVG transform + viewBox 渲染保持一致
+ *
+ * 数学 (跟 MapCanvas 里 SVG `viewBox` + `transform` 严格对应):
+ *   1. world (x, z) → viewBox (vbX, vbY): 在哪张瓦片内 + 瓦片内偏移 (走 worldToVB)
+ *   2. viewBox (vbX, vbY) → transformed (vbX*k + tx, vbY*k + ty): SVG g transform
+ *   3. transformed → 容器 CSS 像素: 跟 preserveAspectRatio 模式有关
+ *      - meet: scale = min(cw/vbW, ch/vbH), 居中 (offsetX/Y = (size - content)/2)
+ *      - slice: scale = max(...), 居中
+ *
+ * 注: 容器 size 用 getBoundingClientRect() 实时取, 不缓存 (resize 时自动跟)
+ */
+function worldToScreenFactory(args: {
+  container: HTMLElement | null;
+  world: NewWorldMeta | null;
+  tx: number;
+  ty: number;
+  k: number;
+  isFullscreen: boolean;
+  isMobile: boolean;
+}): (worldX: number, worldZ: number) => { x: number; y: number } | null {
+  const { container, world, tx, ty, k, isFullscreen, isMobile } = args;
+  if (!container || !world) return () => null;
+  const rect = container.getBoundingClientRect();
+  const cw = rect.width;
+  const ch = rect.height;
+  if (cw === 0 || ch === 0) return () => null;
+  const vbW = world.map.width;
+  const vbH = world.map.height;
+  const slice = !isFullscreen && isMobile;
+  const parScale = slice
+    ? Math.max(cw / vbW, ch / vbH)
+    : Math.min(cw / vbW, ch / vbH);
+  const contentW = vbW * parScale;
+  const contentH = vbH * parScale;
+  const offsetX = (cw - contentW) / 2;
+  const offsetY = (ch - contentH) / 2;
+  return (worldX: number, worldZ: number) => {
+    const vb = worldToVB(worldX, worldZ, world);
+    if (!vb) return null;
+    // SVG g transform: translate(tx ty) scale(k) = (vb*k + tx, vb*k + ty)
+    const tvbX = vb.vx * k + tx;
+    const tvbY = vb.vy * k + ty;
+    return {
+      x: offsetX + tvbX * parScale,
+      y: offsetY + tvbY * parScale,
+    };
+  };
+}
+
+/**
+ * 视角中心移到 (worldX, worldZ) 并缩放到 targetZoom
+ * 给 region 大地名点击用 — 类似百度地图点地名跳到该区域
+ *
+ * 数学 (viewBox 中心对准目标点):
+ *   想让 viewBox 中心 (vbW/2, vbH/2) 显示目标点的 viewBox 位置 (vbX, vbY)
+ *   即 transform 后: (vbX*k + tx, vbY*k + ty) = (vbW/2, vbH/2)
+ *   ⇒ tx = vbW/2 - vbX*k, ty = vbH/2 - vbY*k
+ */
+function computePanTransform(
+  worldX: number,
+  worldZ: number,
+  targetZoom: number,
+  world: NewWorldMeta,
+): { tx: number; ty: number; k: number } | null {
+  const vb = worldToVB(worldX, worldZ, world);
+  if (!vb) return null;
+  const { width: vbW, height: vbH } = world.map;
+  return {
+    k: targetZoom,
+    tx: vbW / 2 - vb.vx * targetZoom,
+    ty: vbH / 2 - vb.vy * targetZoom,
+  };
+}
 
 /* ============================== Main Component ============================== */
 
 export interface NewGuideMapProps {
   worlds: NewWorldMeta[];
+  /**
+   * 地标数据 (按维度分组) — 父组件从数据层传进来
+   * 不传就不渲染地标 (老用法 / 教程里用)
+   */
+  landmarks?: NewLandmarkGroups;
+  /**
+   * 地铁 / 交通网络数据 (按维度分组, lines + stations)
+   * 不传就不渲染交通层 (老用法 / 教程里用)
+   */
+  metro?: NewMetroGroups;
 }
 
-export function NewGuideMap({ worlds }: NewGuideMapProps) {
+export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
+  // 缺省: 三个维度都空数组 (不开 toggle 就完全不渲染地标, 兼容老用法)
+  const lm: NewLandmarkGroups = landmarks ?? {
+    overworld: [],
+    nether: [],
+    end: [],
+  };
+  // 缺省: 三个维度都空 (同 landmarks)
+  const mt: NewMetroGroups = metro ?? {
+    overworld: { lines: [], stations: [] },
+    nether: { lines: [], stations: [] },
+    end: { lines: [], stations: [] },
+  };
   // ---- 1. 路由/视图 ----
   // 列表为空时 fallback 到 overworld 防止 .find 出 undefined
   const initialId: NewWorldId = worlds[0]?.id ?? "overworld";
   const [worldId, setWorldId] = useState<NewWorldId>(initialId);
 
   // ---- 2. 视图变换 ----
+  // tx/ty/k 是 SVG g 的 transform, 也是地标 HTML 标签 left/top 的依据
+  // 过渡时 (isPanning=true) SVG g 走 CSS transition, 标签也走 (left/top 500ms ease-in-out)
+  // 两个动画同步开始/结束, 视觉上标签"绑"在地图上, 没有 drift, 没有 snap
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
   const [k, setK] = useState(1);
@@ -279,6 +523,22 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
   //  - 初始 false 保证 server render 跟 client 第一次 render 结果一致 (hydration 匹配)
   //  - mount 后 setIsMobile(true) 会触发 re-render, MapCanvas 切到 slice
   const [isMobile, setIsMobile] = useState(false);
+
+  // ---- 4. 地标: toggle / 选中 ----
+  // 默认 off — 第一次打开页面不想被地标盖住, 用户主动开
+  const [landmarksVisible, setLandmarksVisible] = useState(false);
+  // 交通 (地铁网络) 同样默认 off, 跟地标独立
+  const [metroVisible, setMetroVisible] = useState(false);
+  // 当前打开 popup 的地标 — null = 没开
+  // 装可弹窗的地标 — 激进改动后所有 NewLandmark 都可能弹窗
+  // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
+  // popup 位置固定在地图左上角, 不需要 anchor
+  const [selectedLandmark, setSelectedLandmark] = useState<NewLandmark | null>(null);
+
+  // 正在过渡动画中 (click region 跳视角) — 用这个 flag 控制 SVG g 的 transition class
+  // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
+  const [isPanning, setIsPanning] = useState(false);
+  const panTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
     const update = () => setIsMobile(window.innerWidth < 640);
     update();
@@ -398,6 +658,12 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
     setK(nextK);
     setTx(nextTx);
     setTy(nextTy);
+    // 同步刷新右上角坐标 — 改 transform 后不调就 stale
+    //  (覆盖路径: + 按钮 (zoom), 点地标 (panToLandmark), 切维度 — 都走 commitImmediate)
+    //  用 lastMouse 位置; 没记录过 (鼠标没进过地图) 就不刷
+    const last = lastMouseRef.current;
+    const w = writeHoverRef.current;
+    if (last && w) w(last.x, last.y);
   };
 
   /**
@@ -414,21 +680,45 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
     }
     return map;
   }, [world]);
-  const [hoverCoord, setHoverCoord] = useState<{
-    col: number;
-    row: number;
-    x: number;
-    z: number;
-  } | null>(null);
-  const onContainerMouseMove = useCallback(
-    (e: React.MouseEvent) => {
+  // 右上角坐标直接写 DOM — 不走 React state
+  //  - mousemove 60fps 也不触发 re-render, 不抖
+  //  - wheel/pinch 缩放后是"真同步"更新, 不会因为 setState batching 延迟
+  //  - 鼠标/手指位置没变, 但 tx/ty/k 变了, 同一屏幕点对应的 viewBox 位置变了
+  //    右上角坐标也得跟着重算, 否则显示就 stale
+  //    (mousemove 自然触发, wheel/pinch 不发 mousemove, 所以得显式调一次)
+  const coordBoxRef = useRef<HTMLDivElement>(null);
+  // 最后一次鼠标在地图上的位置 (clientX/Y) — commitImmediate 用它刷坐标
+  // 原因: + 按钮 / 点地标 / 切维度 这些"非 mousemove"的 transform 变化
+  //   也要刷新右上角, 但 React 事件 e 没传进 commit, 没法直接拿 e.clientX/Y
+  //   退而求其次用 lastMouse 位置 (mousemove 时更新, 大多数情况是准的)
+  const lastMouseRef = useRef<{ x: number; y: number } | null>(null);
+  // 写坐标函数的 ref 间接 — 让 commitImmediate 也能调到 (commit 在 writeHover 之前定义)
+  const writeHoverRef = useRef<((x: number, y: number) => void) | null>(null);
+  const writeHoverCoordFromScreen = useCallback(
+    (clientX: number, clientY: number) => {
+      const box = coordBoxRef.current;
       const el = containerRef.current;
       const w = worldRef.current;
-      if (!el || !w) return;
+      if (!box || !el || !w) return;
+      // 记录最后位置, 给 commitImmediate 在按钮/点地标 transform 后用
+      lastMouseRef.current = { x: clientX, y: clientY };
       const rect = el.getBoundingClientRect();
+      // 鼠标位置可能在 container 之外 (e.g. + 按钮触发 scrollMapIntoView 后, 鼠标被
+      //   page scroll 抖到 container 下方), 这种"老位置"算出来会落到瓦片外, 显示就被
+      //   设成 "none". 这里提前判一下, 是这种情况就保持隐藏, 别瞎算老位置
+      if (
+        clientX < rect.left ||
+        clientX > rect.right ||
+        clientY < rect.top ||
+        clientY > rect.bottom
+      ) {
+        box.style.display = "none";
+        return;
+      }
       const { width: vbW, height: vbH } = w.map;
-      // 屏幕 → viewBox (考虑当前缩放和平移的逆变换)
-      const mouseVB = screenToVB(e.clientX, e.clientY, rect, vbW, vbH);
+      // 屏幕 → viewBox (考虑当前缩放和平移的逆变换, isSlice 跟 SVG 实际渲染一致)
+      const isSlice = !isFullscreen && isMobile;
+      const mouseVB = screenToVB(clientX, clientY, rect, vbW, vbH, isSlice);
       const contentX = (mouseVB.x - txRef.current) / kRef.current;
       const contentY = (mouseVB.y - tyRef.current) / kRef.current;
       // 1 PNG 像素 = 1 MC 方块 (TILE_PX=1024), 所以在 viewBox 里的 px 直接就是方块数
@@ -444,20 +734,36 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
         // 连续世界坐标 = tile 左上角 MC 坐标 + 瓦片内像素偏移
         // contentX/Y 来自浮点除法, inTileX/Y 也是浮点 — 用 Math.round 锁到个位整数
         // (1 PNG 像素 = 1 MC 方块, 浮点误差 < 0.5, 四舍五入即"最接近的方块")
-        setHoverCoord({
-          col: tile.col,
-          row: tile.row,
-          x: Math.round(tile.x + inTileX),
-          z: Math.round(tile.z + inTileY),
-        });
+        const finalX = Math.round(tile.x + inTileX);
+        const finalZ = Math.round(tile.z + inTileY);
+        box.style.display = "";
+        const colEl = box.querySelector<HTMLElement>("[data-col]");
+        const rowEl = box.querySelector<HTMLElement>("[data-row]");
+        const xEl = box.querySelector<HTMLElement>("[data-x]");
+        const zEl = box.querySelector<HTMLElement>("[data-z]");
+        if (colEl) colEl.textContent = String(tile.col);
+        if (rowEl) rowEl.textContent = String(tile.row);
+        if (xEl) xEl.textContent = String(finalX);
+        if (zEl) zEl.textContent = String(finalZ);
       } else {
-        setHoverCoord(null);
+        // 越界 (拖到 viewBox 之外): 隐藏, 别显示老数字
+        box.style.display = "none";
       }
     },
-    [tileMap],
+    [tileMap, isFullscreen, isMobile],
+  );
+  // 同步 ref, 让更早定义的 commitImmediate 能调到最新 writeHoverCoordFromScreen
+  writeHoverRef.current = writeHoverCoordFromScreen;
+  const onContainerMouseMove = useCallback(
+    (e: React.MouseEvent) => {
+      writeHoverCoordFromScreen(e.clientX, e.clientY);
+    },
+    [writeHoverCoordFromScreen],
   );
   const onContainerMouseLeave = useCallback(() => {
-    setHoverCoord(null);
+    // 鼠标离开: 隐藏坐标 (mousemove 不再触发, wheel/pinch 在地图上也无 touchstart)
+    const box = coordBoxRef.current;
+    if (box) box.style.display = "none";
   }, []);
 
   /**
@@ -501,6 +807,108 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
   }, []);
 
   /**
+   * 视角跳到 (worldX, worldZ) 并缩放到 targetZoomPercent (百分比: 100=1x, 400=4x)
+   * 给 region 大地名点击用, 类似百度地图点地名跳区域
+   *  - 用 worldToVB + computePanTransform 算出新 tx/ty/k
+   *  - 内部 k 是缩放比 (1.0=1x, 4.0=4x), 数据用百分比, 这里 /100 转换
+   *  - clamp 缩放到该维度允许的范围 (MAX_ZOOM[worldId])
+   *  - 500ms 过渡动画 (ease-in-out), SVG g 挂 transition class
+   *    - 用户连续点击不同 region 时清掉旧 timeout, 用新动画
+   *    - prefers-reduced-motion 直接跳, 不动画
+   *  - 滚到 header 下 (跟按钮缩放/退出全屏行为一致)
+   *  - 关闭可能打开的 popup
+   */
+  const PAN_ANIMATION_MS = 500;
+  const panToLandmark = useCallback(
+    (worldX: number, worldZ: number, targetZoomPercent: number) => {
+      const w = worldRef.current;
+      if (!w) return;
+      // 百分比 → 缩放比: 400% → k=4
+      const targetK = targetZoomPercent / 100;
+      const t = computePanTransform(worldX, worldZ, targetK, w);
+      if (!t) return;
+      // clamp k 到 [1, MAX_ZOOM[worldId]] 范围, 防止超出边界
+      const maxK = MAX_ZOOM[w.id];
+      const clampedK = Math.max(1, Math.min(maxK, t.k));
+      // 如果 k 被 clamp 了, 重新算 tx/ty (因为 k 变了, 中心点也会变)
+      const finalT =
+        clampedK === t.k
+          ? t
+          : computePanTransform(worldX, worldZ, clampedK, w) ?? t;
+
+      // clampBounds: 边缘区域不强行居中
+      // 如果区域在地图边上, 居中会让 viewBox 跑到地图内容之外 (露出空背景),
+      // 这里把 tx/ty clamp 到合法范围, 让视图"尽可能向中间但不出地图"
+      const rect = containerRef.current?.getBoundingClientRect();
+      let finalTx = finalT.tx;
+      let finalTy = finalT.ty;
+      if (rect) {
+        const { width: vbW, height: vbH } = w.map;
+        const isSlice = !isFullscreen && window.innerWidth < 640;
+        const clamped = clampBounds(
+          finalT.tx,
+          finalT.ty,
+          finalT.k,
+          vbW,
+          vbH,
+          rect.width,
+          rect.height,
+          isSlice,
+        );
+        finalTx = clamped.tx;
+        finalTy = clamped.ty;
+      }
+
+      // 关键修复 1: 清掉 pendingRef 和 rAF, 避免之前的 drag rAF 用旧 k 覆盖 setK
+      // 506% 跳变的根因: onPointerMove → schedule(curK) → rAF commit → setK(curK=旧值)
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingRef.current = null;
+
+      // 关键修复 2: 同步更新 ref, 跟 setK 保持一致
+      // 之后的 onPointerMove 读 kRef.current 才是新值, schedule 才传正确 k
+      kRef.current = finalT.k;
+      txRef.current = finalTx;
+      tyRef.current = finalTy;
+
+      setK(finalT.k);
+      setTx(finalTx);
+      setTy(finalTy);
+      // 注意: 不关 popup, 让用户能继续看详情 (popup 在地图左上角, 不挡操作)
+      // 关闭方式: 点地图 (容器 onClick) 或点 X
+
+      // 过渡开关: 尊重 prefers-reduced-motion
+      const reducedMotion =
+        typeof window !== "undefined" &&
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      if (!reducedMotion) {
+        // 重新点击先清掉旧 timeout, 避免提前关掉新一轮动画
+        if (panTimeoutRef.current !== null) {
+          clearTimeout(panTimeoutRef.current);
+        }
+        setIsPanning(true);
+        panTimeoutRef.current = window.setTimeout(() => {
+          setIsPanning(false);
+          panTimeoutRef.current = null;
+        }, PAN_ANIMATION_MS);
+      } else {
+        // 不动画: 直接关掉 (走一次 setState 防止上一轮还挂着)
+        if (panTimeoutRef.current !== null) {
+          clearTimeout(panTimeoutRef.current);
+          panTimeoutRef.current = null;
+        }
+        setIsPanning(false);
+      }
+
+      // 滚到 header 下 (跟按钮缩放/退出全屏行为一致, 桌面端)
+      scrollMapIntoView();
+    },
+    [scrollMapIntoView],
+  );
+
+  /**
    * 滚轮缩放专用 — debounce 150ms
    *  滚轮是连续事件, 每次都滚会跳; 停手 150ms 后再滚一次
    */
@@ -519,6 +927,9 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
     return () => {
       if (wheelScrollTimeoutRef.current !== null) {
         clearTimeout(wheelScrollTimeoutRef.current);
+      }
+      if (panTimeoutRef.current !== null) {
+        clearTimeout(panTimeoutRef.current);
       }
     };
   }, []);
@@ -564,22 +975,25 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
       const w = worldRef.current;
       if (!w) return;
       const { width: vbW, height: vbH } = w.map;
-      const mouseVB = screenToVB(e.clientX, e.clientY, rect, vbW, vbH);
+      const isSlice = !isFullscreen && window.innerWidth < 640;
+      const mouseVB = screenToVB(e.clientX, e.clientY, rect, vbW, vbH, isSlice);
       const ratio = newK / curK;
       const rawTx = mouseVB.x - (mouseVB.x - curTx) * ratio;
       const rawTy = mouseVB.y - (mouseVB.y - curTy) * ratio;
-      const isSlice = !isFullscreen && window.innerWidth < 640;
       const { tx: cTx, ty: cTy } = clampBounds(rawTx, rawTy, newK, vbW, vbH, rect.width, rect.height, isSlice);
       kRef.current = newK;
       txRef.current = cTx;
       tyRef.current = cTy;
       schedule(cTx, cTy, newK);
+      // 滚轮缩放后刷新右上角坐标 — 鼠标位置没动, 但世界坐标变了, 不调就 stale
+      // (mousemove 要等用户真动鼠标才触发, 滚轮不发 mousemove)
+      writeHoverCoordFromScreen(e.clientX, e.clientY);
       // 滚轮缩放后 debounce 滚动 (150ms 内没新滚轮才滚)
       scheduleScrollAfterWheel();
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, [schedule, scheduleScrollAfterWheel]);
+  }, [schedule, scheduleScrollAfterWheel, writeHoverCoordFromScreen]);
 
   /**
    * 双指缩放 (pinch-to-zoom) — 移动端
@@ -629,22 +1043,25 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
       const w = worldRef.current;
       if (!w) return;
       const { width: vbW, height: vbH } = w.map;
+      const isSlice = !isFullscreen && window.innerWidth < 640;
 
       // 缩放中心 = 两指中点 (跟 wheel 用鼠标位置同款)
       const centerX = (t1.clientX + t2.clientX) / 2;
       const centerY = (t1.clientY + t2.clientY) / 2;
-      const centerVB = screenToVB(centerX, centerY, rect, vbW, vbH);
+      const centerVB = screenToVB(centerX, centerY, rect, vbW, vbH, isSlice);
 
       const kRatio = newK / kRef.current;
       const rawTx = centerVB.x - (centerVB.x - txRef.current) * kRatio;
       const rawTy = centerVB.y - (centerVB.y - tyRef.current) * kRatio;
-      const isSlice = !isFullscreen && window.innerWidth < 640;
       const { tx: cTx, ty: cTy } = clampBounds(rawTx, rawTy, newK, vbW, vbH, rect.width, rect.height, isSlice);
 
       kRef.current = newK;
       txRef.current = cTx;
       tyRef.current = cTy;
       schedule(cTx, cTy, newK);
+      // 双指缩放后刷新右上角坐标 — 两指中点没动, 但世界坐标变了
+      // (移动端没有 mousemove, 只能从 touchmove 里主动算)
+      writeHoverCoordFromScreen(centerX, centerY);
     };
 
     const onTouchEnd = (e: TouchEvent) => {
@@ -664,7 +1081,7 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [schedule]);
+  }, [schedule, writeHoverCoordFromScreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
@@ -779,6 +1196,25 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
     for (const t of w.map.tiles) preloadImage(t.src);
   }, [worlds]);
 
+  // 地铁线路 (SVG, 进 MapCanvas 的 <g>) — 给 metroInWorld 回调用
+  //  - 关 metroVisible 时直接 return null, <g> 内部什么都不渲染
+  //  - 依赖: mt[worldId].lines + k (线宽按 cssScaled 算) + world (toVB) + 默认值
+  //  注: 必须在 early return 之前定义, 保持 hooks 顺序一致
+  //  注: world 在 useCallback 闭包里可能是 null (early return 触发时),
+  //  但这个 cb 只在 early return 之后被 MapCanvas 调用, 那时 world 一定非空
+  //  这里加 null check 让 TS 满意, 实际不会走到 null 分支
+  const metroInWorldCb = useCallback(() => {
+    if (!metroVisible || !world) return null;
+    return (
+      <NewMetroLines
+        lines={mt[worldId]?.lines ?? []}
+        k={k}
+        toVB={(wx, wz) => worldToVB(wx, wz, world)}
+        defaults={mt[worldId]?.style}
+      />
+    );
+  }, [metroVisible, mt, worldId, k, world]);
+
   // 空数据兜底
   if (worlds.length === 0 || !world) {
     return (
@@ -807,23 +1243,33 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
           value={worldId}
           onChange={setWorldId}
           preloadWorld={preloadWorld}
+          landmarksVisible={landmarksVisible}
+          onToggleLandmarks={() => setLandmarksVisible((v) => !v)}
+          metroVisible={metroVisible}
+          onToggleMetro={() => setMetroVisible((v) => !v)}
         />
-        {!isMobile && hoverCoord && (
+        {!isMobile && (
+          // 始终渲染, 显示/隐藏由 JS 直接改 style.display (无 React state)
+          //   - 初始 display:none: 用户没动鼠标前不露 "-"
+          //   - mousemove/wheel/pinch 写入坐标: box.style.display = ""
+          //   - mouseleave / 越界: box.style.display = "none"
           <div
+            ref={coordBoxRef}
             className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[11px] font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
             aria-live="polite"
+            style={{ display: "none" }}
           >
             <span className="text-slate-500">col</span>
-            <span className="text-slate-900">{hoverCoord.col}</span>
+            <span data-col className="text-slate-900">-</span>
             <span className="text-slate-400">·</span>
             <span className="text-slate-500">row</span>
-            <span className="text-slate-900">{hoverCoord.row}</span>
+            <span data-row className="text-slate-900">-</span>
             <span className="text-slate-400">·</span>
             <span className="text-slate-500">x</span>
-            <span className="text-slate-900">{hoverCoord.x}</span>
+            <span data-x className="text-slate-900">-</span>
             <span className="text-slate-400">·</span>
             <span className="text-slate-500">z</span>
-            <span className="text-slate-900">{hoverCoord.z}</span>
+            <span data-z className="text-slate-900">-</span>
           </div>
         )}
       </div>
@@ -836,6 +1282,11 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
         onPointerLeave={onPointerLeave}
         onMouseMove={onContainerMouseMove}
         onMouseLeave={onContainerMouseLeave}
+        // 点地图 (非 button) 关闭 popup — 拖动/缩放不触发 onClick, 所以不影响
+        onClick={(e) => {
+          if ((e.target as HTMLElement).closest("button")) return;
+          setSelectedLandmark(null);
+        }}
         className={cn(
           "relative overflow-hidden select-none",
           isFullscreen
@@ -869,7 +1320,73 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
           k={k}
           isFullscreen={isFullscreen}
           isMobile={isMobile}
+          isPanning={isPanning}
+          metroInWorld={metroInWorldCb}
         />
+
+        {/* 地标标签层 — 永远渲染, 内部按 visibleWhen 过滤
+            站名/珍珠 (visibleWhen: "metro") 只在 metroVisible=true 时显示,
+            不要求 landmarksVisible=true (开了交通就能看到站名)
+            普通地标只在 landmarksVisible=true 时显示
+            withLandmarks 上下文 (landmarks && metro) 走不同 font/offset 配置
+            标签 button 自己带 left/top 的 CSS transition, 跟 SVG g 的 transition-transform 同步 */}
+        <NewGuideMapLandmarks
+          landmarks={lm[worldId] ?? []}
+          currentZoom={k}
+          isPanning={isPanning}
+          landmarksVisible={landmarksVisible}
+          metroVisible={metroVisible}
+          toScreen={worldToScreenFactory({
+            container: containerRef.current,
+            // 用 React state 的 world (不是 worldRef.current),
+            // 切维度时 useEffect 还没跑, ref 还是旧 world,
+            // 用 ref 会让标签位置错 (parScale 用错世界算)
+            world,
+            tx,
+            ty,
+            k,
+            isFullscreen,
+            isMobile,
+          })}
+          onSelect={(landmark) => setSelectedLandmark(landmark)}
+          onPan={panToLandmark}
+        />
+
+        {/* 交通 (地铁网络) overlay — 拆成三块:
+            1) 线 (SVG, 进 MapCanvas 的 <g>) — 跟地图内容同一条 CSS transition,
+               点 region 跳视角时一起平滑移动
+            2) 站点 (HTML, 屏幕坐标) — 走 toScreen + CSS transition, 跟地标同频道
+            3) 站名 + 线端 pill (HTML, 屏幕坐标) — 走 toScreen + CSS transition
+            2 和 3 都是 MapCanvas 的兄弟元素, 共享同一条 toScreen 工厂, 保持视觉一致 */}
+        {metroVisible && (
+          <>
+            {/* 站点图标 (圆/胶囊) — HTML, 走 toScreen 投影到 CSS px (跟地标同频道) */}
+            <NewMetroStations
+              stations={mt[worldId]?.stations ?? []}
+              k={k}
+              currentZoom={k * 100}
+              isPanning={isPanning}
+              toScreen={worldToScreenFactory({
+                container: containerRef.current,
+                world,
+                tx,
+                ty,
+                k,
+                isFullscreen,
+                isMobile,
+              })}
+              defaults={mt[worldId]?.style}
+            />
+          </>
+        )}
+
+        {/* 地标详情卡片 — 左上角, 拖动/缩放不关, 点地图关 */}
+        {selectedLandmark && (
+          <LandmarkPopup
+            landmark={selectedLandmark}
+            onClose={() => setSelectedLandmark(null)}
+          />
+        )}
 
         {/* 缩放百分比 — 右上角 */}
         <div className="absolute top-3 right-3 z-10 pointer-events-none">
@@ -912,6 +1429,8 @@ export function NewGuideMap({ worlds }: NewGuideMapProps) {
           </div>
         )}
       </div>
+
+      {/* popup 改放到 map container 内 (顶部 absolute), 详见 LandmarkPopup 组件 */}
     </div>
   );
 }
