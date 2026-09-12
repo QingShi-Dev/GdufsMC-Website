@@ -1,7 +1,7 @@
 // 主世界 (overworld) 地标样本数据
 //
 // 数据格式见 @/lib/map/landmarks 里的 NewLandmark
-// 跟 ./index.ts 合并后作为 SAMPLE_LANDMARKS 暴露给 app/map/page.tsx
+// 跟 ./index.ts 合并后作为 LANDMARKS 暴露给 app/map/page.tsx
 //
 // 激进改动 (2026-09-11): 统一 NewLandmark 字段, 但保留 kind 作为分类标签
 //  - 没图: 就只显示名字 (要弹窗就显式 popup: true)

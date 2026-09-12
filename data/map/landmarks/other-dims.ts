@@ -1,7 +1,7 @@
 // 下界 (nether) + 末地 (end) 地标样本数据
 //
 // 数据格式见 @/lib/map/landmarks 里的 NewLandmark / NewRegionLabel / NewBuildingLandmark / NewMachineLandmark
-// 跟 ./overworld.ts + ./index.ts 合并后作为 SAMPLE_LANDMARKS 暴露给 app/map/page.tsx
+// 跟 ./overworld.ts + ./index.ts 合并后作为 LANDMARKS 暴露给 app/map/page.tsx
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
 import type { NewWorldId } from "@/lib/map/loader";
