@@ -11,9 +11,9 @@
 //    (不要求 landmarksVisible=true, 开了交通就能看到站名)
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
-import type { NewWorldId } from "../new-guide-map-data";
+import type { NewWorldId } from "../map/loader";
 
-import type { NewLandmark } from "../new-guide-map-landmarks";
+import type { NewLandmark } from "../map/landmarks";
 
 export const OVERWORLD_LANDMARKS: NewLandmark[] = [
 

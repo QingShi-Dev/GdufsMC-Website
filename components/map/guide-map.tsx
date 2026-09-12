@@ -36,16 +36,16 @@ import type {
   NewMapTone,
   NewWorldId,
   NewWorldMeta,
-} from "@/lib/new-guide-map-data";
+} from "@/lib/map/loader";
 // TILE_PX 在 client 也需要, 单独从 constants 文件 import (data 文件是 server-only)
-import { TILE_PX } from "@/lib/new-guide-map-constants";
+import { TILE_PX } from "@/lib/map/constants";
 import type {
   NewLandmark,
   NewLandmarkGroups,
-} from "@/lib/new-guide-map-landmarks";
+} from "@/lib/map/landmarks";
 import { MapLandmarks } from "./map-landmarks";
 import { LandmarkPopup } from "./landmark-popup";
-import type { NewTransitGroups } from "@/lib/new-transit-types";
+import type { NewTransitGroups } from "@/lib/map/transit";
 import {
   TransitLines,
   TransitStations,

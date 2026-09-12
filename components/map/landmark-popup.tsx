@@ -22,7 +22,7 @@ import {
 import type {
   NewLandmark,
   NewLandmarkProduct,
-} from "@/lib/new-guide-map-landmarks";
+} from "@/lib/map/landmarks";
 
 export interface LandmarkPopupProps {
   landmark: NewLandmark;

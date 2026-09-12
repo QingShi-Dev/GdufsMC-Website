@@ -1,7 +1,7 @@
 import "server-only";
 import fs from "node:fs";
 import path from "node:path";
-import { TILE_PX } from "./new-guide-map-constants";
+import { TILE_PX } from "./constants";
 
 /**
  * Server-side 数据加载器 — 把 public/images/maps/20260907/{overworld,nether,end}
@@ -211,7 +211,7 @@ export interface LoadOptions {
   baseDir?: string;
 }
 
-export function loadNewGuideMapData(
+export function loadMapData(
   options: LoadOptions = {},
 ): NewWorldMeta[] {
   const baseDir = options.baseDir

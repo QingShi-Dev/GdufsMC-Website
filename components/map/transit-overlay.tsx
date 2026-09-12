@@ -22,11 +22,11 @@ import type {
   NewTransitStyleDefaults,
   NewTransitLabelFields,
   NewPearlLine,
-} from "@/lib/new-transit-types";
+} from "@/lib/map/transit";
 import {
   TRANSIT_STATION_MIN_ZOOM,
   TRANSIT_PEARL_MIN_ZOOM,
-} from "@/lib/new-transit-types";
+} from "@/lib/map/transit";
 
 /* ============================== Scale Helpers ============================== */
 

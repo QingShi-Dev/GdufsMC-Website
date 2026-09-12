@@ -1,5 +1,5 @@
-import { queryMCServer, extractMotd } from "./mc-ping";
-import { DEFAULT_MC_PORT, PING_TIMEOUT_MS, QUERY_CONCURRENCY } from "./mc-status-constants";
+import { queryMCServer, extractMotd } from "./ping";
+import { DEFAULT_MC_PORT, PING_TIMEOUT_MS, QUERY_CONCURRENCY } from "./status-constants";
 
 export type ServerKey =
     | "survival-main"
@@ -29,7 +29,7 @@ export interface ServerTarget {
   order: number;
 }
 
-// 常量 (DEFAULT_MC_PORT / PING_TIMEOUT_MS / QUERY_CONCURRENCY) 来自 ./mc-status-constants
+// 常量 (DEFAULT_MC_PORT / PING_TIMEOUT_MS / QUERY_CONCURRENCY) 来自 ./status-constants
 // 共享给客户端组件用——所以拆开，避免 client bundle 拉进 node:net
 
 /**

@@ -3,9 +3,9 @@ import { SectionHeader } from "@/components/guide/section-header";
 import { CopyHost } from "@/components/guide/copy-host";
 import { InlineLink } from "@/components/guide/inline-link";
 import { Tutorial } from "@/components/guide/tutorial";
-import { SERVERS } from "@/data/servers";
-import { EXTERNAL } from "@/data/external-links";
-import { RECOMMENDED_MODS } from "@/data/recommended-mods";
+import { SERVERS } from "@/data/guide/servers";
+import { EXTERNAL } from "@/data/guide/external";
+import { RECOMMENDED_MODS } from "@/data/guide/mods";
 import { IconExternalLink } from "@tabler/icons-react";
 /**
  * STEPS 教程步骤数据

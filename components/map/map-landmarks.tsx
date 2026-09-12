@@ -22,7 +22,7 @@ import type {
   NewLandmark,
   NewLandmarkFontSize,
   NewLandmarkWithLandmarksOverride,
-} from "@/lib/new-guide-map-landmarks";
+} from "@/lib/map/landmarks";
 
 export interface MapLandmarksProps {
   /** 当前维度的地标 (父组件按 worldId 过滤后传入) */

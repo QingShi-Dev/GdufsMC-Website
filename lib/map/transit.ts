@@ -21,7 +21,7 @@
  *
  * 注: 此文件 client/server 都能 import (没有 server-only, 没有 fs/path 依赖)
  */
-import type { NewWorldId } from "./new-guide-map-data";
+import type { NewWorldId } from "./loader";
 
 /* ============================== Types ============================== */
 

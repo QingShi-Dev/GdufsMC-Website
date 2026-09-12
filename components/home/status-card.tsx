@@ -12,7 +12,7 @@ import {
   IconBolt,
   IconChevronDown,
 } from "@tabler/icons-react";
-import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/mc-status-constants";
+import { GROUP_META, type ServerStatus as ServerStatusT, type ServerGroup } from "@/lib/mc/status-constants";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 

@@ -1,6 +1,6 @@
 import { GuideMap } from "@/components/map/guide-map";
 import { MapTabs } from "@/components/map/map-tabs";
-import { loadNewGuideMapData } from "@/lib/new-guide-map-data";
+import { loadMapData } from "@/lib/map/loader";
 import { SAMPLE_LANDMARKS } from "@/lib/sample-landmarks";
 import { SAMPLE_TRANSIT } from "@/lib/sample-transit";
 
@@ -12,7 +12,7 @@ import { SAMPLE_TRANSIT } from "@/lib/sample-transit";
  * - landmarks 用 SAMPLE_LANDMARKS, transit 用 SAMPLE_TRANSIT, 后续用户按格式自填
  */
 export default function NewGuideMapPage() {
-  const worlds = loadNewGuideMapData();
+  const worlds = loadMapData();
 
   return (
     <div className="pt-28 sm:pt-34 pb-12 sm:pb-16 px-4 sm:px-6 lg:px-8 relative overflow-hidden">

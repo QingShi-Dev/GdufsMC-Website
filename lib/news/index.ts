@@ -12,9 +12,9 @@
  */
 
 import { cache } from "react";
-import { NEWS, type NewsItem, type NewsCategory } from "@/data/news";
+import { NEWS, type NewsItem, type NewsCategory } from "@/data/news/items";
 
-export type { NewsItem, NewsCategory } from "@/data/news";
+export type { NewsItem, NewsCategory } from "@/data/news/items";
 
 /** 分类色 badge class — 3 个组件 (carousel/list/detail) 共用, 单一来源 */
 export const CATEGORY_BADGE_CLASS: Record<NewsCategory, string> = {
