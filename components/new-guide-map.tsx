@@ -1352,33 +1352,33 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
           onPan={panToLandmark}
         />
 
-        {/* 交通 (地铁网络) overlay — 拆成三块:
+        {/* 交通 (地铁网络) overlay — 拆成两块:
             1) 线 (SVG, 进 MapCanvas 的 <g>) — 跟地图内容同一条 CSS transition,
                点 region 跳视角时一起平滑移动
             2) 站点 (HTML, 屏幕坐标) — 走 toScreen + CSS transition, 跟地标同频道
-            3) 站名 + 线端 pill (HTML, 屏幕坐标) — 走 toScreen + CSS transition
-            2 和 3 都是 MapCanvas 的兄弟元素, 共享同一条 toScreen 工厂, 保持视觉一致 */}
-        {metroVisible && (
-          <>
-            {/* 站点图标 (圆/胶囊) — HTML, 走 toScreen 投影到 CSS px (跟地标同频道) */}
-            <NewMetroStations
-              stations={mt[worldId]?.stations ?? []}
-              k={k}
-              currentZoom={k * 100}
-              isPanning={isPanning}
-              toScreen={worldToScreenFactory({
-                container: containerRef.current,
-                world,
-                tx,
-                ty,
-                k,
-                isFullscreen,
-                isMobile,
-              })}
-              defaults={mt[worldId]?.style}
-            />
-          </>
-        )}
+            站点 div 永远挂在 DOM 里 (用 visibility:hidden 控显隐), 这样点地标触发
+            panToLandmark 时, 即使 metro 之前是关的 / 缩放 < 500%, 站点 div 也已经
+            在 DOM 里跟踪 tx/ty/k — 500ms 过渡里 CSS transition 有"起点"可以插值,
+            而不是"啪"地出现在终点 (跟地标 always-rendered + visibility:hidden 同款)
+            (不挂门控 {metroVisible && ...} 是这个 bug 的根因: 站点不进 DOM,
+             pan 过渡里没东西可插值) */}
+        <NewMetroStations
+          stations={mt[worldId]?.stations ?? []}
+          k={k}
+          currentZoom={k * 100}
+          isPanning={isPanning}
+          metroVisible={metroVisible}
+          toScreen={worldToScreenFactory({
+            container: containerRef.current,
+            world,
+            tx,
+            ty,
+            k,
+            isFullscreen,
+            isMobile,
+          })}
+          defaults={mt[worldId]?.style}
+        />
 
         {/* 地标详情卡片 — 左上角, 拖动/缩放不关, 点地图关 */}
         {selectedLandmark && (

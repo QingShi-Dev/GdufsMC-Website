@@ -178,6 +178,8 @@ export interface NewMetroStationsProps {
   isPanning: boolean;
   toScreen: (worldX: number, worldZ: number) => { x: number; y: number } | null;
   defaults?: NewMetroStyleDefaults;
+  /** 交通总开关 — 关掉时 div 仍挂 DOM, 只 visibility:hidden, 继续跟踪 k/tx/ty */
+  metroVisible: boolean;
 }
 
 /**
@@ -186,6 +188,10 @@ export interface NewMetroStationsProps {
  *  - 大小: CSS px (cssScaled 公式, 屏幕值 = base * k^scale)
  *  - 屏幕恒定 1.5px 边框
  *  - 站名已归到地标, 这里只画图标
+ *  - visible: false 时挂 visibility:hidden, 但 div 仍挂 DOM + 仍跟踪 left/top
+ *    (这样 metro 关掉时点地标 → pan 过渡时, 站点 div 一直在 DOM 里, 等用户开 metro
+ *     时已经在新位置, 但 k/tx/ty 变化的"中间帧"是被 left/top transition 插值过的;
+ *     跟地标 always-rendered 同款, 避免"啪"地跳到终点的 bug)
  */
 function StationDiv({
   station,
@@ -193,13 +199,16 @@ function StationDiv({
   k,
   isPanning,
   defaults,
+  visible,
 }: {
   station: NewMetroStation;
   center: { x: number; y: number };
   k: number;
   isPanning: boolean;
   defaults?: NewMetroStyleDefaults;
+  visible: boolean;
 }) {
+  const visStyle = visible ? "visible" : "hidden";
   if (station.kind === "regular") {
     const d =
       cssScaled(
@@ -222,6 +231,7 @@ function StationDiv({
           border: "1.5px solid #0f172a",
           borderRadius: "50%",
           boxSizing: "border-box",
+          visibility: visStyle,
           transition: isPanning
             ? "left 500ms cubic-bezier(0.4, 0, 0.2, 1), top 500ms cubic-bezier(0.4, 0, 0.2, 1), width 500ms cubic-bezier(0.4, 0, 0.2, 1), height 500ms cubic-bezier(0.4, 0, 0.2, 1)"
             : undefined,
@@ -258,6 +268,7 @@ function StationDiv({
         border: "1.5px solid #0f172a",
         borderRadius: `${widthV / 2}px`,
         boxSizing: "border-box",
+        visibility: visStyle,
         transition: isPanning
           ? "left 500ms cubic-bezier(0.4, 0, 0.2, 1), top 500ms cubic-bezier(0.4, 0, 0.2, 1), width 500ms cubic-bezier(0.4, 0, 0.2, 1), height 500ms cubic-bezier(0.4, 0, 0.2, 1)"
           : undefined,
@@ -274,6 +285,10 @@ function StationDiv({
  *  - isPanning 时挂 left/top/width/height 500ms transition, 跟地标 label 同频道
  *  (NOTE: 之前用 SVG 圆/胶囊, 但 viewBox 14336 宽 1 单位 ≈ 0.05 屏幕像素, 圆/胶囊根本看不见
  *   所以改回 HTML, CSS px 单位让图标在任何缩放下都正常大小)
+ *
+ * 重要: div 永远渲染 (不因 metroVisible / currentZoom<MIN_ZOOM 而 return null),
+ * 显隐走 visibility: hidden. 这样点地标触发 panToLandmark 时, 站点 div 一直在 DOM
+ * 里跟踪 tx/ty/k, CSS transition 有"起点"可插值 — 不再"啪"地跳到终点
  */
 export function NewMetroStations({
   stations,
@@ -282,9 +297,11 @@ export function NewMetroStations({
   isPanning,
   toScreen,
   defaults,
+  metroVisible,
 }: NewMetroStationsProps) {
-  const showStations = currentZoom >= METRO_STATION_MIN_ZOOM;
-  if (!showStations) return null;
+  // 显隐: metro 总开关 + 缩放阈值 (>= 500%) 同时满足才 visible
+  // 两者任一不满足, div 仍挂 DOM 但 visibility:hidden, 继续跟踪 k/tx/ty 给 transition 用
+  const visible = metroVisible && currentZoom >= METRO_STATION_MIN_ZOOM;
   return (
     <>
       {stations.map((station) => {
@@ -298,6 +315,7 @@ export function NewMetroStations({
             k={k}
             isPanning={isPanning}
             defaults={defaults}
+            visible={visible}
           />
         );
       })}
