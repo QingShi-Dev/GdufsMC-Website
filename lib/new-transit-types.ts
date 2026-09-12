@@ -1,5 +1,5 @@
 /**
- * 地铁 / 交通 (metro) 网络数据 — 跟 NewGuideMap 配套使用
+ * 地铁 / 交通 (metro) 网络数据 — 跟 GuideMap 配套使用
  *
  * 设计目标: SVG 跟地图放同一个 <g transform="translate(tx,ty) scale(k)"> 里,
  * 所有"世界单位"的东西 (站点大小, 线宽, 转弯半径, 距离) 都跟着 k 缩放
@@ -17,7 +17,7 @@
  * "两种上下文" 切换 (withLandmarks):
  *  - 只点交通: 用主字段 (fontSize / offsetX 等)
  *  - 地标+交通一起开: 用 withLandmarks 嵌套对象的字段 (不填 fallback 到主字段)
- *  - 渲染时根据 NewGuideMap 算的 `landmarksVisible && transitVisible` 自动挑
+ *  - 渲染时根据 GuideMap 算的 `landmarksVisible && transitVisible` 自动挑
  *
  * 注: 此文件 client/server 都能 import (没有 server-only, 没有 fs/path 依赖)
  */

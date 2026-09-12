@@ -1,6 +1,6 @@
 import { getLatestNews, getNewsList } from "@/lib/news";
-import { NewsHeroCarousel } from "./news-hero-carousel";
-import { NewsList } from "./news-list";
+import { HeroCarousel } from "@/components/news/hero-carousel";
+import { NewsList } from "@/components/news/list";
 
 /**
  * News 主页 — 顶部轮播图 + 下面列表
@@ -21,7 +21,7 @@ export default async function NewsPage() {
 
         {/* 顶部轮播图 — 5 张精选, 大图 + dot 指示器 */}
         <div className="mt-8">
-          <NewsHeroCarousel items={carousel} />
+          <HeroCarousel items={carousel} />
         </div>
 
         {/* 全部 news 列表 */}

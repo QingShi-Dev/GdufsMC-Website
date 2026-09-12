@@ -5,7 +5,7 @@ import { TILE_PX } from "./new-guide-map-constants";
 
 /**
  * Server-side 数据加载器 — 把 public/images/maps/20260907/{overworld,nether,end}
- * 下的瓦片拼成 NewGuideMap 需要的 NewWorld[] 数据
+ * 下的瓦片拼成 GuideMap 需要的 NewWorld[] 数据
  *
  * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.png
  * 坐标系: x = (col - minCol) * 1024,  z = (row - minRow) * 1024  (viewBox 单位 = 1024 block)

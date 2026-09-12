@@ -58,6 +58,30 @@ const nether: NewTransitDimension = {
 const end: NewTransitDimension = {
   stations: [],
   lines: [],
+  pearls: [
+    {
+      id: "end-pearl-cannon-1",
+      // 珍珠炮起点 (下界传送厅之类)
+      cannon: { x: -58, z: -78 },
+      // 7 个接收终点
+      receivers: [
+        { id: "r1", x: -567, z: -818 },
+      ],
+      // 3 个参数手动调节 (改这里就行)
+      style: {
+        color: "#8e3d93",         // 颜色 (不填走维度默认, 淡绿色)
+        opacity: 0.85,             // 整条线透明度 0-1
+        curvature: 0.2,            // 弧度, 0=直线, 0.3=默认
+      },
+    },
+  ],
+  // 维度级默认 — 单条线没填的字段会 fallback 这里
+  // (留空就走 BUILT_IN: 颜色 #2ccdb1, opacity 0.85, curvature 0.3)
+  style: {
+    // pearlColor: "#2ccdb1",
+    // pearlOpacity: 0.85,
+    // pearlCurvature: 0.3,
+  },
 };
 
 export { nether, end };

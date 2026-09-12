@@ -1,8 +1,8 @@
 import { Fragment } from "react";
-import { SectionHeader } from "@/components/section-header";
-import { CopyHost } from "@/components/copy-host";
-import { InlineLink } from "@/components/inline-link";
-import { TutorialSteps } from "@/components/tutorial-steps";
+import { SectionHeader } from "@/components/guide/section-header";
+import { CopyHost } from "@/components/guide/copy-host";
+import { InlineLink } from "@/components/guide/inline-link";
+import { Tutorial } from "@/components/guide/tutorial";
 import { SERVERS } from "@/data/servers";
 import { EXTERNAL } from "@/data/external-links";
 import { RECOMMENDED_MODS } from "@/data/recommended-mods";
@@ -274,10 +274,10 @@ export default function HelpPage() {
               本教程以注册 MUA 皮肤站，配置 PCL2 启动器为例
             </span>
           </div>
-          <TutorialSteps steps={STEPS} />
+          <Tutorial steps={STEPS} />
         </div>
 
-        {/* 皮肤站已合并到 4 步流程的第 1 步 carousel 文字区 (TutorialSteps links) */}
+        {/* 皮肤站已合并到 4 步流程的第 1 步 carousel 文字区 (Tutorial links) */}
 
         {/* 服务器地址 — 4 卡片 grid (跟首页 FEATURES 同结构) */}
         <div className="mt-16">

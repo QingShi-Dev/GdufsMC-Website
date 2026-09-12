@@ -44,7 +44,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target.isContentEditable;
 }
 
-export function NewsHeroCarousel({ items }: { items: NewsItem[] }) {
+export function HeroCarousel({ items }: { items: NewsItem[] }) {
   const [active, setActive] = useState(0);
   const [direction, setDirection] = useState<1 | -1>(1);
   const [paused, setPaused] = useState(false);

@@ -14,7 +14,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { IconArrowLeft, IconArrowRight, IconChevronLeft, IconList } from "@tabler/icons-react";
 import { getNewsList, getNewsBySlug, CATEGORY_BADGE_CLASS } from "@/lib/news";
-import { MarkdownContent } from "./markdown-content";
+import { MarkdownContent } from "@/components/news/markdown";
 
 type Props = { params: Promise<{ slug: string }> };
 

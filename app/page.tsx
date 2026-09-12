@@ -1,5 +1,5 @@
-import { ServerStatusCard } from "@/components/server-status-card";
-import { HomeMotionWrap } from "@/components/home-motion-wrap";
+import { StatusCard } from "@/components/home/status-card";
+import { HomeMotion } from "@/components/home/home-motion";
 import Link from "next/link";
 
 const FEATURES = [
@@ -17,7 +17,7 @@ const FEATURES = [
 
 export default function Home() {
     return (
-        <HomeMotionWrap>
+        <HomeMotion>
             {/* ============== Hero：桌面 2 列 / 移动端堆叠 ============== */}
             <section className="relative pt-28 pb-14 sm:pt-32 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden">
                 {/* 像素方块装饰 */}
@@ -89,7 +89,7 @@ export default function Home() {
 
                         {/* 右：实时状态卡（移动端先显示） */}
                         <div className="w-full max-w-xl mx-auto lg:max-w-none order-2 lg:order-2">
-                            <ServerStatusCard />
+                            <StatusCard />
                         </div>
                     </div>
                 </div>
@@ -170,6 +170,6 @@ export default function Home() {
                     </div>
                 </div>
             </section>
-        </HomeMotionWrap>
+        </HomeMotion>
     );
 }

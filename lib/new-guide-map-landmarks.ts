@@ -1,5 +1,5 @@
 /**
- * 地标 (landmark) 数据 — 跟 NewGuideMap 配套使用
+ * 地标 (landmark) 数据 — 跟 GuideMap 配套使用
  *
  * kind 分类 (region/building/machine) — 仅作为数据归类标签, 不影响弹窗/内容显示
  *  - 想弹窗: 显式 `popup: true`, 或数据里有 images/description/inputs/outputs (自动弹)
