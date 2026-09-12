@@ -5,9 +5,9 @@
  *  - 去掉 kind 分类 (region/building/machine) 对弹窗/内容的控制
  *  - 弹窗由 popup?: true 显式控制, 或数据里有内容自动弹
  *  - visibleWhen: "transit" 的地标 (站名/珍珠站) 只在交通开启时显示,
- *    不依赖 landmarksVisible — 开了交通就能看到站名
- *  - withLandmarks 上下文: 站名/珍珠在 landmarks+transit 同时开启时,
- *    用 withLandmarks.fontSize/offsetX/offsetY 覆盖, 避免跟地标 label 重叠
+ *    不依赖 labelsVisible — 开了交通就能看到站名
+ *  - withLabels 上下文: 站名/珍珠在 labels+transit 同时开启时,
+ *    用 withLabels.fontSize/offsetX/offsetY 覆盖, 避免跟其他标签重叠
  *
  * 设计要点:
  *  - HTML overlay, 文字大小恒定, 跨缩放永远可读可点
@@ -19,82 +19,82 @@
 "use client";
 
 import type {
-  NewLandmark,
-  NewLandmarkFontSize,
-  NewLandmarkWithLandmarksOverride,
-} from "@/lib/map/landmarks";
+  NewLabel,
+  NewLabelFontSize,
+  NewLabelWithLabelsOverride,
+} from "@/lib/map/labels";
 
-export interface MapLandmarksProps {
-  /** 当前维度的地标 (父组件按 worldId 过滤后传入) */
-  landmarks: NewLandmark[];
+export interface MapLabelsProps {
+  /** 当前维度的标签 (父组件按 worldId 过滤后传入) */
+  labels: NewLabel[];
   /** 当前缩放 k */
   currentZoom: number;
   /** 跳视角时挂 CSS transition */
   isPanning: boolean;
-  /** 地标总开关 — 只控制普通地标 (kind 不为 transit-only) */
-  landmarksVisible: boolean;
-  /** 交通开关 — 控制 visibleWhen: "transit" 的地标 (站名/珍珠站) */
+  /** 标签总开关 — 只控制普通标签 (kind 不为 transit-only) */
+  labelsVisible: boolean;
+  /** 交通开关 — 控制 visibleWhen: "transit" 的标签 (站名/珍珠站) */
   transitVisible: boolean;
   /** viewBox (vbX, vbY) → 容器内 CSS 像素 (left, top) */
   toScreen: (vbX: number, vbY: number) => { x: number; y: number } | null;
-  /** 点地标: 视角跳到该坐标 + 缩放到 targetZoom (百分比) */
+  /** 点标签: 视角跳到该坐标 + 缩放到 targetZoom (百分比) */
   onPan: (worldX: number, worldZ: number, targetZoomPercent: number) => void;
-  /** 点地标需要弹窗: 弹 popup, anchor 是屏幕坐标 (clientX/Y) */
-  onSelect: (lm: NewLandmark, anchor: { x: number; y: number }) => void;
+  /** 点标签需要弹窗: 弹 popup, anchor 是屏幕坐标 (clientX/Y) */
+  onSelect: (label: NewLabel, anchor: { x: number; y: number }) => void;
 }
 
 /**
- * 判断地标是否需要弹窗
+ * 判断标签是否需要弹窗
  *  - popup: true → 总是弹
  *  - popup: false → 永不弹
  *  - popup: undefined → 有 images/description/inputs/outputs 任一就弹
  */
-function shouldShowPopup(lm: NewLandmark): boolean {
-  if (lm.popup === true) return true;
-  if (lm.popup === false) return false;
+function shouldShowPopup(lb: NewLabel): boolean {
+  if (lb.popup === true) return true;
+  if (lb.popup === false) return false;
   const hasContent = !!(
-    (lm.images && lm.images.length > 0) ||
-    lm.description ||
-    (lm.inputs && lm.inputs.length > 0) ||
-    (lm.outputs && lm.outputs.length > 0)
+    (lb.images && lb.images.length > 0) ||
+    lb.description ||
+    (lb.inputs && lb.inputs.length > 0) ||
+    (lb.outputs && lb.outputs.length > 0)
   );
   return hasContent;
 }
 
 /**
- * 解析 withLandmarks 上下文: 站名/珍珠在 landmarks+transit 同时开时
- * 用 withLandmarks.fontSize/offsetX/offsetY 覆盖主字段
+ * 解析 withLabels 上下文: 站名/珍珠在 labels+transit 同时开时
+ * 用 withLabels.fontSize/offsetX/offsetY 覆盖主字段
  */
-function resolveWithLandmarks(
-  lm: NewLandmark,
+function resolveWithLabels(
+  lb: NewLabel,
   useWithLM: boolean,
 ): {
-  fontSize: NewLandmarkFontSize | undefined;
+  fontSize: NewLabelFontSize | undefined;
   offsetX: number;
   offsetY: number;
 } {
-  const wlm: NewLandmarkWithLandmarksOverride | undefined = useWithLM
-    ? lm.withLandmarks
+  const wlm: NewLabelWithLabelsOverride | undefined = useWithLM
+    ? lb.withLabels
     : undefined;
   return {
-    fontSize: (wlm?.fontSize ?? lm.fontSize) as NewLandmarkFontSize | undefined,
-    offsetX: wlm?.offsetX ?? lm.offsetX ?? 0,
-    offsetY: wlm?.offsetY ?? lm.offsetY ?? 0,
+    fontSize: (wlm?.fontSize ?? lb.fontSize) as NewLabelFontSize | undefined,
+    offsetX: wlm?.offsetX ?? lb.offsetX ?? 0,
+    offsetY: wlm?.offsetY ?? lb.offsetY ?? 0,
   };
 }
 
-export function MapLandmarks({
-  landmarks,
+export function MapLabels({
+  labels,
   currentZoom,
   isPanning,
   toScreen,
-  landmarksVisible,
+  labelsVisible,
   transitVisible,
   onPan,
   onSelect,
-}: MapLandmarksProps) {
-  // withLandmarks 上下文: 当地标 + 交通同时开启时, 站名/珍珠的 font/offset 走不同配置
-  const withLandmarks = landmarksVisible && transitVisible;
+}: MapLabelsProps) {
+  // withLabels 上下文: 当标签 + 交通同时开启时, 站名/珍珠的 font/offset 走不同配置
+  const withLabels = labelsVisible && transitVisible;
   // 关键: 所有 label 永远渲染, 用 visibility: hidden 控制显隐
   //   - 这样 CSS transition 有起点可以插值, 出现时不会闪现
   //   - k 跨过 minZoom 或 visibleWhen 改变时, 立即显隐, 位置已经插值好
@@ -105,19 +105,19 @@ export function MapLandmarks({
       className="absolute inset-0 pointer-events-none z-10"
       aria-label="地标"
     >
-      {landmarks.map((lm) => {
+      {labels.map((lb) => {
         // 可见性过滤:
-        //  - 站名/珍珠 (visibleWhen: "transit") 只看 transitVisible, 不要求 landmarksVisible
-        //  - 普通地标 (visibleWhen: "always" 或未填) 只看 landmarksVisible
-        if (lm.visibleWhen === "transit") {
+        //  - 站名/珍珠 (visibleWhen: "transit") 只看 transitVisible, 不要求 labelsVisible
+        //  - 普通地标 (visibleWhen: "always" 或未填) 只看 labelsVisible
+        if (lb.visibleWhen === "transit") {
           if (!transitVisible) return null;
         } else {
-          if (!landmarksVisible) return null;
+          if (!labelsVisible) return null;
         }
-        const pos = toScreen(lm.x, lm.z);
+        const pos = toScreen(lb.x, lb.z);
         if (!pos) return null;
-        // 解析 withLandmarks 上下文
-        const resolved = resolveWithLandmarks(lm, withLandmarks);
+        // 解析 withLabels 上下文
+        const resolved = resolveWithLabels(lb, withLabels);
 
         // fontSize 解析 + 显隐区间合一
         let fontSizePx: string | undefined;
@@ -185,16 +185,16 @@ export function MapLandmarks({
         }
         return (
           <button
-            key={lm.id}
+            key={lb.id}
             type="button"
             onClick={(e) => {
               e.stopPropagation();
               // 点击行为:
               //   - 总是 pan/zoom 到 targetZoom (没填就保持当前)
               //   - shouldShowPopup → 弹 popup
-              onPan(lm.x, lm.z, lm.targetZoom ?? currentZoomPercent);
-              if (shouldShowPopup(lm)) {
-                onSelect(lm, { x: e.clientX, y: e.clientY });
+              onPan(lb.x, lb.z, lb.targetZoom ?? currentZoomPercent);
+              if (shouldShowPopup(lb)) {
+                onSelect(lb, { x: e.clientX, y: e.clientY });
               }
             }}
             className={cn(
@@ -216,9 +216,9 @@ export function MapLandmarks({
                 ? "left 500ms cubic-bezier(0.4, 0, 0.2, 1), top 500ms cubic-bezier(0.4, 0, 0.2, 1), font-size 500ms cubic-bezier(0.4, 0, 0.2, 1)"
                 : undefined,
             }}
-            data-landmark-id={lm.id}
+            data-label-id={lb.id}
           >
-            {lm.name}
+            {lb.name}
           </button>
         );
       })}

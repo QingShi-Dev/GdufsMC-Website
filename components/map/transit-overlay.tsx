@@ -8,7 +8,7 @@
  *  2. TransitStations (HTML, 走 toScreen) — 站点 (圆 / 胶囊), 屏幕坐标
  *     - 大小用 CSS px, cssScaled 公式
  *
- * 站名/珍珠站已完全移到地标系统 (NewLandmark, 配 visibleWhen: "transit"),
+ * 站名/珍珠站已完全移到地标系统 (NewLabel, 配 visibleWhen: "transit"),
  * 这里不再渲染站名文字, 只画站点图标。
  *
  * 线端 label (大数字方型) 在 GuideMap 里直接渲染 (不走 transit overlay),
@@ -430,7 +430,7 @@ export function TransitStations({
  *  - 留在这里因为它是线的一部分, 不在地标里
  *  - 两端可分别设 direction/distance/offsetX/offsetY
  *  - padding 跟字号比例缩放
- *  - 跟地标同款 withLandmarks 切换
+ *  - 跟地标同款 withLabels 切换
  */
 export interface TransitLineEndLabelsProps {
   lines: NewLine[];
@@ -439,7 +439,7 @@ export interface TransitLineEndLabelsProps {
   isPanning: boolean;
   toScreen: (worldX: number, worldZ: number) => { x: number; y: number } | null;
   defaults?: NewTransitStyleDefaults;
-  withLandmarks: boolean;
+  withLabels: boolean;
 }
 
 function offsetByDirection(
@@ -462,7 +462,7 @@ function LineEndLabel({
   currentZoom,
   isPanning,
   defaults,
-  withLandmarks,
+  withLabels,
 }: {
   line: NewLine;
   waypoint: { x: number; y: number };
@@ -471,27 +471,27 @@ function LineEndLabel({
   currentZoom: number;
   isPanning: boolean;
   defaults?: NewTransitStyleDefaults;
-  withLandmarks: boolean;
+  withLabels: boolean;
 }) {
   const cfg = line.nameConfig[side];
   const minZoom = cfg.minZoom ?? 100;
   if (currentZoom < minZoom) return null;
 
-  const wlm = withLandmarks ? defaults?.lineEndWithLandmarks : undefined;
+  const wlm = withLabels ? defaults?.lineEndWithLandmarks : undefined;
 
   const fontSize = cssScaled(
-    pick(cfg.withLandmarks?.fontSize, cfg.fontSize, wlm?.fontSize ?? defaults?.fontSize ?? 12, withLandmarks),
-    pick(cfg.withLandmarks?.fontSizeScale, cfg.fontSizeScale, wlm?.fontSizeScale ?? defaults?.fontSizeScale ?? 0.3, withLandmarks),
+    pick(cfg.withLabels?.fontSize, cfg.fontSize, wlm?.fontSize ?? defaults?.fontSize ?? 12, withLabels),
+    pick(cfg.withLabels?.fontSizeScale, cfg.fontSizeScale, wlm?.fontSizeScale ?? defaults?.fontSizeScale ?? 0.3, withLabels),
     k,
   );
   if (fontSize < 4) return null;
   const distancePx = cssScaled(
-    pick(cfg.withLandmarks?.distance, cfg.distance, wlm?.distance ?? defaults?.distance ?? 12, withLandmarks),
-    pick(cfg.withLandmarks?.distanceScale, cfg.distanceScale, wlm?.distanceScale ?? defaults?.distanceScale ?? 0.3, withLandmarks),
+    pick(cfg.withLabels?.distance, cfg.distance, wlm?.distance ?? defaults?.distance ?? 12, withLabels),
+    pick(cfg.withLabels?.distanceScale, cfg.distanceScale, wlm?.distanceScale ?? defaults?.distanceScale ?? 0.3, withLabels),
     k,
   );
-  const offsetX = pick(cfg.withLandmarks?.offsetX, cfg.offsetX, wlm?.offsetX ?? defaults?.offsetX ?? 0, withLandmarks);
-  const offsetY = pick(cfg.withLandmarks?.offsetY, cfg.offsetY, wlm?.offsetY ?? defaults?.offsetY ?? 0, withLandmarks);
+  const offsetX = pick(cfg.withLabels?.offsetX, cfg.offsetX, wlm?.offsetX ?? defaults?.offsetX ?? 0, withLabels);
+  const offsetY = pick(cfg.withLabels?.offsetY, cfg.offsetY, wlm?.offsetY ?? defaults?.offsetY ?? 0, withLabels);
   const pos = offsetByDirection(waypoint, cfg.direction, distancePx);
   const finalPos = { left: pos.left + offsetX, top: pos.top + offsetY };
   return (
@@ -534,7 +534,7 @@ export function TransitLineEndLabels({
   isPanning,
   toScreen,
   defaults,
-  withLandmarks,
+  withLabels,
 }: TransitLineEndLabelsProps) {
   return (
     <>
@@ -555,7 +555,7 @@ export function TransitLineEndLabels({
               currentZoom={currentZoom}
               isPanning={isPanning}
               defaults={defaults}
-              withLandmarks={withLandmarks}
+              withLabels={withLabels}
             />
             <LineEndLabel
               line={line}
@@ -565,7 +565,7 @@ export function TransitLineEndLabels({
               currentZoom={currentZoom}
               isPanning={isPanning}
               defaults={defaults}
-              withLandmarks={withLandmarks}
+              withLabels={withLabels}
             />
           </div>
         );

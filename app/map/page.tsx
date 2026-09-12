@@ -1,7 +1,7 @@
 import { GuideMap } from "@/components/map/guide-map";
 import { MapTabs } from "@/components/map/map-tabs";
 import { loadMapData } from "@/lib/map/loader";
-import { LANDMARKS } from "@/data/map/landmarks";
+import { LABELS } from "@/data/map/labels";
 import { TRANSIT } from "@/data/map/transit";
 
 /**
@@ -9,7 +9,7 @@ import { TRANSIT } from "@/data/map/transit";
  * - server component: 读 public/images/maps/20260907/ 拼成 NewWorldMeta[]
  * - client component: <GuideMap worlds={...} /> 接管 zoom/pan/fullscreen
  * - 顶部 tabs 跟 /map 页共用 MapTabs, 群系地图 tab 标题右侧带短 URL
- * - landmarks 从 @/data/map/landmarks, transit 从 @/data/map/transit
+ * - labels 从 @/data/map/labels, transit 从 @/data/map/transit
  */
 export default function NewGuideMapPage() {
   const worlds = loadMapData();
@@ -21,7 +21,7 @@ export default function NewGuideMapPage() {
         <div className="sm:mt-12">
           <GuideMap
             worlds={worlds}
-            landmarks={LANDMARKS}
+            labels={LABELS}
             transit={TRANSIT}
           />
         </div>

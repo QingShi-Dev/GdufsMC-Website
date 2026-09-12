@@ -1,14 +1,14 @@
 // 下界 (nether) + 末地 (end) 地标样本数据
 //
-// 数据格式见 @/lib/map/landmarks 里的 NewLandmark / NewRegionLabel / NewBuildingLandmark / NewMachineLandmark
-// 跟 ./overworld.ts + ./index.ts 合并后作为 LANDMARKS 暴露给 app/map/page.tsx
+// 数据格式见 @/lib/map/labels 里的 NewLabel / NewRegionLabel / NewBuildingLandmark / NewMachineLandmark
+// 跟 ./overworld.ts + ./index.ts 合并后作为 LABELS 暴露给 app/map/page.tsx
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
 import type { NewWorldId } from "@/lib/map/loader";
 
-import type { NewLandmark } from "@/lib/map/landmarks";
+import type { NewLabel } from "@/lib/map/labels";
 
-export const NETHER_LANDMARKS: NewLandmark[] = [
+export const NETHER_LABELS: NewLabel[] = [
 
     {
       id: "ender-pearl-cannon",
@@ -286,7 +286,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
     },
@@ -302,7 +302,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
     },
@@ -317,7 +317,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, minZoom: 150, maxZoom: 800  },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 14, minZoom: 150, maxZoom: 800  },
       },
     },
@@ -334,7 +334,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
     },
@@ -349,7 +349,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800  },
       },
     },
@@ -364,7 +364,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       },
     },
@@ -379,7 +379,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       },
     },
@@ -395,7 +395,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 300, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 12, minZoom: 800, maxZoom: 800  },
         offsetX: 38,
       },
@@ -412,7 +412,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 14, max: 18, mid: 16, midZoom: 300, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 12, minZoom: 600, maxZoom: 800  },
       },
     },
@@ -428,7 +428,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
     },
@@ -444,7 +444,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
     },
@@ -459,7 +459,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
     },
@@ -474,7 +474,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
     },
@@ -489,7 +489,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
     },
@@ -505,13 +505,13 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
     },
 ]
 
-export const END_LANDMARKS: NewLandmark[] = [
+export const END_LABELS: NewLabel[] = [
     {
       id: "orbital-dragon-slayer-cannon",
       name: "天基屠龙炮",

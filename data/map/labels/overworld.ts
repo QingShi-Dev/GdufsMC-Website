@@ -1,21 +1,21 @@
 // 主世界 (overworld) 地标样本数据
 //
-// 数据格式见 @/lib/map/landmarks 里的 NewLandmark
-// 跟 ./index.ts 合并后作为 LANDMARKS 暴露给 app/map/page.tsx
+// 数据格式见 @/lib/map/labels 里的 NewLabel
+// 跟 ./index.ts 合并后作为 LABELS 暴露给 app/map/page.tsx
 //
-// 激进改动 (2026-09-11): 统一 NewLandmark 字段, 但保留 kind 作为分类标签
+// 激进改动 (2026-09-11): 统一 NewLabel 字段, 但保留 kind 作为分类标签
 //  - 没图: 就只显示名字 (要弹窗就显式 popup: true)
 //  - 有图: images[0] 是 hero, 剩下的 [1..] 是细节图
 //  - 有 inputs/outputs: 弹窗里自动显示 "入" "出" 段
 //  - 地铁站名/珍珠站: 配 visibleWhen: "transit", 只在交通开时显示
-//    (不要求 landmarksVisible=true, 开了交通就能看到站名)
+//    (不要求 labelsVisible=true, 开了交通就能看到站名)
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
 import type { NewWorldId } from "@/lib/map/loader";
 
-import type { NewLandmark } from "@/lib/map/landmarks";
+import type { NewLabel } from "@/lib/map/labels";
 
-export const OVERWORLD_LANDMARKS: NewLandmark[] = [
+export const OVERWORLD_LABELS: NewLabel[] = [
 
     {
       id: "base",
@@ -1072,7 +1072,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 1201 },
         offsetX: 18,
       },
@@ -1089,7 +1089,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetX: 23,
       },
@@ -1107,7 +1107,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetY: 8,
         offsetX: 18,
@@ -1125,7 +1125,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetX: 23,
       },
@@ -1142,7 +1142,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetY: -8,
       },
@@ -1159,7 +1159,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetX: 23,
       },
@@ -1176,7 +1176,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetX: 40,
       },
@@ -1193,7 +1193,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetY: 8,
       },
@@ -1210,7 +1210,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
         offsetX: 40,
         offsetY: -5.5,
@@ -1228,7 +1228,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
       },
     },
@@ -1244,7 +1244,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
       },
     },
@@ -1260,7 +1260,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },
@@ -1275,7 +1275,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },
@@ -1291,7 +1291,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },
@@ -1307,7 +1307,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },
@@ -1323,7 +1323,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },
@@ -1338,7 +1338,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300  },
       },
     },
@@ -1354,7 +1354,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
-      withLandmarks: {
+      withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
     },

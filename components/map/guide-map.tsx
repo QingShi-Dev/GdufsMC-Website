@@ -40,11 +40,11 @@ import type {
 // TILE_PX 在 client 也需要, 单独从 constants 文件 import (data 文件是 server-only)
 import { TILE_PX } from "@/lib/map/constants";
 import type {
-  NewLandmark,
-  NewLandmarkGroups,
-} from "@/lib/map/landmarks";
-import { MapLandmarks } from "./map-landmarks";
-import { LandmarkPopup } from "./landmark-popup";
+  NewLabel,
+  NewLabelGroups,
+} from "@/lib/map/labels";
+import { MapLabels } from "./map-labels";
+import { LabelPopup } from "./label-popup";
 import type { NewTransitGroups } from "@/lib/map/transit";
 import {
   TransitLines,
@@ -60,8 +60,8 @@ function WorldTabs({
   value,
   onChange,
   preloadWorld,
-  landmarksVisible,
-  onToggleLandmarks,
+  labelsVisible,
+  onToggleLabels,
   transitVisible,
   onToggleTransit,
 }: {
@@ -70,8 +70,8 @@ function WorldTabs({
   onChange: (id: NewWorldId) => void;
   preloadWorld: (id: NewWorldId) => void;
   /** 是否显示地标 — 用来高亮 tab 栏里的地标开关 */
-  landmarksVisible: boolean;
-  onToggleLandmarks: () => void;
+  labelsVisible: boolean;
+  onToggleLabels: () => void;
   /** 是否显示交通 (transit 网络) — 用来高亮 tab 栏里的交通开关 */
   transitVisible: boolean;
   onToggleTransit: () => void;
@@ -111,35 +111,37 @@ function WorldTabs({
           </button>
         );
       })}
-      {/* 地标开关 — 紧贴末地 tab 右边, 不跟右上角坐标 (absolute right-3) 抢位置
+      {/* 标签文字开关 — 紧贴末地 tab 右边, 不跟右上角坐标 (absolute right-3) 抢位置
           不用 ml-auto 是为了避免跟坐标位置重叠; 坐标是 absolute 浮在 right-3,
           开关用 ml-auto 会被推到最右, 跟坐标撞在一起 */}
       <button
         type="button"
-        onClick={onToggleLandmarks}
-        aria-label={landmarksVisible ? "隐藏地标" : "显示地标"}
-        aria-pressed={landmarksVisible}
+        onClick={onToggleLabels}
+        aria-label={labelsVisible ? "隐藏标签文字" : "显示标签文字"}
+        aria-pressed={labelsVisible}
         className={cn(
           "ml-2 sm:ml-4",
           "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
           "transition-all flex items-center gap-1.5",
-          landmarksVisible
-            ? "bg-slate-800 text-white"
+          labelsVisible
+            ? "text-slate-800"
             : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
         )}
       >
-        {landmarksVisible ? (
+        {labelsVisible ? (
           <IconMapPin className="w-3.5 h-3.5" />
         ) : (
           <IconMapPinOff className="w-3.5 h-3.5" />
         )}
-        <span className="hidden sm:inline">地标</span>
+        <span className="hidden sm:inline">
+          标签文字 <span className="text-slate-400">- {labelsVisible ? "开" : "关"}</span>
+        </span>
       </button>
-      {/* 交通 (地铁网络) 开关 — 紧贴地标开关右边, 同样不挤坐标 */}
+      {/* 交通信息开关 — 紧贴标签文字开关右边, 同样不挤坐标 */}
       <button
         type="button"
         onClick={onToggleTransit}
-        aria-label={transitVisible ? "隐藏交通" : "显示交通"}
+        aria-label={transitVisible ? "隐藏交通信息" : "显示交通信息"}
         aria-pressed={transitVisible}
         className={cn(
           // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留
@@ -147,7 +149,7 @@ function WorldTabs({
           "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
           "transition-all flex items-center gap-1.5",
           transitVisible
-            ? "bg-slate-800 text-white"
+            ? "text-slate-800"
             : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
         )}
       >
@@ -156,7 +158,9 @@ function WorldTabs({
         ) : (
           <IconBusOff className="w-3.5 h-3.5" />
         )}
-        <span className="hidden sm:inline">交通</span>
+        <span className="hidden sm:inline">
+          交通信息 <span className="text-slate-400">- {transitVisible ? "开" : "关"}</span>
+        </span>
       </button>
     </div>
   );
@@ -475,10 +479,10 @@ function computePanTransform(
 export interface GuideMapProps {
   worlds: NewWorldMeta[];
   /**
-   * 地标数据 (按维度分组) — 父组件从数据层传进来
-   * 不传就不渲染地标 (老用法 / 教程里用)
+   * 标签数据 (按维度分组) — 父组件从数据层传进来
+   * 不传就不渲染标签 (老用法 / 教程里用)
    */
-  landmarks?: NewLandmarkGroups;
+  labels?: NewLabelGroups;
   /**
    * 地铁 / 交通网络数据 (按维度分组, lines + stations)
    * 不传就不渲染交通层 (老用法 / 教程里用)
@@ -486,14 +490,14 @@ export interface GuideMapProps {
   transit?: NewTransitGroups;
 }
 
-export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
-  // 缺省: 三个维度都空数组 (不开 toggle 就完全不渲染地标, 兼容老用法)
-  const lm: NewLandmarkGroups = landmarks ?? {
+export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
+  // 缺省: 三个维度都空数组 (不开 toggle 就完全不渲染标签, 兼容老用法)
+  const lb: NewLabelGroups = labels ?? {
     overworld: [],
     nether: [],
     end: [],
   };
-  // 缺省: 三个维度都空 (同 landmarks)
+  // 缺省: 三个维度都空 (同 labels)
   const mt: NewTransitGroups = transit ?? {
     overworld: { lines: [], stations: [] },
     nether: { lines: [], stations: [] },
@@ -527,14 +531,14 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
 
   // ---- 4. 地标: toggle / 选中 ----
   // 默认 off — 第一次打开页面不想被地标盖住, 用户主动开
-  const [landmarksVisible, setLandmarksVisible] = useState(false);
+  const [labelsVisible, setLabelsVisible] = useState(false);
   // 交通 (transit 网络) 同样默认 off, 跟地标独立
   const [transitVisible, setTransitVisible] = useState(false);
-  // 当前打开 popup 的地标 — null = 没开
-  // 装可弹窗的地标 — 激进改动后所有 NewLandmark 都可能弹窗
+  // 当前打开 popup 的标签 — null = 没开
+  // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
   // popup 位置固定在地图左上角, 不需要 anchor
-  const [selectedLandmark, setSelectedLandmark] = useState<NewLandmark | null>(null);
+  const [selectedLabel, setSelectedLabel] = useState<NewLabel | null>(null);
 
   // 正在过渡动画中 (click region 跳视角) — 用这个 flag 控制 SVG g 的 transition class
   // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
@@ -1254,28 +1258,30 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
           value={worldId}
           onChange={setWorldId}
           preloadWorld={preloadWorld}
-          landmarksVisible={landmarksVisible}
-          onToggleLandmarks={() => setLandmarksVisible((v) => !v)}
+          labelsVisible={labelsVisible}
+          onToggleLabels={() => {
+            setLabelsVisible((v) => !v);
+            // 跟其他视角变化操作一致: 切换标签后也滚到 header 下方
+            scrollMapIntoView();
+          }}
           transitVisible={transitVisible}
-          onToggleTransit={() => setTransitVisible((v) => !v)}
+          onToggleTransit={() => {
+            setTransitVisible((v) => !v);
+            scrollMapIntoView();
+          }}
         />
         {!isMobile && (
           // 始终渲染, 显示/隐藏由 JS 直接改 style.display (无 React state)
           //   - 初始 display:none: 用户没动鼠标前不露 "-"
           //   - mousemove/wheel/pinch 写入坐标: box.style.display = ""
           //   - mouseleave / 越界: box.style.display = "none"
+          // 文字大小跟上方两个开关按钮 (text-xs sm:text-sm) 对齐
           <div
             ref={coordBoxRef}
-            className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1.5 text-[11px] font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
+            className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1.5 text-xs sm:text-sm font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
             aria-live="polite"
             style={{ display: "none" }}
           >
-            <span className="text-slate-500">col</span>
-            <span data-col className="text-slate-900">-</span>
-            <span className="text-slate-400">·</span>
-            <span className="text-slate-500">row</span>
-            <span data-row className="text-slate-900">-</span>
-            <span className="text-slate-400">·</span>
             <span className="text-slate-500">x</span>
             <span data-x className="text-slate-900">-</span>
             <span className="text-slate-400">·</span>
@@ -1296,7 +1302,7 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
         // 点地图 (非 button) 关闭 popup — 拖动/缩放不触发 onClick, 所以不影响
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
-          setSelectedLandmark(null);
+          setSelectedLabel(null);
         }}
         className={cn(
           "relative overflow-hidden select-none",
@@ -1335,17 +1341,17 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
           transitInWorld={transitInWorldCb}
         />
 
-        {/* 地标标签层 — 永远渲染, 内部按 visibleWhen 过滤
+        {/* 标签层 — 永远渲染, 内部按 visibleWhen 过滤
             站名/珍珠 (visibleWhen: "transit") 只在 transitVisible=true 时显示,
-            不要求 landmarksVisible=true (开了交通就能看到站名)
-            普通地标只在 landmarksVisible=true 时显示
-            withLandmarks 上下文 (landmarks && transit) 走不同 font/offset 配置
+            不要求 labelsVisible=true (开了交通就能看到站名)
+            普通标签只在 labelsVisible=true 时显示
+            withLabels 上下文 (labels && transit) 走不同 font/offset 配置
             标签 button 自己带 left/top 的 CSS transition, 跟 SVG g 的 transition-transform 同步 */}
-        <MapLandmarks
-          landmarks={lm[worldId] ?? []}
+        <MapLabels
+          labels={lb[worldId] ?? []}
           currentZoom={k}
           isPanning={isPanning}
-          landmarksVisible={landmarksVisible}
+          labelsVisible={labelsVisible}
           transitVisible={transitVisible}
           toScreen={worldToScreenFactory({
             container: containerRef.current,
@@ -1359,7 +1365,7 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
             isFullscreen,
             isMobile,
           })}
-          onSelect={(landmark) => setSelectedLandmark(landmark)}
+          onSelect={(label) => setSelectedLabel(label)}
           onPan={panToLandmark}
         />
 
@@ -1391,11 +1397,11 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
           defaults={mt[worldId]?.style}
         />
 
-        {/* 地标详情卡片 — 左上角, 拖动/缩放不关, 点地图关 */}
-        {selectedLandmark && (
-          <LandmarkPopup
-            landmark={selectedLandmark}
-            onClose={() => setSelectedLandmark(null)}
+        {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关 */}
+        {selectedLabel && (
+          <LabelPopup
+            label={selectedLabel}
+            onClose={() => setSelectedLabel(null)}
           />
         )}
 
@@ -1441,7 +1447,7 @@ export function GuideMap({ worlds, landmarks, transit }: GuideMapProps) {
         )}
       </div>
 
-      {/* popup 改放到 map container 内 (顶部 absolute), 详见 LandmarkPopup 组件 */}
+      {/* popup 改放到 map container 内 (顶部 absolute), 详见 LabelPopup 组件 */}
     </div>
   );
 }

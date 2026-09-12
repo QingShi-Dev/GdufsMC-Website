@@ -20,16 +20,16 @@ import {
   IconArrowRight,
 } from "@tabler/icons-react";
 import type {
-  NewLandmark,
-  NewLandmarkProduct,
-} from "@/lib/map/landmarks";
+  NewLabel,
+  NewLabelProduct,
+} from "@/lib/map/labels";
 
-export interface LandmarkPopupProps {
-  landmark: NewLandmark;
+export interface LabelPopupProps {
+  label: NewLabel;
   onClose: () => void;
 }
 
-export function LandmarkPopup({ landmark, onClose }: LandmarkPopupProps) {
+export function LabelPopup({ label, onClose }: LabelPopupProps) {
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -40,14 +40,14 @@ export function LandmarkPopup({ landmark, onClose }: LandmarkPopupProps) {
   }, [onClose]);
 
   // 切分图片: 第一张是 hero, 剩下是细节
-  const images = landmark.images ?? [];
+  const images = label.images ?? [];
   const heroImage = images[0];
   const detailImages = images.slice(1);
   const hasHero = !!heroImage;
   const hasDetails = detailImages.length > 0;
-  const hasDescription = !!landmark.description;
-  const hasInputs = !!landmark.inputs && landmark.inputs.length > 0;
-  const hasOutputs = !!landmark.outputs && landmark.outputs.length > 0;
+  const hasDescription = !!label.description;
+  const hasInputs = !!label.inputs && label.inputs.length > 0;
+  const hasOutputs = !!label.outputs && label.outputs.length > 0;
   // 任一有内容就显示内容区 (有图 / 有描述 / 有产物)
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
 
@@ -95,18 +95,18 @@ export function LandmarkPopup({ landmark, onClose }: LandmarkPopupProps) {
       <div className="p-3 space-y-1.5">
         <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
           <span className="font-mono">
-            x={landmark.x} z={landmark.z}
+            x={label.x} z={label.z}
           </span>
         </div>
         <h3
           id="lm-popup-name"
           className="text-sm font-semibold text-slate-800 leading-tight pr-6"
         >
-          {landmark.name}
+          {label.name}
         </h3>
         {hasDescription && (
           <p className="text-[11px] leading-snug text-slate-500 line-clamp-2">
-            {landmark.description}
+            {label.description}
           </p>
         )}
       </div>
@@ -115,7 +115,7 @@ export function LandmarkPopup({ landmark, onClose }: LandmarkPopupProps) {
       {(hasInputs || hasOutputs) && (
         <div className="px-3 pb-2 space-y-1">
           {hasInputs && (
-            <ProductRow label="入" products={landmark.inputs!} tone="sky" />
+            <ProductRow label="入" products={label.inputs!} tone="sky" />
           )}
           {hasInputs && hasOutputs && (
             <div className="flex items-center justify-center text-slate-300 -my-0.5">
@@ -123,7 +123,7 @@ export function LandmarkPopup({ landmark, onClose }: LandmarkPopupProps) {
             </div>
           )}
           {hasOutputs && (
-            <ProductRow label="出" products={landmark.outputs!} tone="emerald" />
+            <ProductRow label="出" products={label.outputs!} tone="emerald" />
           )}
         </div>
       )}
@@ -181,7 +181,7 @@ function ProductRow({
   tone,
 }: {
   label: string;
-  products: NewLandmarkProduct[];
+  products: NewLabelProduct[];
   tone: "sky" | "emerald";
 }) {
   return (
@@ -209,7 +209,7 @@ function ProductPill({
   product,
   tone,
 }: {
-  product: NewLandmarkProduct;
+  product: NewLabelProduct;
   tone: "sky" | "emerald";
 }) {
   const toneClass =

@@ -11,13 +11,13 @@
  *
  * CSS 单位 (字号) 走单独的 css_size = base * k^scale 公式, 不走 SVG
  *
- * 注意: 站名/珍珠站已完全移到地标系统 (NewLandmark, 配 visibleWhen: "transit"),
+ * 注意: 站名/珍珠站已完全移到地标系统 (NewLabel, 配 visibleWhen: "transit"),
  *  这里只剩"画线 + 画站点圆/胶囊"的几何/样式信息
  *
  * "两种上下文" 切换 (withLandmarks):
  *  - 只点交通: 用主字段 (fontSize / offsetX 等)
  *  - 地标+交通一起开: 用 withLandmarks 嵌套对象的字段 (不填 fallback 到主字段)
- *  - 渲染时根据 GuideMap 算的 `landmarksVisible && transitVisible` 自动挑
+ *  - 渲染时根据 GuideMap 算的 `labelsVisible && transitVisible` 自动挑
  *
  * 注: 此文件 client/server 都能 import (没有 server-only, 没有 fs/path 依赖)
  */
@@ -65,7 +65,7 @@ export type NewTransitLabelFields = {
  *  - direction: 0=右, 90=下, 180=左, 270=上 (跟 CSS rotate 一致)
  *  - distance: CSS pixels (跟 k 一起缩放, 通过 distanceScale 调)
  *  - offsetX/Y: 在 distance 方向的基础上再 +x/+y 像素偏移 (用于跟地标错开)
- *  - withLandmarks: 当地标也开启时, 用这套字段覆盖主字段 (per-field fallback)
+ *  - withLabels: 当地标也开启时, 用这套字段覆盖主字段 (per-field fallback)
  */
 export interface NewTransitLabelConfig extends NewTransitLabelFields {
   /** 显示阈值: 缩放百分比 >= 这个值才显示 (默认 100) */
@@ -76,12 +76,12 @@ export interface NewTransitLabelConfig extends NewTransitLabelFields {
    * 当地标也开启时的字段覆盖 — 不填的字段 fallback 到主字段
    *  - 典型用途: 当地标开时, 站名小一点 + 往左偏, 避免跟地标 label 重叠
    */
-  withLandmarks?: NewTransitLabelFields;
+  withLabels?: NewTransitLabelFields;
 }
 
 /**
  * 站点公共字段
- *  - 站名已完全移入地标 (NewLandmark, 配 visibleWhen: "transit" 只在交通开时显示)
+ *  - 站名已完全移入地标 (NewLabel, 配 visibleWhen: "transit" 只在交通开时显示)
  *  - 这里只剩"画圆/胶囊"需要的图标信息
  */
 export interface NewTransitStationBase {
@@ -154,7 +154,7 @@ export interface NewLineStyle {
 
 /**
  * 线路 (基础)
- *  - 站点名已全部移入地标 (NewLandmark), 这里只管"画线"
+ *  - 站点名已全部移入地标 (NewLabel), 这里只管"画线"
  *  - 颜色用 CSS color (如 "#E60012" 红)
  */
 export interface NewLine {
@@ -229,7 +229,7 @@ export interface NewTransitStyleDefaults extends NewTransitLabelFields {
 
 /**
  * 单一维度的地铁数据 (lines + stations + pearls 拆开放, 方便扩展)
- *  - 站名/珍珠站都已移入地标 (NewLandmark, 配 visibleWhen: "transit")
+ *  - 站名/珍珠站都已移入地标 (NewLabel, 配 visibleWhen: "transit")
  *  - 这里只剩"画线 + 画站点图标 + 珍珠炮抛物线"需要的几何/样式信息
  *  - style 字段是单维度全局默认值, 不填就走 BUILT_IN fallback
  */
