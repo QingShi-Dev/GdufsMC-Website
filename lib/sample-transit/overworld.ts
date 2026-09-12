@@ -4,13 +4,13 @@
  *  - 2 号线: 横跨东西, 经过 3 个站
  *
  * 激进改动 (2026-09-11):
- *  - 站名/珍珠站已完全移入地标 (NewLandmark, 配 visibleWhen: "metro")
+ *  - 站名/珍珠站已完全移入地标 (NewLandmark, 配 visibleWhen: "transit")
  *  - 这里只剩"画线 + 画站点圆/胶囊"需要的几何/样式
  *  - 站点的 (x, z) 跟地标里的同名 landmark 重合 (visual coupling)
  */
-import type { NewMetroDimension } from "../new-metro-types";
+import type { NewTransitDimension } from "../new-transit-types";
 
-const overworld: NewMetroDimension = {
+const overworld: NewTransitDimension = {
   // 全维度统一默认值 — 改这里, 全维度所有站/标签都跟着变
   style: {
     // 普通站

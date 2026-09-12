@@ -4,9 +4,9 @@
  * 激进改动 (2026-09-11):
  *  - 去掉 kind 分类 (region/building/machine) 对弹窗/内容的控制
  *  - 弹窗由 popup?: true 显式控制, 或数据里有内容自动弹
- *  - visibleWhen: "metro" 的地标 (站名/珍珠站) 只在交通开启时显示,
+ *  - visibleWhen: "transit" 的地标 (站名/珍珠站) 只在交通开启时显示,
  *    不依赖 landmarksVisible — 开了交通就能看到站名
- *  - withLandmarks 上下文: 站名/珍珠在 landmarks+metro 同时开启时,
+ *  - withLandmarks 上下文: 站名/珍珠在 landmarks+transit 同时开启时,
  *    用 withLandmarks.fontSize/offsetX/offsetY 覆盖, 避免跟地标 label 重叠
  *
  * 设计要点:
@@ -31,10 +31,10 @@ export interface NewGuideMapLandmarksProps {
   currentZoom: number;
   /** 跳视角时挂 CSS transition */
   isPanning: boolean;
-  /** 地标总开关 — 只控制普通地标 (kind 不为 metro-only) */
+  /** 地标总开关 — 只控制普通地标 (kind 不为 transit-only) */
   landmarksVisible: boolean;
-  /** 交通开关 — 控制 visibleWhen: "metro" 的地标 (站名/珍珠站) */
-  metroVisible: boolean;
+  /** 交通开关 — 控制 visibleWhen: "transit" 的地标 (站名/珍珠站) */
+  transitVisible: boolean;
   /** viewBox (vbX, vbY) → 容器内 CSS 像素 (left, top) */
   toScreen: (vbX: number, vbY: number) => { x: number; y: number } | null;
   /** 点地标: 视角跳到该坐标 + 缩放到 targetZoom (百分比) */
@@ -62,7 +62,7 @@ function shouldShowPopup(lm: NewLandmark): boolean {
 }
 
 /**
- * 解析 withLandmarks 上下文: 站名/珍珠在 landmarks+metro 同时开时
+ * 解析 withLandmarks 上下文: 站名/珍珠在 landmarks+transit 同时开时
  * 用 withLandmarks.fontSize/offsetX/offsetY 覆盖主字段
  */
 function resolveWithLandmarks(
@@ -89,12 +89,12 @@ export function NewGuideMapLandmarks({
   isPanning,
   toScreen,
   landmarksVisible,
-  metroVisible,
+  transitVisible,
   onPan,
   onSelect,
 }: NewGuideMapLandmarksProps) {
   // withLandmarks 上下文: 当地标 + 交通同时开启时, 站名/珍珠的 font/offset 走不同配置
-  const withLandmarks = landmarksVisible && metroVisible;
+  const withLandmarks = landmarksVisible && transitVisible;
   // 关键: 所有 label 永远渲染, 用 visibility: hidden 控制显隐
   //   - 这样 CSS transition 有起点可以插值, 出现时不会闪现
   //   - k 跨过 minZoom 或 visibleWhen 改变时, 立即显隐, 位置已经插值好
@@ -107,10 +107,10 @@ export function NewGuideMapLandmarks({
     >
       {landmarks.map((lm) => {
         // 可见性过滤:
-        //  - 站名/珍珠 (visibleWhen: "metro") 只看 metroVisible, 不要求 landmarksVisible
+        //  - 站名/珍珠 (visibleWhen: "transit") 只看 transitVisible, 不要求 landmarksVisible
         //  - 普通地标 (visibleWhen: "always" 或未填) 只看 landmarksVisible
-        if (lm.visibleWhen === "metro") {
-          if (!metroVisible) return null;
+        if (lm.visibleWhen === "transit") {
+          if (!transitVisible) return null;
         } else {
           if (!landmarksVisible) return null;
         }

@@ -45,11 +45,12 @@ import type {
 } from "@/lib/new-guide-map-landmarks";
 import { NewGuideMapLandmarks } from "./new-guide-map-landmarks";
 import { LandmarkPopup } from "./landmark-popup";
-import type { NewMetroGroups } from "@/lib/new-metro-types";
+import type { NewTransitGroups } from "@/lib/new-transit-types";
 import {
-  NewMetroLines,
-  NewMetroStations,
-} from "./new-metro-overlay";
+  NewTransitLines,
+  NewTransitStations,
+  NewPearlLines,
+} from "./new-transit-overlay";
 
 /* ============================== Sub-components ============================== */
 
@@ -61,8 +62,8 @@ function WorldTabs({
   preloadWorld,
   landmarksVisible,
   onToggleLandmarks,
-  metroVisible,
-  onToggleMetro,
+  transitVisible,
+  onToggleTransit,
 }: {
   worlds: NewWorldMeta[];
   value: NewWorldId;
@@ -71,9 +72,9 @@ function WorldTabs({
   /** 是否显示地标 — 用来高亮 tab 栏里的地标开关 */
   landmarksVisible: boolean;
   onToggleLandmarks: () => void;
-  /** 是否显示交通 (地铁网络) — 用来高亮 tab 栏里的交通开关 */
-  metroVisible: boolean;
-  onToggleMetro: () => void;
+  /** 是否显示交通 (transit 网络) — 用来高亮 tab 栏里的交通开关 */
+  transitVisible: boolean;
+  onToggleTransit: () => void;
 }) {
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
@@ -137,20 +138,20 @@ function WorldTabs({
       {/* 交通 (地铁网络) 开关 — 紧贴地标开关右边, 同样不挤坐标 */}
       <button
         type="button"
-        onClick={onToggleMetro}
-        aria-label={metroVisible ? "隐藏交通" : "显示交通"}
-        aria-pressed={metroVisible}
+        onClick={onToggleTransit}
+        aria-label={transitVisible ? "隐藏交通" : "显示交通"}
+        aria-pressed={transitVisible}
         className={cn(
           // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留
           "lg:mr-72",
           "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
           "transition-all flex items-center gap-1.5",
-          metroVisible
+          transitVisible
             ? "bg-slate-800 text-white"
             : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
         )}
       >
-        {metroVisible ? (
+        {transitVisible ? (
           <IconBus className="w-3.5 h-3.5" />
         ) : (
           <IconBusOff className="w-3.5 h-3.5" />
@@ -191,7 +192,7 @@ function MapCanvas({
   isFullscreen,
   isMobile,
   isPanning,
-  metroInWorld,
+  transitInWorld,
 }: {
   layer: NewMapLayer;
   tx: number;
@@ -208,7 +209,7 @@ function MapCanvas({
    *  - 点 region 跳视角时, 跟地图内容一起走 500ms CSS transition, 跟地标 label 同频道
    *  - 不传就不渲染 (默认空)
    */
-  metroInWorld?: () => ReactNode;
+  transitInWorld?: () => ReactNode;
 }) {
   // 移动端 (< sm, 640px): slice 模式 — 容器因 minHeight 比 viewBox 矮胖,
   //   meet 会留上下大量 slate-900 背景; slice 让 viewBox 填满容器
@@ -279,7 +280,7 @@ function MapCanvas({
         />
         {/* 地铁线 + 站点 (世界坐标) — 跟地图内容同一个 <g transform>, 点 region 跳视角
             走 500ms CSS transition 时一起平滑移动, 跟地标 label 同频道 */}
-        {metroInWorld && metroInWorld()}
+        {transitInWorld && transitInWorld()}
       </g>
     </svg>
   );
@@ -482,10 +483,10 @@ export interface NewGuideMapProps {
    * 地铁 / 交通网络数据 (按维度分组, lines + stations)
    * 不传就不渲染交通层 (老用法 / 教程里用)
    */
-  metro?: NewMetroGroups;
+  transit?: NewTransitGroups;
 }
 
-export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
+export function NewGuideMap({ worlds, landmarks, transit }: NewGuideMapProps) {
   // 缺省: 三个维度都空数组 (不开 toggle 就完全不渲染地标, 兼容老用法)
   const lm: NewLandmarkGroups = landmarks ?? {
     overworld: [],
@@ -493,7 +494,7 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
     end: [],
   };
   // 缺省: 三个维度都空 (同 landmarks)
-  const mt: NewMetroGroups = metro ?? {
+  const mt: NewTransitGroups = transit ?? {
     overworld: { lines: [], stations: [] },
     nether: { lines: [], stations: [] },
     end: { lines: [], stations: [] },
@@ -527,8 +528,8 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
   // ---- 4. 地标: toggle / 选中 ----
   // 默认 off — 第一次打开页面不想被地标盖住, 用户主动开
   const [landmarksVisible, setLandmarksVisible] = useState(false);
-  // 交通 (地铁网络) 同样默认 off, 跟地标独立
-  const [metroVisible, setMetroVisible] = useState(false);
+  // 交通 (transit 网络) 同样默认 off, 跟地标独立
+  const [transitVisible, setTransitVisible] = useState(false);
   // 当前打开 popup 的地标 — null = 没开
   // 装可弹窗的地标 — 激进改动后所有 NewLandmark 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
@@ -1196,24 +1197,34 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
     for (const t of w.map.tiles) preloadImage(t.src);
   }, [worlds]);
 
-  // 地铁线路 (SVG, 进 MapCanvas 的 <g>) — 给 metroInWorld 回调用
-  //  - 关 metroVisible 时直接 return null, <g> 内部什么都不渲染
-  //  - 依赖: mt[worldId].lines + k (线宽按 cssScaled 算) + world (toVB) + 默认值
+  // 地铁线路 + 珍珠炮 (SVG, 进 MapCanvas 的 <g>) — 给 transitInWorld 回调用
+  //  - 关 transitVisible 时直接 return null, <g> 内部什么都不渲染
+  //  - 依赖: mt[worldId].lines + mt[worldId].pearls + k (线宽按 cssScaled 算)
+  //    + world (toVB) + 默认值
   //  注: 必须在 early return 之前定义, 保持 hooks 顺序一致
   //  注: world 在 useCallback 闭包里可能是 null (early return 触发时),
   //  但这个 cb 只在 early return 之后被 MapCanvas 调用, 那时 world 一定非空
   //  这里加 null check 让 TS 满意, 实际不会走到 null 分支
-  const metroInWorldCb = useCallback(() => {
-    if (!metroVisible || !world) return null;
+  const transitInWorldCb = useCallback(() => {
+    if (!transitVisible || !world) return null;
     return (
-      <NewMetroLines
-        lines={mt[worldId]?.lines ?? []}
-        k={k}
-        toVB={(wx, wz) => worldToVB(wx, wz, world)}
-        defaults={mt[worldId]?.style}
-      />
+      <>
+        <NewTransitLines
+          lines={mt[worldId]?.lines ?? []}
+          k={k}
+          toVB={(wx, wz) => worldToVB(wx, wz, world)}
+          defaults={mt[worldId]?.style}
+        />
+        <NewPearlLines
+          pearls={mt[worldId]?.pearls ?? []}
+          k={k}
+          currentZoom={k * 100}
+          toVB={(wx, wz) => worldToVB(wx, wz, world)}
+          defaults={mt[worldId]?.style}
+        />
+      </>
     );
-  }, [metroVisible, mt, worldId, k, world]);
+  }, [transitVisible, mt, worldId, k, world]);
 
   // 空数据兜底
   if (worlds.length === 0 || !world) {
@@ -1245,8 +1256,8 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
           preloadWorld={preloadWorld}
           landmarksVisible={landmarksVisible}
           onToggleLandmarks={() => setLandmarksVisible((v) => !v)}
-          metroVisible={metroVisible}
-          onToggleMetro={() => setMetroVisible((v) => !v)}
+          transitVisible={transitVisible}
+          onToggleTransit={() => setTransitVisible((v) => !v)}
         />
         {!isMobile && (
           // 始终渲染, 显示/隐藏由 JS 直接改 style.display (无 React state)
@@ -1321,21 +1332,21 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
           isFullscreen={isFullscreen}
           isMobile={isMobile}
           isPanning={isPanning}
-          metroInWorld={metroInWorldCb}
+          transitInWorld={transitInWorldCb}
         />
 
         {/* 地标标签层 — 永远渲染, 内部按 visibleWhen 过滤
-            站名/珍珠 (visibleWhen: "metro") 只在 metroVisible=true 时显示,
+            站名/珍珠 (visibleWhen: "transit") 只在 transitVisible=true 时显示,
             不要求 landmarksVisible=true (开了交通就能看到站名)
             普通地标只在 landmarksVisible=true 时显示
-            withLandmarks 上下文 (landmarks && metro) 走不同 font/offset 配置
+            withLandmarks 上下文 (landmarks && transit) 走不同 font/offset 配置
             标签 button 自己带 left/top 的 CSS transition, 跟 SVG g 的 transition-transform 同步 */}
         <NewGuideMapLandmarks
           landmarks={lm[worldId] ?? []}
           currentZoom={k}
           isPanning={isPanning}
           landmarksVisible={landmarksVisible}
-          metroVisible={metroVisible}
+          transitVisible={transitVisible}
           toScreen={worldToScreenFactory({
             container: containerRef.current,
             // 用 React state 的 world (不是 worldRef.current),
@@ -1357,17 +1368,17 @@ export function NewGuideMap({ worlds, landmarks, metro }: NewGuideMapProps) {
                点 region 跳视角时一起平滑移动
             2) 站点 (HTML, 屏幕坐标) — 走 toScreen + CSS transition, 跟地标同频道
             站点 div 永远挂在 DOM 里 (用 visibility:hidden 控显隐), 这样点地标触发
-            panToLandmark 时, 即使 metro 之前是关的 / 缩放 < 500%, 站点 div 也已经
+            panToLandmark 时, 即使 transit 之前是关的 / 缩放 < 500%, 站点 div 也已经
             在 DOM 里跟踪 tx/ty/k — 500ms 过渡里 CSS transition 有"起点"可以插值,
             而不是"啪"地出现在终点 (跟地标 always-rendered + visibility:hidden 同款)
-            (不挂门控 {metroVisible && ...} 是这个 bug 的根因: 站点不进 DOM,
+            (不挂门控 {transitVisible && ...} 是这个 bug 的根因: 站点不进 DOM,
              pan 过渡里没东西可插值) */}
-        <NewMetroStations
+        <NewTransitStations
           stations={mt[worldId]?.stations ?? []}
           k={k}
           currentZoom={k * 100}
           isPanning={isPanning}
-          metroVisible={metroVisible}
+          transitVisible={transitVisible}
           toScreen={worldToScreenFactory({
             container: containerRef.current,
             world,

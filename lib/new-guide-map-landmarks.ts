@@ -4,14 +4,14 @@
  * kind 分类 (region/building/machine) — 仅作为数据归类标签, 不影响弹窗/内容显示
  *  - 想弹窗: 显式 `popup: true`, 或数据里有 images/description/inputs/outputs (自动弹)
  *  - 弹窗内容: 有什么就显示什么 (images[0] 作 hero, inputs/outputs/description 分段)
- *  - 地铁站名/珍珠站: `visibleWhen: "metro"` (只在交通开启时显示, 不要求 landmarksVisible)
+ *  - 地铁站名/珍珠站: `visibleWhen: "transit"` (只在交通开启时显示, 不要求 landmarksVisible)
  *
  * 字段:
  *  - minZoom/maxZoom: 分层显示 — 用百分比 (跟地图右上角显示一致: 100=1x, 400=4x)
  *  - offsetX/offsetY?: 像素水平/垂直偏移
  *  - fontSize?: 字体大小 (px)
  *  - targetZoom?: 点击时缩放到的目标值 (百分比)
- *  - visibleWhen?: 'always' (默认) | 'metro' (只在交通开时显示)
+ *  - visibleWhen?: 'always' (默认) | 'transit' (只在交通开时显示)
  *  - popup?: 是否显示弹窗 (true 必弹, false 永不弹, undefined 自动按内容判断)
  *  - withLandmarks?: 当地标+交通都开时, 站名/珍珠的字段覆盖 (避免跟地标 label 重叠)
  *
@@ -25,7 +25,7 @@ import type { NewWorldId } from "./new-guide-map-data";
  * 字号 + 显示范围合一的配置
  *  - 数字: 固定 px, 全程显示
  *  - { min, max, mid?, midZoom?, minZoom?, maxZoom? }: 字号范围 + 显示范围
- *  - 此类型在 metro 标签里也复用, 所以 export 出来
+ *  - 此类型在 transit 标签里也复用, 所以 export 出来
  */
 export type NewLandmarkFontSize = number | {
   min: number;
@@ -87,11 +87,11 @@ export interface NewLandmark {
   fontSize?: NewLandmarkFontSize;
   /** 可见性:
    *  - undefined 或 "always" (默认): 一直显示 (前提是 landmarksVisible)
-   *  - "metro": 只在交通开启时显示 (不要求 landmarksVisible) */
-  visibleWhen?: "always" | "metro";
+   *  - "transit": 只在交通开启时显示 (不要求 landmarksVisible) */
+  visibleWhen?: "always" | "transit";
   /**
-   * 仅 metro-only 项 (visibleWhen: "metro") 用得上
-   * 当 landmarks + metro 同时开启时, 用这套字段覆盖主字段
+   * 仅 transit-only 项 (visibleWhen: "transit") 用得上
+   * 当 landmarks + transit 同时开启时, 用这套字段覆盖主字段
    *  - 不填的字段 fallback 到主字段
    */
   withLandmarks?: NewLandmarkWithLandmarksOverride;

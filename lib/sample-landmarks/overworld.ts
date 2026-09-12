@@ -7,7 +7,7 @@
 //  - 没图: 就只显示名字 (要弹窗就显式 popup: true)
 //  - 有图: images[0] 是 hero, 剩下的 [1..] 是细节图
 //  - 有 inputs/outputs: 弹窗里自动显示 "入" "出" 段
-//  - 地铁站名/珍珠站: 配 visibleWhen: "metro", 只在交通开时显示
+//  - 地铁站名/珍珠站: 配 visibleWhen: "transit", 只在交通开时显示
 //    (不要求 landmarksVisible=true, 开了交通就能看到站名)
 //
 // 添加新地标时直接编辑本文件, 格式参考已有条目; id 必须全局唯一 (跨主世界/下界/末地)
@@ -1052,12 +1052,12 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
     },
 
     /* ============================================================
-     * 地铁站名 + 珍珠传送 (visibleWhen: "metro" — 只在交通开启时显示)
-     * 跟 lib/sample-metro/overworld.ts 的 station 共享 x, z 坐标
-     * 这里负责"文字"层, 地铁数据负责"画圆/胶囊"层, 一起呈现
+     * Transit 站名 + 珍珠传送 (visibleWhen: "transit" — 只在交通开启时显示)
+     * 跟 lib/sample-transit/overworld.ts 的 station 共享 x, z 坐标
+     * 这里负责"文字"层, transit 数据负责"画圆/胶囊"层, 一起呈现
      *
      * popup: true → 点击弹出信息卡 (有 description 就够, 也可以加 images)
-     * withLandmarks → 当 landmarks + metro 同时开启时, 用更小字号 + 左偏
+     * withLandmarks → 当 landmarks + transit 同时开启时, 用更小字号 + 左偏
      *   避免跟旁边的地标 label 撞在一起
      * ============================================================ */
     {
@@ -1070,7 +1070,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "1 号线与 2 号线换乘站, 位于主世界基地核心, 24h 照明。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 1201 },
@@ -1087,7 +1087,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "1 号线第 2 站, 基地北侧的中转点, 旁边是小麦农田。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1105,7 +1105,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "1 号线与 2 号线换乘站, 服务北苑住宅区, 客流中等。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1123,7 +1123,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "1 号线第 4 站, 靠近八角塔地标。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1140,7 +1140,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "1 号线终点站, 崩铁港码头, 可换乘船只。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1157,7 +1157,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "2 号线第 1 站, 沙城竞技场, 大型 PvP 场地。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1174,7 +1174,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "2 号线第 3 站, 名字叫崩铁但跟星铁没关系, 是个老梗。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
@@ -1191,14 +1191,14 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "2 号线终点站, 游乐园入口, 有摩天轮和过山车。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 14, minZoom: 500 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, minZoom: 500 },
         offsetY: 8,
       },
     },
-    /* 珍珠传送 — 跟站名同款, visibleWhen: "metro" */
+    /* 珍珠传送 — 跟站名同款, visibleWhen: "transit" */
     {
       id: "teleport-station-no1",
       name: "01 传送站",
@@ -1208,7 +1208,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
@@ -1226,7 +1226,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
@@ -1242,7 +1242,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 12, max: 14 },
       withLandmarks: {
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
@@ -1258,7 +1258,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
@@ -1273,7 +1273,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
@@ -1289,7 +1289,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
@@ -1305,7 +1305,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
@@ -1321,7 +1321,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
@@ -1336,7 +1336,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300  },
@@ -1352,7 +1352,7 @@ export const OVERWORLD_LANDMARKS: NewLandmark[] = [
       targetZoom: 1600,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },

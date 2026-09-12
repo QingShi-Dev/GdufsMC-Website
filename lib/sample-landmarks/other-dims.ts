@@ -284,7 +284,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -300,7 +300,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -315,7 +315,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -332,7 +332,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -347,7 +347,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800  },
@@ -362,7 +362,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -377,7 +377,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
@@ -392,7 +392,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 12, max: 12, minZoom: 800, maxZoom: 800  },
@@ -409,7 +409,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 12, max: 12, minZoom: 600, maxZoom: 800  },
@@ -425,7 +425,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
@@ -441,7 +441,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
@@ -456,7 +456,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
@@ -471,7 +471,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
@@ -486,7 +486,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
@@ -502,7 +502,7 @@ export const NETHER_LANDMARKS: NewLandmark[] = [
       targetZoom: 800,
       description: "末影珍珠传送点, 传送到主城 spawn 区域。",
       popup: true,
-      visibleWhen: "metro",
+      visibleWhen: "transit",
       fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800 },
       withLandmarks: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
