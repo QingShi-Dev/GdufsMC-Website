@@ -178,9 +178,9 @@ export function NewTransitLines({ lines, k, toVB, defaults }: NewTransitLinesPro
 /**
  * 珍珠炮 transit 抛物线 — 全 SVG 进 <g>
  *  - 抛物线: 二次贝塞尔, control point = 中点 + 垂直偏移 (偏移 = curvature × 距离)
- *  - 颜色默认 #2ccdb1 (淡绿色), 虚线 (stroke-dasharray, dashLength/dashSpacing 可调)
- *  - 透明度可调
- *  - 只画虚线, 不画起点/终点圆, 不加白色描边 (用户: "只显示淡绿色虚线")
+ *  - 颜色默认 #2ccdb1 (淡绿色)
+ *  - 实线 (无 stroke-dasharray), 透明度可调
+ *  - 只画线, 不画起点/终点圆, 不加白色描边
  *  - 全部走 viewBox 坐标 + vector-effect: non-scaling-stroke, 缩放时线宽恒定
  *  - 跟 NewTransitLines 同款: SVG 进 <g>, 跟地图 transform 同步动
  */
@@ -215,9 +215,6 @@ function PearlSVG({
   const maxW = pearl.style?.lineWidthMax ?? defaults?.pearlLineWidthMax;
   const wRaw = cssScaled(baseW, scaleW, k);
   const w = maxW !== undefined ? Math.min(wRaw, maxW) : wRaw;
-  // 虚线: 保持 world units 不缩放 — 缩放时虚线密度感一致
-  const dashLength = pearl.style?.dashLength ?? defaults?.pearlDashLength ?? 80;
-  const dashSpacing = pearl.style?.dashSpacing ?? defaults?.pearlDashSpacing ?? 60;
 
   return (
     <g data-transit-pearl-line data-pearl-id={pearl.id}>
@@ -240,7 +237,7 @@ function PearlSVG({
         const cpx = mx + (px / dist) * offset;
         const cpy = my + (py / dist) * offset;
         const d = `M ${startVb.vx.toFixed(1)} ${startVb.vy.toFixed(1)} Q ${cpx.toFixed(1)} ${cpy.toFixed(1)} ${endVb.vx.toFixed(1)} ${endVb.vy.toFixed(1)}`;
-        // 单 path, 虚线 + 淡绿色, 无白色描边
+        // 单 path, 实线淡绿, 无白色描边, 无虚线
         return (
           <path
             key={rec.id}
@@ -251,7 +248,6 @@ function PearlSVG({
             strokeLinecap="round"
             strokeLinejoin="round"
             opacity={opacity}
-            strokeDasharray={`${dashLength} ${dashSpacing}`}
             vectorEffect="non-scaling-stroke"
           />
         );

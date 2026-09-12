@@ -211,12 +211,8 @@ export interface NewTransitStyleDefaults extends NewTransitLabelFields {
   lineCornerRadius?: number;
   lineCornerRadiusScale?: NewTransitScale;
   /* ---- 珍珠炮 transit (下界专用) 全局默认 ---- */
-  /** 抛物线颜色 (默认 #2ccdb1) */
+  /** 抛物线颜色 (默认 #2ccdb1, 淡绿色) */
   pearlColor?: string;
-  /** 虚线单段长度 (world units, 默认 80) — 整条抛物线均匀虚线 */
-  pearlDashLength?: number;
-  /** 虚线间隔 (world units, 默认 60) */
-  pearlDashSpacing?: number;
   /** 整条线透明度 (0-1, 默认 0.85) */
   pearlOpacity?: number;
   /** 抛物线弧度 (0=直线, 正数=鼓出, 默认 0.3)
@@ -291,20 +287,12 @@ export interface NewPearlLine {
  *  - curvature 是 per-line 必填语义 (每条抛物线可以不同弧度)
  */
 export interface NewPearlLineStyle {
-  /** 抛物线颜色 (默认 #2ccdb1) */
+  /** 抛物线颜色 (默认 #2ccdb1, 淡绿色) */
   color?: string;
-  /** 单段虚线长度 (world units, 默认 80) — 整条抛物线均匀虚线 */
-  dashLength?: number;
-  /** 虚线间隔 (world units, 默认 60) */
-  dashSpacing?: number;
   /** 整条线透明度 (0-1, 默认 0.85) */
   opacity?: number;
   /** 抛物线弧度 (0=直线, 正数=鼓出, 默认 0.3) — 偏移 = curvature × 起点-终点距离 */
   curvature?: number;
-  /** 起点圆半径 (world units, 默认 6) */
-  cannonRadius?: number;
-  /** 终点圆半径 (world units, 默认 4) */
-  receiverRadius?: number;
   /** 抛物线线宽 (world units, 默认 2) — 跟普通 line width 同款 */
   lineWidthBase?: number;
   /** 抛物线线宽缩放 (默认 0.5) */
