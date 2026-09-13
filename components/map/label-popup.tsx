@@ -77,9 +77,10 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
         <IconX size={14} />
       </button>
 
-      {/* hero 图 */}
+      {/* hero 图 — 容器用图片原始 aspect (2560/1361 ≈ 1.88) 适配,
+          这样不管 popup 宽度 (288/320px), 图片都以原比例显示, 不会上下裁切 */}
       {hasHero && (
-        <div className="w-full h-20 overflow-hidden bg-slate-100">
+        <div className="w-full aspect-[2560/1361] overflow-hidden bg-slate-100">
           <img
             src={heroImage}
             alt=""
@@ -115,7 +116,7 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
       {(hasInputs || hasOutputs) && (
         <div className="px-3 pb-2 space-y-1">
           {hasInputs && (
-            <ProductRow label="入" products={label.inputs!} tone="sky" />
+            <ProductRow label="输入" products={label.inputs!} tone="sky" />
           )}
           {hasInputs && hasOutputs && (
             <div className="flex items-center justify-center text-slate-300 -my-0.5">
@@ -123,7 +124,7 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
             </div>
           )}
           {hasOutputs && (
-            <ProductRow label="出" products={label.outputs!} tone="emerald" />
+            <ProductRow label="产出" products={label.outputs!} tone="emerald" />
           )}
         </div>
       )}
