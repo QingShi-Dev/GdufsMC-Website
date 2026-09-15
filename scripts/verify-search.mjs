@@ -296,6 +296,39 @@ async function main() {
   }
   console.log("PASS: list stable after 1s");
 
+  // ---- 6b. 真实 mouse click on input — list 稳定展开 (不闪) ----
+  // 先收起 list
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="拼音"]');
+    i?.blur();
+  });
+  await page.mouse.click(900, 500); // 点地图收起
+  await sleep(300);
+  const listBeforeRealClick = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  console.log("list visible before real-click:", !!listBeforeRealClick);
+  // 用真实 mouse click on input
+  const inputBox = await page.$eval('input[placeholder*="拼音"]', (el) => {
+    const r = el.getBoundingClientRect();
+    return { x: r.x, y: r.y, w: r.width, h: r.height };
+  });
+  const inputCx = inputBox.x + inputBox.w / 2;
+  const inputCy = inputBox.y + inputBox.h / 2;
+  await page.mouse.click(inputCx, inputCy);
+  // 立刻检查 (如果"闪一下", 此刻应该 false)
+  await sleep(10);
+  const listImmediately = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  console.log("list visible 10ms after real-click:", !!listImmediately);
+  // 等 100ms
+  await sleep(100);
+  const listAt100ms2 = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  console.log("list visible 100ms after real-click:", !!listAt100ms2);
+  if (!listAt100ms) {
+    console.log("FAIL: list not visible 100ms after real click on input");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: real click on input expands list (no flicker)");
+
   // ---- 7. label click 收起 list (但保留 popup) ----
   // 此时 list 已经显示 (test 6 之后), 直接点 label
   const labelInfo = await page.evaluate(() => {

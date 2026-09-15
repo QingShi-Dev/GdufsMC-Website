@@ -1668,8 +1668,17 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         // 点标签 (label button) 时也收起 list — 让用户专注看标签详情 (popup 由 label 自己设)
         onClick={(e) => {
           // search wrapper 内的 click 属于搜索框自己的逻辑, 地图不响应
-          if (searchWrapperRef.current?.contains(e.target as Node)) return;
+          // 双保险: ref 可能 stale (HMR / 反复重渲染), 用 ref + querySelector fallback
+          const wrapperEl =
+            searchWrapperRef.current ?? document.querySelector('[role="search"]');
           const target = e.target as HTMLElement;
+          const contains = wrapperEl?.contains(target);
+          if (contains) return;
+          // 兜底: React 18 + 反复重渲染下 click event 的 e.target 偶尔跟 hit-test 不一致
+          // (target 是 React root container 的 child DIV, 但 hit-test 在 wrapper 内 input 上)
+          // hit-test 在 wrapper 内 → 这次 click 实际是 wrapper 内的, 不应被地图处理
+          const hitTestEl = document.elementFromPoint(e.clientX, e.clientY);
+          if (wrapperEl?.contains(hitTestEl)) return;
           const isLabel = !!target.closest("button[data-label-id]");
           // 点 label 时 label.onClick 已 setSelectedLabel, 这里不要清掉 (React 18 batched)
           if (!isLabel) setSelectedLabel(null);
