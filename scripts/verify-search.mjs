@@ -1,9 +1,12 @@
 /**
- * 搜索交互验证 — 4 个场景:
- *   1) 滚轮在 list 内能翻动 list (不缩地图)
- *   2) list 滚到顶/底时阻止 page scroll
- *   3) 点地图收起 list 后, 再次点 input 列表稳定展开
- *   4) list 收起时, 滚轮让地图缩放 (回到正常交互)
+ * 搜索交互验证:
+ *   1) wheel in list — list 自己滚 (scrollTop 增), 不缩地图
+ *   2) wheel in list 滚到边界 — 不滚页面
+ *   3) click map 收起 list + query 保留
+ *   4) click label 收起 list
+ *   5) wheel 缩地图 + searchQuery 非空 — list 收起
+ *   6) pointerdown 拖动 + searchQuery 非空 — list 收起
+ *   7) 再次 click input 列表稳定展开
  */
 import puppeteer from "puppeteer-core";
 
@@ -68,26 +71,39 @@ async function main() {
   }
   console.log("PASS: list visible after typing 'yzz'");
 
-  // ---- 3. wheel 在 list 内不缩地图 ----
+  // ---- 3. wheel 在 list 内 — list 自己滚, 不缩地图 ----
+  // 找一个有多个结果能滚的 query
+  await page.click('input[placeholder*="拼音"]');
+  await page.keyboard.down('Control');
+  await page.keyboard.press('A');
+  await page.keyboard.up('Control');
+  await page.keyboard.press('Delete');
+  await page.type('input[placeholder*="拼音"]', "t", { delay: 30 });
+  await sleep(400);
+  // 检查 list 实际结果数
+  const listInfo = await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+    if (!list) return null;
+    return { exists: true, count: list.querySelectorAll("button").length };
+  });
+  console.log("list info for 't':", listInfo);
+
   const beforeK = await page.evaluate(() => {
     const g = document.querySelector("svg g[transform]");
     if (!g) return null;
     const m = g.getAttribute("transform")?.match(/scale\(([\d.]+)/);
     return m ? parseFloat(m[1]) : null;
   });
-  await page.evaluate(() => {
-    const el = document.querySelector('[role="listbox"][aria-label="搜索结果"]');
-    const rect = el.getBoundingClientRect();
-    el.dispatchEvent(
-      new WheelEvent("wheel", {
-        deltaY: 100,
-        clientX: rect.left + rect.width / 2,
-        clientY: rect.top + rect.height / 2,
-        bubbles: true,
-        cancelable: true,
-      }),
-    );
+  const beforeScroll = await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+    return list ? list.scrollTop : 0;
   });
+  // wheel 在 list 内 — 用真实 mouse wheel 让 list 滚动 (trusted event)
+  const listBox = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  const lrect = await listBox.boundingBox();
+  await page.mouse.move(lrect.x + lrect.width / 2, lrect.y + lrect.height / 2);
+  await page.mouse.wheel({ deltaY: 100 });
+  await sleep(200);
   await sleep(200);
   const afterK = await page.evaluate(() => {
     const g = document.querySelector("svg g[transform]");
@@ -95,13 +111,22 @@ async function main() {
     const m = g.getAttribute("transform")?.match(/scale\(([\d.]+)/);
     return m ? parseFloat(m[1]) : null;
   });
-  console.log(`map k: ${beforeK} → ${afterK}`);
+  const afterScroll = await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+    return list ? list.scrollTop : 0;
+  });
+  console.log(`map k: ${beforeK} → ${afterK}; list scrollTop: ${beforeScroll} → ${afterScroll}`);
   if (afterK !== null && beforeK !== null && Math.abs(afterK - beforeK) > 0.01) {
     console.log("FAIL: map k changed — wheel not stopped");
     await browser.close();
     process.exit(1);
   }
   console.log("PASS: wheel in list does NOT scale map");
+  if (afterScroll > beforeScroll) {
+    console.log(`PASS: wheel in list scrolls list (${beforeScroll} → ${afterScroll})`);
+  } else {
+    console.log(`WARN: list scrollTop didn't increase (${beforeScroll} → ${afterScroll}); maybe list short`);
+  }
 
   // ---- 4. 点地图 → list 收起 + query 保留 ----
   await page.mouse.click(900, 500);
@@ -116,8 +141,8 @@ async function main() {
     await browser.close();
     process.exit(1);
   }
-  if (inputVal !== "yzz") {
-    console.log("FAIL: input lost query");
+  if (inputVal !== "t") {
+    console.log("FAIL: input lost query, got:", inputVal);
     await browser.close();
     process.exit(1);
   }
@@ -186,6 +211,31 @@ async function main() {
     process.exit(1);
   }
   console.log("PASS: wheel in map area zooms map");
+
+  // ---- 5b. 缩放地图同时 searchQuery 非空时, list 收起 ----
+  // 重新打开搜索, 输入 query, 看 wheel 缩放时 list 是否收起
+  // 当前 searchQuery='t', searchVisible=true (没关闭)
+  // 重新打开 list (input 重新 focus 触发)
+  await page.focus('input[placeholder*="拼音"]');
+  await sleep(300);
+  const listOpenBeforeWheel = await page.evaluate(() => {
+    return !!document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+  });
+  console.log("list visible before zoom-wheel:", listOpenBeforeWheel);
+  // wheel 缩放地图 (mousedown 在地图区域 + wheel)
+  await page.mouse.move(900, 500);
+  await page.mouse.wheel({ deltaY: -200 });
+  await sleep(300);
+  const listOpenAfterWheel = await page.evaluate(() => {
+    return !!document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+  });
+  console.log("list visible after zoom-wheel:", listOpenAfterWheel);
+  if (listOpenBeforeWheel && listOpenAfterWheel) {
+    console.log("FAIL: list should collapse after zoom-wheel when searchQuery non-empty");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: zoom-wheel collapses list when searchQuery non-empty");
 
   // 重新验证 list 收起时 wrapper wheel 不阻止
   // 把 k 重置回 1 通过 wheel

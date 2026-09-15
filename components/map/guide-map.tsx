@@ -679,6 +679,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchListOpen, setSearchListOpen] = useState(false);
+  // 让 wheel / pointerdown handler 在不重新挂载的情况下读到最新的 query/listOpen
+  // (closure 捕获, 但 wheel handler 在 useEffect [deps] 内, deps 不变就不重跑)
+  const searchQueryRef = useRef(searchQuery);
+  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
+  const searchListOpenRef = useRef(searchListOpen);
+  useEffect(() => { searchListOpenRef.current = searchListOpen; }, [searchListOpen]);
   // 当前打开 popup 的标签 — null = 没开
   // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
@@ -739,22 +745,28 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // 用 window 上挂 listener + 检查 target 在 wrapper 内 (event delegation),
   // 这样 HMR 替换 wrapper DOM 后 listener 不会失效 (因为 listener 在 window 上)
   //   - wheel:
-  //       list 显示 → stopPropagation 阻止地图缩放 + preventDefault 阻止 page scroll
-  //       list 收起 → preventDefault 阻止 page scroll, 但允许 wheel bubble 到 containerRef 缩地图
+  //       list 显示 → stopPropagation 阻止地图缩放, 但**不** preventDefault 让 list 自己滚
+  //         (滚到边界时浏览器默认 page scroll, list 自己处理滚到底/顶)
+  //       list 收起 → 不 stopPropagation, wheel bubble 到 containerRef 缩地图
+  //         但 preventDefault 阻止 page scroll (避免页面滚走 wrapper)
   //   - mousedown/move/up: drag 判定 (mousemove > 3px 算 drag, setSearchListOpen(false))
-  //   - click 在 input/list button wrapper 内: 由 React onClick / list button onClick 自己处理
+  //   - click 在 input 上: 兜底 setSearchListOpen(true) (避免 React 18 batched 让 onClick 失效)
   useEffect(() => {
     if (!searchVisible) return;
     const stopWheel = (e: Event) => {
       const wrapper = document.querySelector('[role="search"]');
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
-      e.preventDefault();
       const list = wrapper.querySelector('[role="listbox"][aria-label="搜索结果"]');
-      if (list) e.stopPropagation();
+      if (list) {
+        // list 显示: 阻止地图缩放, 但不阻止 list 自身滚动 (滚到底/顶让 list 自己处理)
+        e.stopPropagation();
+      } else {
+        // list 收起: 不阻止地图缩放, 但阻止 page scroll (wrapper 跟 page 一起滚会很难看)
+        e.preventDefault();
+      }
     };
     window.addEventListener("wheel", stopWheel, { passive: false, capture: true });
     // drag 判定: mousedown 在 wrapper 内 + mousemove > 3px → 收起 list
-    // click handler 只在 list button (非 input) 上设 false (input click 走 React onClick 设 true)
     let dragOrigin: { x: number; y: number } | null = null;
     let dragActive = false;
     const onMouseDown = (e: MouseEvent) => {
@@ -777,13 +789,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       dragOrigin = null;
       dragActive = false;
     };
-    // click 在 input 上: 不通过这里设 state — 走 React onClick handler (input.onClick 设 true)
-    // 但 React 18 + fixed element 偶尔让 input.onClick 不触发, 用 native click 在 input 上兜底
+    // click 在 input 上: 兜底 setSearchListOpen(true) (避免 React 18 batched 让 onClick 失效)
     const onClickNative = (e: MouseEvent) => {
       const wrapper = document.querySelector('[role="search"]');
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
       const target = e.target as HTMLElement;
-      // input 上的 click: 兜底展开 list (绕过 React 18 batched 让 onClick 失效的问题)
       if (target.tagName === "INPUT") {
         setSearchListOpen(true);
       }
@@ -1297,6 +1307,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     const el = containerRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
+      // 搜索框有内容时, 缩放地图顺手收起搜索列表 — 用户进入"专注地图"模式
+      if (searchQueryRef.current.trim().length > 0) {
+        setSearchListOpen(false);
+      }
       e.preventDefault();
       const curK = kRef.current;
       const curTx = txRef.current;
@@ -1420,6 +1434,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
   const onPointerDown = (e: React.PointerEvent) => {
     if ((e.target as HTMLElement).closest("button")) return;
+    // 搜索框有内容时, 在地图上按下鼠标拖动也收起搜索列表
+    if (searchQueryRef.current.trim().length > 0) {
+      setSearchListOpen(false);
+    }
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     dragRef.current = {
       x: e.clientX,
@@ -1638,11 +1656,15 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         // 点地图 (非 button) 关闭 popup — 拖动/缩放不触发 onClick, 所以不影响
         // 搜索 wrapper 内的 click 不能用 stopPropagation 拦 (会阻止 React 合成事件分发,
         // input.onFocus/onClick 不触发, list 永远展不开), 改用 contains 检查 target
+        // 点标签 (label button) 时也收起 list — 让用户专注看标签详情 (popup 由 label 自己设)
         onClick={(e) => {
-          if ((e.target as HTMLElement).closest("button")) return;
           // search wrapper 内的 click 属于搜索框自己的逻辑, 地图不响应
           if (searchWrapperRef.current?.contains(e.target as Node)) return;
-          setSelectedLabel(null);
+          const target = e.target as HTMLElement;
+          const isLabel = !!target.closest("button[data-label-id]");
+          // 点 label 时 label.onClick 已 setSelectedLabel, 这里不要清掉 (React 18 batched)
+          if (!isLabel) setSelectedLabel(null);
+          // 任何点击地图都收起搜索列表
           setSearchListOpen(false);
         }}
         // wheel 必须 stopPropagation 让 list 内 wheel 不缩地图 — 用 capture 阶段 native listener
@@ -1747,8 +1769,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         />
 
         {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关
-            搜索开启时 popup 用 fixed + top-[60px] 让位搜索栏 (wrapper 也是 fixed,
-            不受 page scroll 影响; 否则 click map 触发的 scrollMapIntoView 会把 wrapper 滚出视口) */}
+            搜索开启时 popup 用 absolute + top-[60px] 让位搜索栏 (wrapper 也是 absolute,
+            跟 page scroll 走; click map 触发的 scrollMapIntoView 让地图 + wrapper 一起到 viewport 顶部) */}
         {selectedLabel && (
           <LabelPopup
             label={selectedLabel}
