@@ -223,65 +223,17 @@ function WorldTabs({
           </button>
         );
       })}
-      {/* 标签文字开关 — 紧贴末地 tab 右边, 不跟右上角坐标 (absolute right-3) 抢位置
-          不用 ml-auto 是为了避免跟坐标位置重叠; 坐标是 absolute 浮在 right-3,
-          开关用 ml-auto 会被推到最右, 跟坐标撞在一起 */}
-      <button
-        type="button"
-        onClick={onToggleLabels}
-        aria-label={labelsVisible ? "隐藏标签文字" : "显示标签文字"}
-        aria-pressed={labelsVisible}
-        className={cn(
-          "ml-2 sm:ml-4",
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
-          "transition-all flex items-center gap-1.5",
-          labelsVisible
-            ? "text-slate-800"
-            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
-        )}
-      >
-        {labelsVisible ? (
-          <IconMapPin className="w-3.5 h-3.5" />
-        ) : (
-          <IconMapPinOff className="w-3.5 h-3.5" />
-        )}
-        <span className="hidden sm:inline">
-          标签文字 <span className="text-slate-400">- {labelsVisible ? "开" : "关"}</span>
-        </span>
-      </button>
-      {/* 交通信息开关 — 紧贴标签文字开关右边, 同样不挤坐标 */}
-      <button
-        type="button"
-        onClick={onToggleTransit}
-        aria-label={transitVisible ? "隐藏交通信息" : "显示交通信息"}
-        aria-pressed={transitVisible}
-        className={cn(
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
-          "transition-all flex items-center gap-1.5",
-          transitVisible
-            ? "text-slate-800"
-            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
-        )}
-      >
-        {transitVisible ? (
-          <IconBus className="w-3.5 h-3.5" />
-        ) : (
-          <IconBusOff className="w-3.5 h-3.5" />
-        )}
-        <span className="hidden sm:inline">
-          交通信息 <span className="text-slate-400">- {transitVisible ? "开" : "关"}</span>
-        </span>
-      </button>
-      {/* 搜索开关 — 紧贴交通信息开关右边, 样式与"标签文字"/"交通信息"完全一致
-          开启后: 在地图左上角显示搜索 input, 跨维度搜 name; 关闭后: 还原并下移 popup */}
+      {/* 顺序: 3 1 2 — 搜索 / 标签文字 / 交通信息
+            搜索排第一 (默认全开), 标签紧跟, 交通最右 (lg+ 给坐标预留空间) */}
+      {/* 搜索开关 — 紧贴末地 tab 右边, ml-2 sm:ml-4 跟原"标签文字"一致, 不挤坐标
+          默认全开 (searchVisible=true): 按钮显示"隐藏搜索"; 关闭后: 还原并下移 popup */}
       <button
         type="button"
         onClick={onToggleSearch}
-        aria-label={searchVisible ? "关闭搜索" : "开启搜索"}
+        aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
         aria-pressed={searchVisible}
-        // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留 — 跟交通信息一致
         className={cn(
-          "lg:mr-72",
+          "ml-2 sm:ml-4",
           "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
           "transition-all flex items-center gap-1.5",
           searchVisible
@@ -295,7 +247,55 @@ function WorldTabs({
           <IconSearchOff className="w-3.5 h-3.5" />
         )}
         <span className="hidden sm:inline">
-          搜索 <span className="text-slate-400">- {searchVisible ? "开" : "关"}</span>
+          {searchVisible ? "隐藏搜索" : "显示搜索"}
+        </span>
+      </button>
+      {/* 标签文字开关 — 紧贴搜索开关右边, 同样不挤坐标 */}
+      <button
+        type="button"
+        onClick={onToggleLabels}
+        aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
+        aria-pressed={labelsVisible}
+        className={cn(
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
+          "transition-all flex items-center gap-1.5",
+          labelsVisible
+            ? "text-slate-800"
+            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+        )}
+      >
+        {labelsVisible ? (
+          <IconMapPin className="w-3.5 h-3.5" />
+        ) : (
+          <IconMapPinOff className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">
+          {labelsVisible ? "隐藏地名" : "显示地名"}
+        </span>
+      </button>
+      {/* 交通信息开关 — 现排第三 (最右), 桌面端给坐标预留 ~280px (lg+ 才显示坐标)
+          移动端不预留 — 跟其他开关一致 */}
+      <button
+        type="button"
+        onClick={onToggleTransit}
+        aria-label={transitVisible ? "隐藏交通" : "显示交通"}
+        aria-pressed={transitVisible}
+        className={cn(
+          "lg:mr-72",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
+          "transition-all flex items-center gap-1.5",
+          transitVisible
+            ? "text-slate-800"
+            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+        )}
+      >
+        {transitVisible ? (
+          <IconBus className="w-3.5 h-3.5" />
+        ) : (
+          <IconBusOff className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">
+          {transitVisible ? "隐藏交通" : "显示交通"}
         </span>
       </button>
     </div>
@@ -676,7 +676,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //   - searchListOpen: list 是否展开 — 跟 query 解耦
   //       默认收起, 输入文字 / 点 input 展开, 点地图收起, X 按钮清空时也收起
   // 关系: list 渲染 = searchVisible && searchListOpen && searchQuery.trim() !== ""
-  const [searchVisible, setSearchVisible] = useState(false);
+  // 默认全开: 进入页面就看到搜索框, 用户可主动关 (按钮顺序排第一)
+  const [searchVisible, setSearchVisible] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchListOpen, setSearchListOpen] = useState(false);
   // 让 wheel / pointerdown handler 在不重新挂载的情况下读到最新的 query/listOpen
@@ -728,7 +729,17 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // 搜索开关切换:
   //  - 开启 → input 自动 focus (focus 顺带触发 onFocus → list 展开)
   //  - 关闭 → 清空 query + 收起 list (避免下次开启时残留旧关键词/旧展开态)
+  //  - 首次挂载 (searchVisible=true 默认全开): 不抢焦点, 让用户自己点 input
+  //    (避免页面加载时移动端自动弹键盘, 也避免与 dim tab / 视觉重心抢焦点)
+  const prevSearchVisibleRef = useRef(searchVisible);
   useEffect(() => {
+    // 首次挂载: searchVisible 跟初始值相同, 跳过副作用 (StrictMode 双挂载也安全)
+    if (searchVisible === prevSearchVisibleRef.current) {
+      prevSearchVisibleRef.current = searchVisible;
+      return;
+    }
+    prevSearchVisibleRef.current = searchVisible;
+
     if (searchVisible) {
       // requestAnimationFrame 等 DOM commit 后再 focus (避免 React 18 自动批处理导致 ref 未挂载)
       const id = requestAnimationFrame(() => {

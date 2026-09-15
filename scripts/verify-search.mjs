@@ -39,10 +39,19 @@ async function main() {
   });
   console.log("pre-test wrapper check:", JSON.stringify(wheelListenerCheck));
 
-  // ---- 1. 开搜索 ----
+  // ---- 1. 确认搜索已开 (默认全开, 已是 on 状态时不重复点击) ----
   const searchBtn = await page.waitForSelector('button[aria-label*="搜索"]', { timeout: 10_000 });
-  await searchBtn.click();
-  await sleep(800); // 等 useEffect rAF + listener 挂上
+  const initialPressed = await page.evaluate(
+    () => document.querySelector('button[aria-label*="搜索"]')?.getAttribute("aria-pressed"),
+  );
+  console.log("initial search aria-pressed:", initialPressed);
+  if (initialPressed === "false") {
+    await searchBtn.click();
+    await sleep(800); // 等 useEffect rAF + listener 挂上
+  } else {
+    // 已开: 默认全开场景, 跳过 click, 只需 sleep 等 hydration 完整
+    await sleep(300);
+  }
 
   // 测试 wrapper wheel listener 是否挂上 — 用真实 mouse wheel
   await page.mouse.move(204, 220); // wrapper center
