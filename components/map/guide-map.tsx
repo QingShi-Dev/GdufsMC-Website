@@ -80,10 +80,16 @@ function SearchResults({
   results,
   worlds,
   onSelect,
+  onWheel,
 }: {
   results: SearchResult[];
   worlds: NewWorldMeta[];
   onSelect: (label: NewLabel, worldId: NewWorldId) => void;
+  /**
+   * 滚轮事件 (list 内 wheel 不冒泡到地图, 防止 wheel 同时触发地图缩放)
+   * 父组件传 stopPropagation, SearchResults 内部给 listbox div 挂上
+   */
+  onWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
 }) {
   const worldName = (id: NewWorldId) =>
     worlds.find((w) => w.id === id)?.name ?? id;
@@ -91,7 +97,12 @@ function SearchResults({
     worlds.find((w) => w.id === id)?.accent ?? "#64748b";
   if (results.length === 0) {
     return (
-      <div className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-400">
+      <div
+        role="listbox"
+        aria-label="搜索结果"
+        onWheel={onWheel}
+        className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-400"
+      >
         没有匹配的地标
       </div>
     );
@@ -100,6 +111,7 @@ function SearchResults({
     <div
       role="listbox"
       aria-label="搜索结果"
+      onWheel={onWheel}
       className="border-t border-slate-200 max-h-[40vh] overflow-y-auto"
     >
       {results.map((r) => (
@@ -666,10 +678,15 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(false);
   // 交通 (transit 网络) 同样默认 off, 跟地标独立
   const [transitVisible, setTransitVisible] = useState(false);
-  // 搜索: 开关 + 当前关键词 — 开启时在左上角显示 input, 跨维度按 name 过滤标签
-  // 默认 off, 跟其他两个开关风格一致 (不主动打扰用户)
+  // 搜索: 开关 + 当前关键词 + 列表显隐
+  //   - searchVisible: 整个搜索 wrapper 显隐 (input 一直在)
+  //   - searchQuery: 用户输入的文字 (不清零, 让 X 按钮可恢复显示)
+  //   - searchListOpen: list 是否展开 — 跟 query 解耦
+  //       默认收起, 输入文字 / 点 input 展开, 点地图收起, X 按钮清空时也收起
+  // 关系: list 渲染 = searchVisible && searchListOpen && searchQuery.trim() !== ""
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [searchListOpen, setSearchListOpen] = useState(false);
   // 当前打开 popup 的标签 — null = 没开
   // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
@@ -707,8 +724,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, [isFullscreen, isPortrait]);
 
   // 搜索开关切换:
-  //  - 开启 → input 自动 focus, 用户直接 focus
-  //  - 关闭 → 清空 query (避免下次开启时残留旧关键词, 让 MapLabels 显示老匹配)
+  //  - 开启 → input 自动 focus (focus 顺带触发 onFocus → list 展开)
+  //  - 关闭 → 清空 query + 收起 list (避免下次开启时残留旧关键词/旧展开态)
   useEffect(() => {
     if (searchVisible) {
       // requestAnimationFrame 等 DOM commit 后再 focus (避免 React 18 自动批处理导致 ref 未挂载)
@@ -718,6 +735,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       return () => cancelAnimationFrame(id);
     } else {
       setSearchQuery("");
+      setSearchListOpen(false);
     }
   }, [searchVisible]);
 
@@ -1556,9 +1574,14 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         onMouseMove={onContainerMouseMove}
         onMouseLeave={onContainerMouseLeave}
         // 点地图 (非 button) 关闭 popup — 拖动/缩放不触发 onClick, 所以不影响
+        // 搜索栏 input 在 search wrapper 内 (wrapper 自身 stopPropagation),
+        // 所以点 input / list / X 不会冒到这里, 只点地图本身/空白区域才到这里
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
           setSelectedLabel(null);
+          // 收起搜索 list (query 不清, 让用户可继续编辑; X 按钮显隐仍由 query 决定)
+          // 仅在搜索栏开着时操作, 避免无关 setState
+          setSearchListOpen((v) => (searchVisible ? false : v));
         }}
         className={cn(
           "relative overflow-hidden select-none",
@@ -1692,7 +1715,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onClick={() => setSearchListOpen(true)}
+                onFocus={() => setSearchListOpen(true)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setSearchListOpen(true);
+                }}
                 onKeyDown={(e) => {
                   // ESC 关闭整个搜索 (区别于 X 按钮只清空文字)
                   if (e.key === "Escape") {
@@ -1707,8 +1735,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 <button
                   type="button"
                   onClick={() => {
-                    // 清空文字, 保持搜索栏打开 (用户可能想接着输入); 重新聚焦 input
+                    // 清空文字, list 也收起 (X 是"清空"动作, 不是单纯改字)
                     setSearchQuery("");
+                    setSearchListOpen(false);
                     searchInputRef.current?.focus();
                   }}
                   aria-label="清空搜索"
@@ -1719,18 +1748,27 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
               )}
             </div>
 
-            {/* 结果下拉 — 只在 query 非空时显示, max-h 限高溢出滚动 */}
-            {searchQuery.trim().length > 0 && (
+            {/* 结果下拉 — searchVisible && searchListOpen && query 非空 才显示
+                三重条件:
+                  - searchVisible: 整个搜索 wrapper 开着
+                  - searchListOpen: list 没被点地图收起
+                  - query.trim(): 有实际内容
+                wheel 事件 stopPropagation 防止滚轮缩地图 (list 内滚轮只滚 list) */}
+            {searchListOpen && searchQuery.trim().length > 0 && (
               <SearchResults
                 results={searchResults}
                 worlds={worlds}
                 onSelect={(label, wid) => {
-                  // 点结果: 跳过去 + 弹 popup + 收回列表 (清空 query, 搜索栏保留)
-                  // 搜索栏 z-30 仍在, 但 query 空 → list 不渲染 → 不再遮挡 popup
+                  // 点结果: 跳过去 + 弹 popup
+                  // 收起 list (query 清空, 搜索栏保留); focus 回 input 接着搜
                   goToSearchResult(label, wid);
                   setSearchQuery("");
-                  // 跳完焦点回到 input, 用户可以接着搜 (无需手动点输入框)
+                  setSearchListOpen(false);
                   requestAnimationFrame(() => searchInputRef.current?.focus());
+                }}
+                onWheel={(e) => {
+                  // wheel 在 list 内不冒泡, 否则地图 onWheel 触发缩放
+                  e.stopPropagation();
                 }}
               />
             )}
