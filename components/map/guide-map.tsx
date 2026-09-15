@@ -736,33 +736,68 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, [searchVisible]);
 
   // 关键修复: 搜索 wrapper 内的事件需要差异化处理
-  //   - wheel 必须 stopPropagation (capture 阶段, containerRef 上有原生 wheel listener 会缩放)
-  //   - click 不能 stopPropagation, 因为那样 React 合成事件不分发 → input.onFocus/onClick 不触发 → list 不展开
-  //     改用 contains 检查 target 在 wrapper 内时跳过 setSearchListOpen(false) — 见地图 onClick handler
-  //   - 用 native focusin / click 直接挂到 input (input ref 在 commit 后才有效, 这里用 rAF 等)
+  // 用 window 上挂 listener + 检查 target 在 wrapper 内 (event delegation),
+  // 这样 HMR 替换 wrapper DOM 后 listener 不会失效 (因为 listener 在 window 上)
+  //   - wheel:
+  //       list 显示 → stopPropagation 阻止地图缩放 + preventDefault 阻止 page scroll
+  //       list 收起 → preventDefault 阻止 page scroll, 但允许 wheel bubble 到 containerRef 缩地图
+  //   - mousedown/move/up: drag 判定 (mousemove > 3px 算 drag, setSearchListOpen(false))
+  //   - click 在 input/list button wrapper 内: 由 React onClick / list button onClick 自己处理
   useEffect(() => {
     if (!searchVisible) return;
-    const raf = requestAnimationFrame(() => {
-      const input = searchInputRef.current;
-      const wrapper = searchWrapperRef.current;
-      const container = containerRef.current;
-      if (!input || !wrapper || !container) return;
-      const stopWheel = (e: Event) => e.stopPropagation();
-      wrapper.addEventListener("wheel", stopWheel, { passive: false, capture: true });
-      const onFocusIn = () => setSearchListOpen(true);
-      wrapper.addEventListener("focusin", onFocusIn);
-      const onClickIn = () => setSearchListOpen(true);
-      wrapper.addEventListener("click", onClickIn);
-      (input as any)._cleanup = () => {
-        wrapper.removeEventListener("wheel", stopWheel, { capture: true } as EventListenerOptions);
-        wrapper.removeEventListener("focusin", onFocusIn);
-        wrapper.removeEventListener("click", onClickIn);
-      };
-    });
+    const stopWheel = (e: Event) => {
+      const wrapper = document.querySelector('[role="search"]');
+      if (!wrapper || !wrapper.contains(e.target as Node)) return;
+      e.preventDefault();
+      const list = wrapper.querySelector('[role="listbox"][aria-label="搜索结果"]');
+      if (list) e.stopPropagation();
+    };
+    window.addEventListener("wheel", stopWheel, { passive: false, capture: true });
+    // drag 判定: mousedown 在 wrapper 内 + mousemove > 3px → 收起 list
+    // click handler 只在 list button (非 input) 上设 false (input click 走 React onClick 设 true)
+    let dragOrigin: { x: number; y: number } | null = null;
+    let dragActive = false;
+    const onMouseDown = (e: MouseEvent) => {
+      const wrapper = document.querySelector('[role="search"]');
+      if (!wrapper || !wrapper.contains(e.target as Node)) return;
+      dragOrigin = { x: e.clientX, y: e.clientY };
+      dragActive = false;
+    };
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragOrigin || dragActive) return;
+      if (
+        Math.abs(e.clientX - dragOrigin.x) > 3 ||
+        Math.abs(e.clientY - dragOrigin.y) > 3
+      ) {
+        dragActive = true;
+        setSearchListOpen(false);
+      }
+    };
+    const onMouseUp = () => {
+      dragOrigin = null;
+      dragActive = false;
+    };
+    // click 在 input 上: 不通过这里设 state — 走 React onClick handler (input.onClick 设 true)
+    // 但 React 18 + fixed element 偶尔让 input.onClick 不触发, 用 native click 在 input 上兜底
+    const onClickNative = (e: MouseEvent) => {
+      const wrapper = document.querySelector('[role="search"]');
+      if (!wrapper || !wrapper.contains(e.target as Node)) return;
+      const target = e.target as HTMLElement;
+      // input 上的 click: 兜底展开 list (绕过 React 18 batched 让 onClick 失效的问题)
+      if (target.tagName === "INPUT") {
+        setSearchListOpen(true);
+      }
+    };
+    window.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("click", onClickNative);
     return () => {
-      cancelAnimationFrame(raf);
-      const input = searchInputRef.current;
-      (input as any)?._cleanup?.();
+      window.removeEventListener("wheel", stopWheel, { capture: true } as EventListenerOptions);
+      window.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("click", onClickNative);
     };
   }, [searchVisible]);
 
@@ -1608,7 +1643,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           // search wrapper 内的 click 属于搜索框自己的逻辑, 地图不响应
           if (searchWrapperRef.current?.contains(e.target as Node)) return;
           setSelectedLabel(null);
-          setSearchListOpen((v) => (searchVisible ? false : v));
+          setSearchListOpen(false);
         }}
         // wheel 必须 stopPropagation 让 list 内 wheel 不缩地图 — 用 capture 阶段 native listener
         // (不能用 React onWheel, 因为 map 上 wheel handler 也是 native addEventListener,
@@ -1712,12 +1747,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         />
 
         {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关
-            当搜索开启时, popup 下移到搜索框下方 (top-[60px]) 避免遮挡 */}
+            搜索开启时 popup 用 fixed + top-[60px] 让位搜索栏 (wrapper 也是 fixed,
+            不受 page scroll 影响; 否则 click map 触发的 scrollMapIntoView 会把 wrapper 滚出视口) */}
         {selectedLabel && (
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
-            topClassName={searchVisible ? "top-[60px]" : undefined}
+            topClassName={searchVisible ? "fixed top-[60px] left-3" : undefined}
           />
         )}
 
@@ -1730,10 +1766,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           <div
             ref={searchWrapperRef}
             data-list-open={searchListOpen ? "1" : "0"}
+            data-query={searchQuery}
             role="search"
             aria-label="搜索地标"
             className={cn(
-              "absolute top-3 left-3 z-30",
+              "fixed top-3 left-3 z-[60]",
               "w-72 sm:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
