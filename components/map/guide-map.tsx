@@ -54,12 +54,13 @@ import {
   TransitStations,
   PearlLines,
 } from "./transit-overlay";
+import { toPinyin, toPinyinAbbr } from "@/lib/search/pinyin";
 
 /**
  * 搜索匹配类型 — 同一地标可能多个字段同时命中 (e.g. 既匹配 name 也匹配 output)
  * 排序时 name 优先级最高, 用户搜的如果是"产铁"应该优先显示 name 命中的
  */
-type SearchMatchKind = "name" | "output" | "input";
+type SearchMatchKind = "name" | "pinyin" | "pinyin-abbr" | "output";
 
 interface SearchResult {
   label: NewLabel;
@@ -125,21 +126,29 @@ function SearchResults({
           <span className="text-[10px] font-mono text-slate-400 shrink-0">
             {worldName(r.worldId)}
           </span>
-          {/* 命中的字段 chip — 让用户知道是 name / 产出 / 投入 命中 */}
+          {/* 命中的字段 chip — 让用户知道是 name / 拼音 / 产出 命中 */}
+          {r.matched.includes("pinyin") && (
+            <span
+              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200 shrink-0"
+              title="地标名的拼音匹配搜索词"
+            >
+              拼音
+            </span>
+          )}
+          {r.matched.includes("pinyin-abbr") && (
+            <span
+              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200 shrink-0"
+              title="地标名的拼音首字母缩写匹配"
+            >
+              缩写
+            </span>
+          )}
           {r.matched.includes("output") && (
             <span
               className="px-1 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
               title="该地标的产出匹配搜索词"
             >
               产出
-            </span>
-          )}
-          {r.matched.includes("input") && (
-            <span
-              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-sky-50 text-sky-700 ring-1 ring-sky-200 shrink-0"
-              title="该地标的投入匹配搜索词"
-            >
-              投入
             </span>
           )}
         </button>
@@ -712,28 +721,36 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     }
   }, [searchVisible]);
 
-  // 跨 3 维度搜索: 同时匹配 name + outputs.label + inputs.label
+  // 跨 3 维度搜索: 同时匹配 name + 拼音(全拼/缩写) + outputs.label
   //   - name 匹配: 直接命中地标名 (例 "猪人塔")
-  //   - output/input 匹配: 用户搜产出/原料找到对应机器 (例 "铁" → 铁匠铺)
-  // 排序: 当前维度优先, 其它维度按 name 字母顺序; 同一维度内 name 优先于产出/原料
+  //   - 拼音匹配: 打入 "yzz" / "yongzongzhen" → 命中 "雍宗镇"
+  //   - output 匹配: 用户搜产出找到对应机器 (例 "铁" → 铁匠铺)
+  //   - inputs 故意不参与: 搜"泥土"不该匹配到一堆只用泥土当建材的机器, 产出更精准
+  // 排序: 当前维度优先, 其它维度按 name 字母顺序; 同一维度内 name > pinyin > abbr > output
   const searchResults = useMemo(() => {
     const q = searchQuery.trim();
     if (!q) return [] as SearchResult[];
+    const qLower = q.toLowerCase();
     const out: SearchResult[] = [];
     (Object.keys(lb) as NewWorldId[]).forEach((wid) => {
       (lb[wid] ?? []).forEach((label) => {
         const matched: SearchMatchKind[] = [];
         if (label.name.includes(q)) matched.push("name");
+        // 拼音匹配: 用户的英文 query 可能是全拼 (yongzongzhen) 或缩写 (yzz)
+        //  - 全拼用 includes 允许搜中间片段 (例 "luzu" 匹配 "rongluzu")
+        //  - 缩写用 startsWith (用户搜缩写更倾向从头开始, 而不是中间片段)
+        if (matched.length === 0 || !matched.includes("name")) {
+          const fullPinyin = toPinyin(label.name);
+          const abbrPinyin = toPinyinAbbr(label.name);
+          if (fullPinyin.includes(qLower)) matched.push("pinyin");
+          else if (abbrPinyin.startsWith(qLower)) matched.push("pinyin-abbr");
+        }
         if (
           (label.outputs ?? []).some((o) =>
             (o.label ?? "").includes(q),
           )
         )
           matched.push("output");
-        if (
-          (label.inputs ?? []).some((i) => (i.label ?? "").includes(q))
-        )
-          matched.push("input");
         if (matched.length > 0) out.push({ label, worldId: wid, matched });
       });
     });
@@ -742,6 +759,14 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       const aCur = a.worldId === worldId;
       const bCur = b.worldId === worldId;
       if (aCur !== bCur) return aCur ? -1 : 1;
+      // 同维度内按匹配强度 (name > pinyin > pinyin-abbr > output) 再按字母序
+      const rank = (m: SearchMatchKind[]) =>
+        m.includes("name") ? 0 :
+        m.includes("pinyin") ? 1 :
+        m.includes("pinyin-abbr") ? 2 : 3;
+      const ra = rank(a.matched);
+      const rb = rank(b.matched);
+      if (ra !== rb) return ra - rb;
       return a.label.name.localeCompare(b.label.name, "zh");
     });
     return out;
@@ -1584,7 +1609,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           isPanning={isPanning}
           labelsVisible={labelsVisible}
           transitVisible={transitVisible}
-          searchQuery={searchQuery}
           toScreen={worldToScreenFactory({
             container: containerRef.current,
             // 用 React state 的 world (不是 worldRef.current),
@@ -1660,7 +1684,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            {/* input 行 */}
+            {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
+                关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
             <div className="flex items-center pl-3 pr-1.5 h-9">
               <IconSearch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <input
@@ -1669,23 +1694,29 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
-                  // ESC 关闭搜索; Enter 不抢 (不做"回车跳第一个结果"动作, 用户点列表更明确)
+                  // ESC 关闭整个搜索 (区别于 X 按钮只清空文字)
                   if (e.key === "Escape") {
                     e.preventDefault();
                     setSearchVisible(false);
                   }
                 }}
-                placeholder="搜索地标名称或产出"
+                placeholder="名称/拼音/产出"
                 className="flex-1 min-w-0 px-2 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
               />
-              <button
-                type="button"
-                onClick={() => setSearchVisible(false)}
-                aria-label="关闭搜索"
-                className="w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
-              >
-                <IconX className="w-3.5 h-3.5" />
-              </button>
+              {searchQuery.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // 清空文字, 保持搜索栏打开 (用户可能想接着输入); 重新聚焦 input
+                    setSearchQuery("");
+                    searchInputRef.current?.focus();
+                  }}
+                  aria-label="清空搜索"
+                  className="w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+                >
+                  <IconX className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
 
             {/* 结果下拉 — 只在 query 非空时显示, max-h 限高溢出滚动 */}
@@ -1694,10 +1725,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 results={searchResults}
                 worlds={worlds}
                 onSelect={(label, wid) => {
-                  // 点结果: 跳过去 + 弹 popup
-                  // 搜索 wrapper z-30 覆盖 popup (z-20), 选了之后关搜索让 popup 浮出来
+                  // 点结果: 跳过去 + 弹 popup + 收回列表 (清空 query, 搜索栏保留)
+                  // 搜索栏 z-30 仍在, 但 query 空 → list 不渲染 → 不再遮挡 popup
                   goToSearchResult(label, wid);
-                  setSearchVisible(false);
+                  setSearchQuery("");
+                  // 跳完焦点回到 input, 用户可以接着搜 (无需手动点输入框)
+                  requestAnimationFrame(() => searchInputRef.current?.focus());
                 }}
               />
             )}
