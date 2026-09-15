@@ -70,6 +70,8 @@ export interface NewLabel {
   images?: string[];
   /** 描述 (任何 kind 都可有) */
   description?: string;
+  /** 建设者 (可选字段 — 留空不显示, 填了就放在简介之后、投入/产出之前) */
+  builder?: string;
   /** 输入产物 (没填就不显示输入区) */
   inputs?: NewLabelProduct[];
   /** 输出产物 (没填就不显示输出区) */

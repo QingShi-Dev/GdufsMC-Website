@@ -110,6 +110,16 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
             {label.description}
           </p>
         )}
+        {label.builder && (
+          <div className="flex items-start gap-1.5 pt-0.5">
+            <span className="text-[10px] font-semibold uppercase pt-0.5 w-5 shrink-0 text-slate-500">
+              建设
+            </span>
+            <span className="text-[11px] leading-snug text-slate-600 flex-1 min-w-0 truncate">
+              {label.builder}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* 产物区 — inputs / outputs 都各自一段, 有就显示 */}
