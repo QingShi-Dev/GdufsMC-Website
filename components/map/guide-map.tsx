@@ -55,7 +55,98 @@ import {
   PearlLines,
 } from "./transit-overlay";
 
+/**
+ * 搜索匹配类型 — 同一地标可能多个字段同时命中 (e.g. 既匹配 name 也匹配 output)
+ * 排序时 name 优先级最高, 用户搜的如果是"产铁"应该优先显示 name 命中的
+ */
+type SearchMatchKind = "name" | "output" | "input";
+
+interface SearchResult {
+  label: NewLabel;
+  worldId: NewWorldId;
+  matched: SearchMatchKind[];
+}
+
 /* ============================== Sub-components ============================== */
+
+/**
+ * 搜索结果下拉 — 跨 3 维度展示匹配地标
+ *  - 当前维度优先 (按 name 升序), 其它维度其次
+ *  - 命中的字段 (name / 产出 / 投入) 用小 chip 标注, 让用户知道为啥被搜出来
+ *  - 0 结果给空态
+ */
+function SearchResults({
+  results,
+  worlds,
+  onSelect,
+}: {
+  results: SearchResult[];
+  worlds: NewWorldMeta[];
+  onSelect: (label: NewLabel, worldId: NewWorldId) => void;
+}) {
+  const worldName = (id: NewWorldId) =>
+    worlds.find((w) => w.id === id)?.name ?? id;
+  const worldAccent = (id: NewWorldId) =>
+    worlds.find((w) => w.id === id)?.accent ?? "#64748b";
+  if (results.length === 0) {
+    return (
+      <div className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-400">
+        没有匹配的地标
+      </div>
+    );
+  }
+  return (
+    <div
+      role="listbox"
+      aria-label="搜索结果"
+      className="border-t border-slate-200 max-h-[40vh] overflow-y-auto"
+    >
+      {results.map((r) => (
+        <button
+          key={`${r.worldId}:${r.label.id}`}
+          type="button"
+          role="option"
+          onClick={() => onSelect(r.label, r.worldId)}
+          className={cn(
+            "w-full flex items-center gap-2 px-3 py-2 text-left",
+            "border-b border-slate-100 last:border-b-0",
+            "hover:bg-slate-50 transition-colors",
+            "focus:outline-none focus:bg-slate-50",
+          )}
+        >
+          <span
+            className="w-1.5 h-1.5 rounded-full shrink-0"
+            style={{ background: worldAccent(r.worldId) }}
+            aria-hidden="true"
+          />
+          <span className="text-xs font-medium text-slate-800 truncate flex-1 min-w-0">
+            {r.label.name}
+          </span>
+          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+            {worldName(r.worldId)}
+          </span>
+          {/* 命中的字段 chip — 让用户知道是 name / 产出 / 投入 命中 */}
+          {r.matched.includes("output") && (
+            <span
+              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
+              title="该地标的产出匹配搜索词"
+            >
+              产出
+            </span>
+          )}
+          {r.matched.includes("input") && (
+            <span
+              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-sky-50 text-sky-700 ring-1 ring-sky-200 shrink-0"
+              title="该地标的投入匹配搜索词"
+            >
+              投入
+            </span>
+          )}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 /* ---- 维度切换 tabs (主世界/下界/末地) ---- */
 function WorldTabs({
@@ -607,7 +698,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, [isFullscreen, isPortrait]);
 
   // 搜索开关切换:
-  //  - 开启 → input 自动 focus, 用户直接打字
+  //  - 开启 → input 自动 focus, 用户直接 focus
   //  - 关闭 → 清空 query (避免下次开启时残留旧关键词, 让 MapLabels 显示老匹配)
   useEffect(() => {
     if (searchVisible) {
@@ -620,6 +711,41 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       setSearchQuery("");
     }
   }, [searchVisible]);
+
+  // 跨 3 维度搜索: 同时匹配 name + outputs.label + inputs.label
+  //   - name 匹配: 直接命中地标名 (例 "猪人塔")
+  //   - output/input 匹配: 用户搜产出/原料找到对应机器 (例 "铁" → 铁匠铺)
+  // 排序: 当前维度优先, 其它维度按 name 字母顺序; 同一维度内 name 优先于产出/原料
+  const searchResults = useMemo(() => {
+    const q = searchQuery.trim();
+    if (!q) return [] as SearchResult[];
+    const out: SearchResult[] = [];
+    (Object.keys(lb) as NewWorldId[]).forEach((wid) => {
+      (lb[wid] ?? []).forEach((label) => {
+        const matched: SearchMatchKind[] = [];
+        if (label.name.includes(q)) matched.push("name");
+        if (
+          (label.outputs ?? []).some((o) =>
+            (o.label ?? "").includes(q),
+          )
+        )
+          matched.push("output");
+        if (
+          (label.inputs ?? []).some((i) => (i.label ?? "").includes(q))
+        )
+          matched.push("input");
+        if (matched.length > 0) out.push({ label, worldId: wid, matched });
+      });
+    });
+    out.sort((a, b) => {
+      // 当前维度优先 (按 name 升序), 其它维度其次 (按 name 升序)
+      const aCur = a.worldId === worldId;
+      const bCur = b.worldId === worldId;
+      if (aCur !== bCur) return aCur ? -1 : 1;
+      return a.label.name.localeCompare(b.label.name, "zh");
+    });
+    return out;
+  }, [searchQuery, lb, worldId]);
 
   // ---- 4. 拖拽 / 滚轮 ref ----
   const containerRef = useRef<HTMLDivElement>(null);
@@ -642,6 +768,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   useEffect(() => {
     worldRef.current = world;
   }, [world]);
+
+  /**
+   * 切维度时是否跳过 "自动重置到中央 100%" — 搜索结果点击会自己 panToLandmark,
+   * 此时 reset 一下会闪中央再跳过去, 难看。搜索调用 setWorldId 前先把这个 ref 置 true,
+   * 切维度 effect 读到就跳过 reset, 只保留 scrollMapIntoView
+   */
+  const skipWorldResetRef = useRef(false);
 
   const commit = useCallback(() => {
     rafRef.current = null;
@@ -967,6 +1100,38 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   );
 
   /**
+   * 搜索结果点击 — 跨维度跳转: 切维度 + 跳视角 + 弹 popup
+   *
+   * 时序问题:
+   *   1. setWorldId(next) 是异步, worldRef.current 要等下次 render 的 useEffect 同步
+   *   2. panToLandmark 内部用 worldRef.current 算坐标 — 切维度后必须等 worldRef 同步
+   *   3. 切维度 effect 默认会 reset (commitImmediate(0,0,1)) — 会闪中央再跳, 难看
+   *
+   * 处理:
+   *   - 提前 skipWorldResetRef.current = true 告诉 effect 别 reset
+   *   - 用 rAF 嵌套: 第一帧 React render + useEffect 跑完, 第二帧 worldRef 已是新 world
+   *     再调 panToLandmark 用新 world 算 tx/ty/k, 同时保留 500ms transition 动画
+   */
+  const goToSearchResult = useCallback(
+    (label: NewLabel, fromWorldId: NewWorldId) => {
+      setSelectedLabel(label);
+      if (fromWorldId !== worldId) {
+        skipWorldResetRef.current = true;
+        setWorldId(fromWorldId);
+        // 双 rAF: 第一帧 React 提交 + useEffect 跑完 (worldRef 同步成新 world)
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            panToLandmark(label.x, label.z, label.targetZoom ?? 100);
+          });
+        });
+      } else {
+        panToLandmark(label.x, label.z, label.targetZoom ?? 100);
+      }
+    },
+    [worldId, panToLandmark],
+  );
+
+  /**
    * 滚轮缩放专用 — debounce 150ms
    *  滚轮是连续事件, 每次都滚会跳; 停手 150ms 后再滚一次
    */
@@ -996,9 +1161,16 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // 跳过策略: 比对 worldId 跟初始值, 没变就不滚
   //   (比 useRef flag 更稳: React 18 StrictMode 双挂载时, ref flag 会被第 1 次跑改成 false,
   //    第 2 次跑看到 false 就误触发了; 用值对比, 两次 worldId 跟初始值都相等, 都会跳过)
+  // skipWorldResetRef 由搜索结果点击置 true: search 自己会跳视角, 跳过自动 reset
   const initialWorldIdRef = useRef<NewWorldId>(worldId);
   useEffect(() => {
     if (initialWorldIdRef.current === worldId) return;
+    if (skipWorldResetRef.current) {
+      // 搜索路径: 自己负责跳视角, 这里只滚到 header 下方 (跟标签/交通/搜索开关一致)
+      skipWorldResetRef.current = false;
+      scrollMapIntoView();
+      return;
+    }
     queueMicrotask(() => commitImmediate(0, 0, 1));
     scrollMapIntoView();
   }, [worldId, scrollMapIntoView]);
@@ -1467,51 +1639,68 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           />
         )}
 
-        {/* 搜索框 — 浮在地图左上角, 跟 popup 同一 absolute 容器 (map container 内)
+        {/* 搜索框 + 结果下拉 — 浮在地图左上角, 跟 popup 同一 absolute 容器 (map container 内)
             - 开启搜索才显示 (跟开关同步), 关闭时整个卸载
-            - input 高度 36px + top-3 (12px) = 48px, popup 下移到 top-[60px] 留 12px gap
-            - ESC / X 按钮都能关闭; 关闭 useEffect 会清空 query */}
+            - z-30 高于 popup (z-20): 搜索时列表覆盖 popup 是预期, 用户主动开搜索
+              时本来就不需要同时看旧 popup, 点结果后会替换
+            - ESC / X 按钮 / 点结果都能关闭/跳转; 关闭 useEffect 会清空 query */}
         {searchVisible && (
           <div
             role="search"
             aria-label="搜索地标"
             className={cn(
-              "absolute top-3 left-3 z-20",
+              "absolute top-3 left-3 z-30",
               "w-72 sm:w-80 max-w-[calc(100%-24px)]",
-              "h-9",
-              "flex items-center pl-3 pr-1.5",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",
+              "overflow-hidden",
             )}
             // 跟 popup 一样不冒泡到地图 click (点搜索框不该关掉什么)
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <IconSearch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              onKeyDown={(e) => {
-                // ESC 关闭搜索; Enter 不抢 (用户期望跟其他搜索一致, 不做"回车跳第一个结果"动作)
-                if (e.key === "Escape") {
-                  e.preventDefault();
+            {/* input 行 */}
+            <div className="flex items-center pl-3 pr-1.5 h-9">
+              <IconSearch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  // ESC 关闭搜索; Enter 不抢 (不做"回车跳第一个结果"动作, 用户点列表更明确)
+                  if (e.key === "Escape") {
+                    e.preventDefault();
+                    setSearchVisible(false);
+                  }
+                }}
+                placeholder="搜索地标名称或产出"
+                className="flex-1 min-w-0 px-2 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
+              />
+              <button
+                type="button"
+                onClick={() => setSearchVisible(false)}
+                aria-label="关闭搜索"
+                className="w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+              >
+                <IconX className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* 结果下拉 — 只在 query 非空时显示, max-h 限高溢出滚动 */}
+            {searchQuery.trim().length > 0 && (
+              <SearchResults
+                results={searchResults}
+                worlds={worlds}
+                onSelect={(label, wid) => {
+                  // 点结果: 跳过去 + 弹 popup
+                  // 搜索 wrapper z-30 覆盖 popup (z-20), 选了之后关搜索让 popup 浮出来
+                  goToSearchResult(label, wid);
                   setSearchVisible(false);
-                }
-              }}
-              placeholder="搜索地标"
-              className="flex-1 min-w-0 px-2 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
-            />
-            <button
-              type="button"
-              onClick={() => setSearchVisible(false)}
-              aria-label="关闭搜索"
-              className="w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
-            >
-              <IconX className="w-3.5 h-3.5" />
-            </button>
+                }}
+              />
+            )}
           </div>
         )}
 
