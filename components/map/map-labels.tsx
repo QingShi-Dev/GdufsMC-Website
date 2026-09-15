@@ -35,6 +35,8 @@ export interface MapLabelsProps {
   labelsVisible: boolean;
   /** 交通开关 — 控制 visibleWhen: "transit" 的标签 (站名/珍珠站) */
   transitVisible: boolean;
+  /** 搜索关键词 (trim 后) — 非空时, 覆盖 visibleWhen/labelsVisible, 只显示 name 包含 query 的标签 */
+  searchQuery?: string;
   /** viewBox (vbX, vbY) → 容器内 CSS 像素 (left, top) */
   toScreen: (vbX: number, vbY: number) => { x: number; y: number } | null;
   /** 点标签: 视角跳到该坐标 + 缩放到 targetZoom (百分比) */
@@ -90,6 +92,7 @@ export function MapLabels({
   toScreen,
   labelsVisible,
   transitVisible,
+  searchQuery,
   onPan,
   onSelect,
 }: MapLabelsProps) {
@@ -99,6 +102,9 @@ export function MapLabels({
   //   - 这样 CSS transition 有起点可以插值, 出现时不会闪现
   //   - k 跨过 minZoom 或 visibleWhen 改变时, 立即显隐, 位置已经插值好
   const currentZoomPercent = currentZoom * 100;
+  // 搜索模式: query 非空时, 跨所有可见性过滤, 只显示 name 匹配的 label
+  const trimmedQuery = (searchQuery ?? "").trim();
+  const isSearching = trimmedQuery.length > 0;
 
   return (
     <div
@@ -107,9 +113,12 @@ export function MapLabels({
     >
       {labels.map((lb) => {
         // 可见性过滤:
+        //  - 搜索模式: query 非空, 跨 visibleWhen / labelsVisible, 只看 name 包含 query
         //  - 站名/珍珠 (visibleWhen: "transit") 只看 transitVisible, 不要求 labelsVisible
         //  - 普通地标 (visibleWhen: "always" 或未填) 只看 labelsVisible
-        if (lb.visibleWhen === "transit") {
+        if (isSearching) {
+          if (!lb.name.includes(trimmedQuery)) return null;
+        } else if (lb.visibleWhen === "transit") {
           if (!transitVisible) return null;
         } else {
           if (!labelsVisible) return null;

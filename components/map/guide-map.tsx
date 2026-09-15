@@ -27,6 +27,9 @@ import {
   IconMapPinOff,
   IconBus,
   IconBusOff,
+  IconSearch,
+  IconSearchOff,
+  IconX,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
@@ -64,6 +67,8 @@ function WorldTabs({
   onToggleLabels,
   transitVisible,
   onToggleTransit,
+  searchVisible,
+  onToggleSearch,
 }: {
   worlds: NewWorldMeta[];
   value: NewWorldId;
@@ -75,6 +80,9 @@ function WorldTabs({
   /** 是否显示交通 (transit 网络) — 用来高亮 tab 栏里的交通开关 */
   transitVisible: boolean;
   onToggleTransit: () => void;
+  /** 是否显示搜索框 */
+  searchVisible: boolean;
+  onToggleSearch: () => void;
 }) {
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
@@ -144,8 +152,6 @@ function WorldTabs({
         aria-label={transitVisible ? "隐藏交通信息" : "显示交通信息"}
         aria-pressed={transitVisible}
         className={cn(
-          // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留
-          "lg:mr-72",
           "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
           "transition-all flex items-center gap-1.5",
           transitVisible
@@ -160,6 +166,32 @@ function WorldTabs({
         )}
         <span className="hidden sm:inline">
           交通信息 <span className="text-slate-400">- {transitVisible ? "开" : "关"}</span>
+        </span>
+      </button>
+      {/* 搜索开关 — 紧贴交通信息开关右边, 样式与"标签文字"/"交通信息"完全一致
+          开启后: 在地图左上角显示搜索 input, 跨维度搜 name; 关闭后: 还原并下移 popup */}
+      <button
+        type="button"
+        onClick={onToggleSearch}
+        aria-label={searchVisible ? "关闭搜索" : "开启搜索"}
+        aria-pressed={searchVisible}
+        // 桌面端给坐标预留 ~280px (sm+ 才显示坐标), 移动端不预留 — 跟交通信息一致
+        className={cn(
+          "lg:mr-72",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
+          "transition-all flex items-center gap-1.5",
+          searchVisible
+            ? "text-slate-800"
+            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+        )}
+      >
+        {searchVisible ? (
+          <IconSearch className="w-3.5 h-3.5" />
+        ) : (
+          <IconSearchOff className="w-3.5 h-3.5" />
+        )}
+        <span className="hidden sm:inline">
+          搜索 <span className="text-slate-400">- {searchVisible ? "开" : "关"}</span>
         </span>
       </button>
     </div>
@@ -534,11 +566,17 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(false);
   // 交通 (transit 网络) 同样默认 off, 跟地标独立
   const [transitVisible, setTransitVisible] = useState(false);
+  // 搜索: 开关 + 当前关键词 — 开启时在左上角显示 input, 跨维度按 name 过滤标签
+  // 默认 off, 跟其他两个开关风格一致 (不主动打扰用户)
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   // 当前打开 popup 的标签 — null = 没开
   // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
   // popup 位置固定在地图左上角, 不需要 anchor
   const [selectedLabel, setSelectedLabel] = useState<NewLabel | null>(null);
+  // 搜索 input ref — 开启时自动 focus
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   // 正在过渡动画中 (click region 跳视角) — 用这个 flag 控制 SVG g 的 transition class
   // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
@@ -567,6 +605,21 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       setShowRotateHint(false);
     }
   }, [isFullscreen, isPortrait]);
+
+  // 搜索开关切换:
+  //  - 开启 → input 自动 focus, 用户直接打字
+  //  - 关闭 → 清空 query (避免下次开启时残留旧关键词, 让 MapLabels 显示老匹配)
+  useEffect(() => {
+    if (searchVisible) {
+      // requestAnimationFrame 等 DOM commit 后再 focus (避免 React 18 自动批处理导致 ref 未挂载)
+      const id = requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(id);
+    } else {
+      setSearchQuery("");
+    }
+  }, [searchVisible]);
 
   // ---- 4. 拖拽 / 滚轮 ref ----
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1269,6 +1322,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             setTransitVisible((v) => !v);
             scrollMapIntoView();
           }}
+          searchVisible={searchVisible}
+          onToggleSearch={() => {
+            setSearchVisible((v) => !v);
+            // 搜索开关也滚到 header 下方, 跟另外两个开关保持一致
+            scrollMapIntoView();
+          }}
         />
         {!isMobile && (
           // 始终渲染, 显示/隐藏由 JS 直接改 style.display (无 React state)
@@ -1353,6 +1412,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           isPanning={isPanning}
           labelsVisible={labelsVisible}
           transitVisible={transitVisible}
+          searchQuery={searchQuery}
           toScreen={worldToScreenFactory({
             container: containerRef.current,
             // 用 React state 的 world (不是 worldRef.current),
@@ -1397,12 +1457,62 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           defaults={mt[worldId]?.style}
         />
 
-        {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关 */}
+        {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关
+            当搜索开启时, popup 下移到搜索框下方 (top-[60px]) 避免遮挡 */}
         {selectedLabel && (
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
+            topClassName={searchVisible ? "top-[60px]" : undefined}
           />
+        )}
+
+        {/* 搜索框 — 浮在地图左上角, 跟 popup 同一 absolute 容器 (map container 内)
+            - 开启搜索才显示 (跟开关同步), 关闭时整个卸载
+            - input 高度 36px + top-3 (12px) = 48px, popup 下移到 top-[60px] 留 12px gap
+            - ESC / X 按钮都能关闭; 关闭 useEffect 会清空 query */}
+        {searchVisible && (
+          <div
+            role="search"
+            aria-label="搜索地标"
+            className={cn(
+              "absolute top-3 left-3 z-20",
+              "w-72 sm:w-80 max-w-[calc(100%-24px)]",
+              "h-9",
+              "flex items-center pl-3 pr-1.5",
+              "bg-white border border-slate-200 rounded-lg",
+              "shadow-2xl shadow-slate-900/20",
+              "animate-in fade-in slide-in-from-top-2 duration-200",
+            )}
+            // 跟 popup 一样不冒泡到地图 click (点搜索框不该关掉什么)
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <IconSearch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <input
+              ref={searchInputRef}
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => {
+                // ESC 关闭搜索; Enter 不抢 (用户期望跟其他搜索一致, 不做"回车跳第一个结果"动作)
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setSearchVisible(false);
+                }
+              }}
+              placeholder="搜索地标"
+              className="flex-1 min-w-0 px-2 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
+            />
+            <button
+              type="button"
+              onClick={() => setSearchVisible(false)}
+              aria-label="关闭搜索"
+              className="w-6 h-6 rounded-full text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            >
+              <IconX className="w-3.5 h-3.5" />
+            </button>
+          </div>
         )}
 
         {/* 缩放百分比 — 右上角 */}

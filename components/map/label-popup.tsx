@@ -27,9 +27,14 @@ import type {
 export interface LabelPopupProps {
   label: NewLabel;
   onClose: () => void;
+  /**
+   * 覆盖默认 `top-3` — 用于外部挂载了其他元素 (e.g. 搜索框) 时下移避开
+   * 例: 搜索开启时父组件传 `top-[60px]` 让 popup 落到搜索框下方
+   */
+  topClassName?: string;
 }
 
-export function LabelPopup({ label, onClose }: LabelPopupProps) {
+export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -57,7 +62,8 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
       aria-modal="false"
       aria-labelledby="lm-popup-name"
       className={cn(
-        "absolute top-3 left-3 z-20",
+        "absolute left-3 z-20",
+        topClassName ?? "top-3",
         "w-72 sm:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
