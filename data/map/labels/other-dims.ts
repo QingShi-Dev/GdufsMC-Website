@@ -17,6 +17,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 25,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 QingShi",
       description: "实现超远距离传送的大型装置，选定目的地，投掷珍珠，即可在数秒内抵达对应出口",
       fontSize: { min: 14, max: 18, maxZoom: 800 },
       images: [
@@ -30,6 +31,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -98,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 CMLOCK 核摇Prog_Metalcore yunzhongxian",
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
@@ -46,6 +48,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 82,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 CMLOCK",
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
@@ -63,6 +66,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -1060,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 CMLOCK QingShi",
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
@@ -81,6 +85,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -32,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 CMLOCK 核摇Prog_Metalcore",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/猪灵交易所.png",
@@ -112,6 +117,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 96,
       targetZoom: 800,
       kind: "machine",
+      builder: "QingShi",
       description: "通过摔落处死船吸刷怪塔生成的怪物，启用时能看到“怪物瀑布”，刷怪结构位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
@@ -133,6 +139,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 94,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 yunzhongxian",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/岩浆怪农场.png",
@@ -149,6 +156,7 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: 15,
       targetZoom: 800,
       kind: "machine",
+      builder: "CMLOCK Aurora1229937",
       description: "收集装置位于主世界",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
@@ -169,6 +177,7 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: -5,
       targetZoom: 800,
       kind: "machine",
+      builder: "mc_zte",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/烈焰人农场.png",
@@ -184,6 +193,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -22,
       targetZoom: 800,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/玄武岩机.png",
@@ -199,6 +209,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 26,
       targetZoom: 800,
       kind: "machine",
+      builder: "核摇Prog_Metalcore",
       fontSize: { min: 10, max: 14, minZoom: 375, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/猪肉塔.png",
@@ -215,6 +226,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -40,
       targetZoom: 800,
       kind: "machine",
+      builder: "CMLOCK Aurora1229937 QingShi",
       description: "刷怪结构位于主世界",
       fontSize: { min: 10, max: 12, minZoom: 375, maxZoom: 800 },
       images: [
@@ -233,6 +245,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 305,
       targetZoom: 800,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 10, max: 14, mid: 12 , midZoom: 150, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/主世界伪和平开关.png",
@@ -245,6 +258,7 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 30,
       targetZoom: 800,
       kind: "machine",
+      builder: "Marcus",
       fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800 },
       images: [
         "/images/maps/machines/nether/盾构机.png",
@@ -547,6 +561,7 @@ export const END_LABELS: NewLabel[] = [
       z: 0,
       targetZoom: 800,
       kind: "machine",
+      builder: "Aurora1229937 CMLOCK KirkLee123",
       description: "用于瞬杀末影龙的大型装置",
       fontSize: { min: 14, max: 18, maxZoom: 600 },
       images: [
@@ -560,6 +575,7 @@ export const END_LABELS: NewLabel[] = [
       z: 160,
       targetZoom: 800,
       kind: "machine",
+      builder: "QingShi Aurora1229937 KirkLee123 CMLOCK",
       description: "以水流运输为主的大型全物品分类、仓储装置",
       fontSize: { min: 14, max: 18, maxZoom: 600 },
       images: [
@@ -574,6 +590,7 @@ export const END_LABELS: NewLabel[] = [
       z: 268,
       targetZoom: 600,
       kind: "region",
+      builder: "QingShi",
       description: "包含粘土量产的全链条机器",
       fontSize: { min: 12, max: 16, mid: 14, midZoom: 200, maxZoom: 500 },
       images: [
@@ -587,6 +604,7 @@ export const END_LABELS: NewLabel[] = [
       z: 3,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/紫颂果农场.png",
@@ -605,6 +623,7 @@ export const END_LABELS: NewLabel[] = [
       z: 1,
       targetZoom: 600,
       kind: "machine",
+      builder: "Aurora1229937",
       description: "可根据情况切换刷沙、固化模式，生产装置位于主世界",
       fontSize: { min: 12, max: 14, minZoom: 320, maxZoom: 600 },
       images: [
@@ -625,6 +644,7 @@ export const END_LABELS: NewLabel[] = [
       z: 0,
       targetZoom: 600,
       kind: "machine",
+      builder: "KirkLee123",
       description: "手动处死可获得大量经验",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
@@ -641,6 +661,7 @@ export const END_LABELS: NewLabel[] = [
       z: 306,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/B36炸树场.png",
@@ -664,6 +685,7 @@ export const END_LABELS: NewLabel[] = [
       z: -780,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/潜影贝农场.png",
@@ -679,6 +701,7 @@ export const END_LABELS: NewLabel[] = [
       z: 160,
       targetZoom: 600,
       kind: "machine",
+      builder: "Aurora1229937 QingShi",
       description: "装配有白名单系统，可根据情况切换散装、打包模式",
       fontSize: { min: 12, max: 14,minZoom: 250 , maxZoom: 600 },
       images: [
@@ -692,6 +715,7 @@ export const END_LABELS: NewLabel[] = [
       z: 253,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/泥土机.png",
@@ -710,6 +734,7 @@ export const END_LABELS: NewLabel[] = [
       z: 279,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/泥巴机.png",
@@ -729,6 +754,7 @@ export const END_LABELS: NewLabel[] = [
       offsetY: 5,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 10, max: 10, minZoom: 501, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/滴水石锥农场.png",
@@ -745,6 +771,7 @@ export const END_LABELS: NewLabel[] = [
       offsetY: 3,
       targetZoom: 600,
       kind: "machine",
+      builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
         "/images/maps/machines/end/粘土机.png",

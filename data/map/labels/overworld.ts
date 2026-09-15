@@ -51,6 +51,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       kind: "region",
       offsetY: -10,
       targetZoom: 350,
+      builder: "KirkLee123",
       fontSize: { min: 12, max: 22 },
       images: [
         "/images/maps/regions/地图画工厂.png"
@@ -64,6 +65,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       kind: "region",
       offsetY: -10,
       targetZoom: 300,
+      builder: "QingShi Aurora1229937 KirkLee123",
+      description: "大幅地图画",
       fontSize: { min: 12, max: 22 },
     },
     {
@@ -74,6 +77,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       kind: "region",
       offsetY: -5,
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore",
       fontSize: { min: 10, max: 24 },
     },
     {
@@ -99,6 +103,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -336,
       kind: "region",
       targetZoom: 1600,
+      builder: "KirkLee123",
       description: "可通过钻石兑换游戏币开启游戏设施",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
@@ -112,6 +117,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -220,
       kind: "building",
       targetZoom: 600,
+      builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
         "/images/maps/buildings/overworld/星穹列车.png",
@@ -126,6 +132,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 130,
       kind: "building",
       targetZoom: 1600,
+      builder: "Aurora1229937 KirkLee123 HuM0rouS1",
       description: "过去两届全服PVP的比赛场地，配套有活动广场",
       fontSize: { min: 12, max: 14, minZoom: 200 },
       images: [
@@ -143,6 +150,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 3,
       kind: "building",
       targetZoom: 1200,
+      builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 200 },
       images: [
         "/images/maps/buildings/overworld/愿结局如你我所书.png",
@@ -158,6 +166,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 3,
       kind: "building",
       targetZoom: 1600,
+      builder: "Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 700 },
       images: [
         "/images/maps/buildings/overworld/祖国母亲在呼唤.png",
@@ -173,6 +182,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 165,
       kind: "building",
       targetZoom: 1600,
+      builder: "QingShi",
       description: "布设「翁法罗斯英雄纪」地图画",
       fontSize: { min: 12, max: 12, minZoom: 500 },
       images: [
@@ -188,6 +198,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 2,
       kind: "building",
       targetZoom: 1600,
+      builder: "hideswa",
       fontSize: { min: 10, max: 12, minZoom: 500 },
       images: [
         "/images/maps/buildings/overworld/八芒垂星舆.png",
@@ -200,6 +211,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 135,
       kind: "building",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
         "/images/maps/buildings/overworld/村民公寓.png",
@@ -213,6 +225,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -575,
       kind: "building",
       targetZoom: 1600,
+      builder: "QingShi hideswa",
       fontSize: { min: 12, max: 14, minZoom: 200 },
       images: [
         "/images/maps/buildings/overworld/八角塔.png",
@@ -226,6 +239,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -575,
       kind: "building",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
         "/images/maps/buildings/overworld/繁英府.png",
@@ -240,6 +254,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -68,
       kind: "building",
       targetZoom: 1600,
+      builder: "Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/buildings/overworld/樱花神木.png",
@@ -247,14 +262,15 @@ export const OVERWORLD_LABELS: NewLabel[] = [
     },
     {
       id: "refreshing-sakura-terrace",
-      name: "沁樱台",
+      name: "樱花阁",
       x: 185,
       z: 33,
       kind: "building",
       targetZoom: 1600,
+      builder: "Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/buildings/overworld/沁樱台.png",
+        "/images/maps/buildings/overworld/樱花阁.png",
       ],
     },
     {
@@ -265,6 +281,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 2,
       kind: "building",
       targetZoom: 1600,
+      builder: "QingShi",
       description: "纪念2025年12月11日，云城像素社成立一周年",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
@@ -279,6 +296,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -545,
       kind: "machine",
       targetZoom: 1600,
+      builder: "KirkLee123",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
         "/images/maps/machines/overworld/鱿鱼农场.png",
@@ -294,6 +312,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -247,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 200 },
       images: [
         "/images/maps/machines/overworld/溺尸塔.png",
@@ -311,6 +330,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -310,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK Aurora1229937",
       description: "收集装置位于下界",
       fontSize: { min: 12, max: 14, minZoom: 200 },
       images: [
@@ -329,6 +349,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 784,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK QingShi Aurora1229937",
       description: "超高效率的刷怪装置，建于全服第一个空置域，收集装置位于下界",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
@@ -350,6 +371,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -763,
       kind: "machine",
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore Aurora1229937 QingShi",
       description: "刷怪结构位于下界",
       fontSize: { min: 12, max: 14 },
       images: [
@@ -366,6 +388,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -160,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 14 },
       images: [
         "/images/maps/machines/overworld/刷冰机.png",
@@ -381,6 +404,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 2268,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 14 },
       images: [
         "/images/maps/machines/overworld/袭击塔.png",
@@ -401,6 +425,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       kind: "machine",
       targetZoom: 1600,
       fontSize: { min: 12, max: 14 },
+      builder: "CMLOCK 核摇Prog_Metalcore Aurora1229937",
       images: [
         "/images/maps/machines/overworld/女巫塔.png",
       ],
@@ -420,6 +445,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 755,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK Aurora1229937",
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
@@ -440,6 +466,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -7,
       kind: "machine",
       targetZoom: 1600,
+      builder: "mc_zte",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
         "/images/maps/machines/overworld/蜜蜂农场.png",
@@ -460,6 +487,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -8518,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
@@ -479,6 +507,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 1,
       kind: "machine",
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
         "/images/maps/machines/overworld/村民交易所.png",
@@ -492,6 +521,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/刷铁机.png",
@@ -509,6 +539,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "Aurora1229937 yunzhongxian",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/史莱姆农场.png",
@@ -524,6 +555,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 12,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK Aurora1229937 核摇Prog_Metalcore",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/320熔炉组.png",
@@ -537,6 +569,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 10, max: 10, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/海泡菜机.png",
@@ -556,6 +589,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 1,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 12, max: 12, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/甘蔗机.png",
@@ -571,6 +605,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -18,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/全自动农场.png",
@@ -593,6 +628,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 2,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/仙人掌农场.png",
@@ -609,6 +645,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -30,
       kind: "machine",
       targetZoom: 1600,
+      builder: "Y6Z9J",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/金胡萝卜机.png",
@@ -628,6 +665,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -39,
       kind: "machine",
       targetZoom: 1600,
+      builder: "mc_zte",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/烤鸡机.png",
@@ -644,6 +682,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 10,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/竹子机及铁轨机.png",
@@ -661,6 +700,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "Aurora1229937 CMLOCK",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/水流刷怪塔.png",
@@ -681,6 +721,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 12, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/简易树场.png",
@@ -703,6 +744,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 10, max: 10, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/泥巴机.png",
@@ -721,6 +763,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -127,
       kind: "machine",
       targetZoom: 1600,
+      builder: "mc_zte",
       fontSize: { min: 10, max: 12, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/木船台球桌.png",
@@ -734,6 +777,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/竹筏炸雪机.png",
@@ -750,6 +794,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/紫水晶农场.png",
@@ -767,6 +812,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/红树树场.png",
@@ -790,6 +836,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "CMLOCK",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/炼药机.png",
@@ -817,6 +864,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "Evenstar_X",
       fontSize: { min: 12, max: 12, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/刷石机.png",
@@ -832,6 +880,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 657,
       kind: "machine",
       targetZoom: 1600,
+      builder: "Aurora1229937 CMLOCK",
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
@@ -850,6 +899,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
         "/images/maps/machines/overworld/矢车菊刷花机.png",
@@ -869,6 +919,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: -4,
       kind: "machine",
       targetZoom: 1600,
+      builder: "KirkLee123",
       fontSize: { min: 12, max: 14, minZoom: 300 },
       images: [
         "/images/maps/machines/overworld/骨粉机.png",
@@ -884,6 +935,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -1425,
       kind: "machine",
       targetZoom: 1600,
+      builder: "核摇Prog_Metalcore Aurora1229937",
       description: "刷沙机的收集装置位于末地",
       fontSize: { min: 12, max: 14 },
       images: [
@@ -903,6 +955,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 146,
       kind: "machine",
       targetZoom: 1600,
+      builder: "QingShi",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
         "/images/maps/machines/overworld/珊瑚扇机.png",
@@ -921,6 +974,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: 91,
       kind: "machine",
       targetZoom: 1600,
+      builder: "mc_zte",
       fontSize: { min: 10, max: 10, minZoom: 1201 },
       images: [
         "/images/maps/machines/overworld/善魂基地.png",
@@ -1108,6 +1162,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       z: -42,
       kind: "region",
       targetZoom: 1600,
+      builder: "QingShi",
       description: "基地站，选定位号、预留珍珠后，可在不同的传送站间传送，也可通过副站传送回基地站",
       popup: true,
       visibleWhen: "transit",
@@ -1129,6 +1184,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 12,
       kind: "region",
       targetZoom: 1600,
+      builder: "Aurora1229937 QingShi",
       description: "猪人塔站，选定位号、预留珍珠后，可在不同的传送站间传送",
       popup: true,
       visibleWhen: "transit",
@@ -1148,6 +1204,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       offsetY: 13,
       kind: "region",
       targetZoom: 1600,
+      builder: "Aurora1229937 QingShi",
       description: "末地门刷沙机站，选定位号、预留珍珠后，可在不同的传送站间传送",
       popup: true,
       visibleWhen: "transit",

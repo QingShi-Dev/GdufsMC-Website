@@ -112,8 +112,8 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
         )}
         {label.builder && (
           <div className="flex items-start gap-1.5 pt-0.5">
-            <span className="text-[10px] font-semibold uppercase pt-0.5 w-5 shrink-0 text-slate-500">
-              建设
+            <span className="text-[10px] font-semibold uppercase pt-0.5 w-8 shrink-0 text-slate-500">
+              建设者
             </span>
             <span className="text-[11px] leading-snug text-slate-600 flex-1 min-w-0 truncate">
               {label.builder}
