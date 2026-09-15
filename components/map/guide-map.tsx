@@ -1753,7 +1753,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
-            topClassName={searchVisible ? "fixed top-[60px] left-3" : undefined}
+            topClassName={searchVisible ? "absolute top-[60px] left-3" : undefined}
           />
         )}
 
@@ -1770,7 +1770,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             role="search"
             aria-label="搜索地标"
             className={cn(
-              "fixed top-3 left-3 z-[60]",
+              "absolute top-3 left-3 z-[60]",
               "w-72 sm:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
