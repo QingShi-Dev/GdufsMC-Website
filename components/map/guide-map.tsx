@@ -1829,7 +1829,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 type="text"
                 value={searchQuery}
                 onClick={() => setSearchListOpen(true)}
-                onFocus={() => setSearchListOpen(true)}
+                onFocus={() => {
+                  setSearchListOpen(true);
+                  // 聚焦输入框时关掉之前的 popup — 用户进入"搜索模式", 不想看旧 label 详情
+                  setSelectedLabel(null);
+                }}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setSearchListOpen(true);
@@ -1873,11 +1877,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 worlds={worlds}
                 onSelect={(label, wid) => {
                   // 点结果: 跳过去 + 弹 popup
-                  // 收起 list (query 清空, 搜索栏保留); focus 回 input 接着搜
+                  // 搜索栏文字变成该 label.name (用户看到自己选了什么, 也能再编辑再搜)
+                  // 收起 list + blur input (退出"输入"状态, 视觉上跟点地图一致)
                   goToSearchResult(label, wid);
-                  setSearchQuery("");
+                  setSearchQuery(label.name);
                   setSearchListOpen(false);
-                  requestAnimationFrame(() => searchInputRef.current?.focus());
+                  searchInputRef.current?.blur();
                 }}
               />
             )}

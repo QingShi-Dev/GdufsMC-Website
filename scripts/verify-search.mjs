@@ -360,6 +360,68 @@ async function main() {
     console.log("PASS: label click collapses list");
   }
 
+  // ---- 8. 点 input → popup 消失 + list 仍然显示 ----
+  // 先点 label 让 popup 显示
+  if (labelInfo.count > 0) {
+    await page.evaluate(() => {
+      const label = document.querySelector("button[data-label-id]");
+      if (label) label.click();
+    });
+    await sleep(500);
+    const popupAfterLabel = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+    console.log("popup visible after label click:", !!popupAfterLabel);
+    // 然后点 input (focus)
+    await page.focus('input[placeholder*="拼音"]');
+    await sleep(300);
+    const popupAfterInputFocus = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+    console.log("popup visible after input focus:", !!popupAfterInputFocus);
+    if (popupAfterInputFocus) {
+      console.log("FAIL: popup should disappear when input is focused");
+      await browser.close();
+      process.exit(1);
+    }
+    console.log("PASS: popup disappears when input is focused");
+  }
+
+  // ---- 9. 点搜索结果 → query 变 label.name + list 收起 + input blur ----
+  await page.focus('input[placeholder*="拼音"]');
+  await sleep(300);
+  const queryBeforeSelect = await page.evaluate(
+    () => document.querySelector('input[placeholder*="拼音"]')?.value,
+  );
+  // 点搜索结果第一个
+  await page.evaluate(() => {
+    const result = document.querySelector('[role="option"]');
+    if (result) result.click();
+  });
+  await sleep(800);
+  const queryAfterSelect = await page.evaluate(
+    () => document.querySelector('input[placeholder*="拼音"]')?.value,
+  );
+  const listAfterSelect = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  const inputFocusedAfterSelect = await page.evaluate(
+    () => document.activeElement?.tagName === "INPUT",
+  );
+  console.log(
+    `query before/after: "${queryBeforeSelect}" → "${queryAfterSelect}"; list visible: ${!!listAfterSelect}; input focused: ${inputFocusedAfterSelect}`,
+  );
+  if (queryAfterSelect === "" || queryAfterSelect === "t") {
+    console.log("FAIL: query should be label name, got:", queryAfterSelect);
+    await browser.close();
+    process.exit(1);
+  }
+  if (listAfterSelect) {
+    console.log("FAIL: list should collapse after result select");
+    await browser.close();
+    process.exit(1);
+  }
+  if (inputFocusedAfterSelect) {
+    console.log("FAIL: input should blur after result select");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: result select sets query to label name + collapses list + blurs input");
+
   await browser.close();
   console.log("ALL PASS");
 }
