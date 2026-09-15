@@ -372,6 +372,13 @@ async function main() {
   // ---- 8. 点 input → popup 消失 + list 仍然显示 ----
   // 先点 label 让 popup 显示
   if (labelInfo.count > 0) {
+    // 先 blur input — 之前 test 6/7 已 focus, page.focus 不会再触发 focus event
+    await page.evaluate(() => {
+      const i = document.querySelector('input[placeholder*="拼音"]');
+      if (document.activeElement === i) i.blur();
+    });
+    await sleep(100);
+    // 然后点 label
     await page.evaluate(() => {
       const label = document.querySelector("button[data-label-id]");
       if (label) label.click();
@@ -379,7 +386,7 @@ async function main() {
     await sleep(500);
     const popupAfterLabel = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
     console.log("popup visible after label click:", !!popupAfterLabel);
-    // 然后点 input (focus)
+    // 然后点 input (focus) — 应触发 onFocus → setSelectedLabel(null)
     await page.focus('input[placeholder*="拼音"]');
     await sleep(300);
     const popupAfterInputFocus = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
@@ -390,6 +397,121 @@ async function main() {
       process.exit(1);
     }
     console.log("PASS: popup disappears when input is focused");
+  }
+
+  // ---- 8a. 切维度 (用户主动) → popup 关闭 ----
+  if (labelInfo.count > 0) {
+    // 先 blur input + 收起 list — 模拟用户切 tab 前状态 (list 收起, 没输入)
+    await page.evaluate(() => {
+      const i = document.querySelector('input[placeholder*="拼音"]');
+      if (document.activeElement === i) i.blur();
+    });
+    await sleep(100);
+    // 点 label 让 popup 显示
+    await page.evaluate(() => {
+      const label = document.querySelector("button[data-label-id]");
+      if (label) label.click();
+    });
+    await sleep(500);
+    const popupBeforeDim = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+    if (!popupBeforeDim) {
+      console.log("FAIL: popup should be visible after label click (8a setup)");
+      await browser.close();
+      process.exit(1);
+    }
+    // 当前 dim
+    const currentDim = await page.evaluate(() => {
+      return document.querySelector('button[data-worldid].bg-white')?.getAttribute("data-worldid");
+    });
+    console.log("current dim (8a):", currentDim);
+    // 切到 nether (或 end if 已在 nether)
+    const targetDim = currentDim === "nether" ? "end" : "nether";
+    await page.click(`button[data-worldid="${targetDim}"]`);
+    await sleep(800);
+    const popupAfterDim = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+    console.log(`popup visible after switch to ${targetDim}:`, !!popupAfterDim);
+    if (popupAfterDim) {
+      console.log("FAIL: popup should disappear when user switches dim");
+      await browser.close();
+      process.exit(1);
+    }
+    console.log("PASS: dim switch closes popup (user-initiated)");
+    // 切回 overworld 准备后续测试
+    await page.click('button[data-worldid="overworld"]');
+    await sleep(500);
+  }
+
+  // ---- 8b. 跨维度搜索 → popup 保留 (goToSearchResult 自己 setSelectedLabel) ----
+  // 搜 "猪人塔" — 在 overworld 跟 nether 都有, 让搜索结果有跨维度选项
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="拼音"]');
+    i?.blur();
+  });
+  // 清空 input
+  await page.focus('input[placeholder*="拼音"]');
+  await sleep(200);
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="拼音"]');
+    if (i) {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
+      setter.call(i, "");
+      i.dispatchEvent(new Event("input", { bubbles: true }));
+    }
+  });
+  await page.type('input[placeholder*="拼音"]', "猪人塔", { delay: 30 });
+  await sleep(400);
+  // 找当前 dim 之外的结果
+  const crossDimResult = await page.evaluate(() => {
+    const items = Array.from(document.querySelectorAll('[role="option"]'));
+    // 返回每个结果的 dim 信息 (通过 text 里的 dim name 拿)
+    return items.map((el) => {
+      const dimSpan = el.querySelector("span.text-\\[10px\\]");
+      const dim = dimSpan?.textContent?.trim();
+      return { dim, text: el.textContent?.trim().slice(0, 60) };
+    });
+  });
+  console.log("results for '猪人塔':", JSON.stringify(crossDimResult));
+  // 当前激活 dim (Chinese name, e.g. "主世界") — 从 dim tab 第一个 text-[16px] span 拿
+  const currentDim8b = await page.evaluate(() => {
+    const btn = document.querySelector('button[data-worldid].bg-white');
+    const span = btn?.querySelector('span.text-\\[16px\\]');
+    return span?.textContent?.trim();
+  });
+  console.log("current dim (8b):", currentDim8b);
+  const otherDimResultIdx = crossDimResult.findIndex(
+    (r) => r.dim && r.dim !== currentDim8b,
+  );
+  console.log("cross-dim result idx:", otherDimResultIdx, "dim:", crossDimResult[otherDimResultIdx]?.dim);
+  if (otherDimResultIdx === -1) {
+    console.log("WARN: no cross-dim result for '猪人塔', skipping cross-dim popup test");
+  } else {
+    // 点这个 result
+    await page.evaluate((idx) => {
+      const items = document.querySelectorAll('[role="option"]');
+      items[idx]?.click();
+    }, otherDimResultIdx);
+    await sleep(1000);
+    const popupAfterSearch = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+    const dimAfterSearch = await page.evaluate(() => {
+      const btn = document.querySelector('button[data-worldid].bg-white');
+      const span = btn?.querySelector('span.text-\\[16px\\]');
+      return span?.textContent?.trim();
+    });
+    console.log(`popup after cross-dim search: ${!!popupAfterSearch}, dim: ${dimAfterSearch}`);
+    if (!popupAfterSearch) {
+      console.log("FAIL: cross-dim search result should open popup");
+      await browser.close();
+      process.exit(1);
+    }
+    if (dimAfterSearch === currentDim8b) {
+      console.log("FAIL: cross-dim search should switch dim");
+      await browser.close();
+      process.exit(1);
+    }
+    console.log("PASS: cross-dim search opens popup without being cleared by dim change");
+    // 切回 overworld 给后续测试
+    await page.click('button[data-worldid="overworld"]');
+    await sleep(500);
   }
 
   // ---- 9. 点搜索结果 → query 变 label.name + list 收起 + input blur ----

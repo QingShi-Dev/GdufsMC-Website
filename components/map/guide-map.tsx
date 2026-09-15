@@ -666,10 +666,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [isMobile, setIsMobile] = useState(false);
 
   // ---- 4. 地标: toggle / 选中 ----
-  // 默认 off — 第一次打开页面不想被地标盖住, 用户主动开
-  const [labelsVisible, setLabelsVisible] = useState(false);
-  // 交通 (transit 网络) 同样默认 off, 跟地标独立
-  const [transitVisible, setTransitVisible] = useState(false);
+  // 默认全开 — 进入页面就看到地标 + 交通, 跟搜索一致 (commit 0b9fbd1 之后三者顺序 3 1 2)
+  // 跟之前 off 不同: 之前第一次打开不想被地标盖住, 现在默认开更"开箱即用"
+  const [labelsVisible, setLabelsVisible] = useState(true);
+  // 交通 (transit 网络) 同样默认 on, 跟地标独立
+  const [transitVisible, setTransitVisible] = useState(true);
   // 搜索: 开关 + 当前关键词 + 列表显隐
   //   - searchVisible: 整个搜索 wrapper 显隐 (input 一直在)
   //   - searchQuery: 用户输入的文字 (不清零, 让 X 按钮可恢复显示)
@@ -1292,14 +1293,20 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     };
   }, []);
 
-  // 切维度: 重置视图 + 滚到中央
+  // 切维度: 重置视图 + 滚到中央 + 关 popup (用户切 tab 旧 label 详情不相关了)
   // 跳过策略: 比对 worldId 跟初始值, 没变就不滚
   //   (比 useRef flag 更稳: React 18 StrictMode 双挂载时, ref flag 会被第 1 次跑改成 false,
   //    第 2 次跑看到 false 就误触发了; 用值对比, 两次 worldId 跟初始值都相等, 都会跳过)
   // skipWorldResetRef 由搜索结果点击置 true: search 自己会跳视角, 跳过自动 reset
+  //   跨维度搜索也要保留 popup: goToSearchResult 自己 setSelectedLabel(label), 不应被这里覆盖
   const initialWorldIdRef = useRef<NewWorldId>(worldId);
   useEffect(() => {
     if (initialWorldIdRef.current === worldId) return;
+    // 用户手动切维度 (非跨维度搜索): 关掉旧的 label 详情
+    // 跨维度搜索 (skipWorldReset) 跳过这里, 让 goToSearchResult 自己设置新 popup
+    if (!skipWorldResetRef.current) {
+      setSelectedLabel(null);
+    }
     if (skipWorldResetRef.current) {
       // 搜索路径: 自己负责跳视角, 这里只滚到 header 下方 (跟标签/交通/搜索开关一致)
       skipWorldResetRef.current = false;
