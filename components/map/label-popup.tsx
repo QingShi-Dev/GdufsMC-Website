@@ -204,7 +204,7 @@ function ProductRow({
         {products.length === 0 ? (
           <span className="text-[10px] text-slate-400">—</span>
         ) : (
-          products.map((p) => <ProductPill key={p.icon} product={p} tone={tone} />)
+          products.map((p) => <ProductPill key={p.label} product={p} tone={tone} />)
         )}
       </div>
     </div>
@@ -222,21 +222,27 @@ function ProductPill({
     tone === "sky"
       ? "bg-sky-50 text-sky-700 ring-sky-200"
       : "bg-emerald-50 text-emerald-700 ring-emerald-200";
+  // icon 为空 / "null" 字符串 / undefined 时不渲染 img, 也不留 gap 占位
+  const rawIcon = product.icon?.trim();
+  const showIcon = !!rawIcon && rawIcon !== "null";
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ring-1",
+        "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ring-1",
+        showIcon && "gap-1",
         toneClass,
       )}
     >
-      <img
-        src={product.icon}
-        alt=""
-        className="w-3 h-3 object-contain shrink-0"
-        onError={(e) => {
-          e.currentTarget.style.display = "none";
-        }}
-      />
+      {showIcon && (
+        <img
+          src={rawIcon}
+          alt=""
+          className="w-3 h-3 object-contain shrink-0"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      )}
       <span className="truncate">{product.label}</span>
     </span>
   );

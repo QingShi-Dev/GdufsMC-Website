@@ -41,12 +41,12 @@ export type NewLabelKind = "region" | "building" | "machine";
 
 /**
  * 机器的输入/输出产物
- *  - icon 必填, 用图标地址作为唯一标识
+ *  - icon 可选, 用图标地址作为唯一标识; 没填/无效时不渲染图标也不预留空间
  */
 export interface NewLabelProduct {
   label: string;
-  /** 图标地址 (/icons/.../xxx.png) */
-  icon: string;
+  /** 图标地址 (/icons/.../xxx.png); null/undefined/空串/"null" 都不会显示图标 */
+  icon?: string;
 }
 
 /** 当地标 + 交通都开启时, 站名/珍珠的字段覆盖 (让它们不跟地标 label 重叠) */
