@@ -44,13 +44,13 @@ const TABS: TabDef[] = [
   {
     id: "tour",
     label: "导览地图",
-    iconSrc: "/icons/map/导览地图图标.svg",
+    iconSrc: "/icons/map/tabs/导览地图图标.svg",
     desc: "展示三种维度的建设全貌，每一栋建筑尽在眼前",
   },
   {
     id: "block",
     label: "群系地图",
-    iconSrc: "/icons/map/群系地图图标.svg",
+    iconSrc: "/icons/map/tabs/群系地图图标.svg",
     desc: "高效探查生物群系与结构，每一寸世界尽在掌握",
     external: { url: BIOME_MAP_URL },
   },

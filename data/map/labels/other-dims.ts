@@ -16,8 +16,12 @@ export const NETHER_LABELS: NewLabel[] = [
       x: 8,
       z: 25,
       targetZoom: 800,
-      kind: "region",
+      kind: "machine",
+      description: "实现超远距离传送的大型装置，选定目的地，投掷珍珠，即可在数秒内抵达对应出口",
       fontSize: { min: 14, max: 18, maxZoom: 800 },
+      images: [
+        "/images/maps/machines/nether/矢量珍珠炮.png",
+      ],
     }
     , {
       id: "piglin-farm",
@@ -26,18 +30,13 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -98,
       targetZoom: 800,
       kind: "machine",
+      description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/猪人塔.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
       ],
     }
     , {
@@ -47,18 +46,14 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 82,
       targetZoom: 800,
       kind: "machine",
+      description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/恶魂农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.png" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
       ],
     }
     , {
@@ -68,18 +63,15 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -1060,
       targetZoom: 800,
       kind: "machine",
+      description: "收集装置位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/凋灵骷髅农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "凋灵骷髅头颅", icon: "null" },
+        { label: "煤炭", icon: "/icons/map/items/coal.png" },
+        { label: "骨头", icon: "/icons/map/items/bone.png" },
       ],
     }
     , {
@@ -91,16 +83,26 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/nether/猪灵交易所.png",
       ],
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "下界石英", icon: "/icons/map/items/quartz.png" },
+        { label: "黑曜石", icon: "/icons/map/blocks/obsidian.png" },
+        { label: "哭泣的黑曜石", icon: "/icons/map/blocks/crying_obsidian.png" },
+        { label: "灵魂沙", icon: "/icons/map/blocks/soul_sand.png" },
+        { label: "黑石", icon: "/icons/map/blocks/blackstone.png" },
+        { label: "沙砾", icon: "/icons/map/blocks/gravel.png" },
+        { label: "皮革", icon: "/icons/map/items/leather.png" },
+        { label: "下界砖", icon: "/icons/map/items/nether_brick.png" },
+        { label: "光灵箭", icon: "/icons/map/items/spectral_arrow.png" },
+        { label: "火焰弹", icon: "/icons/map/items/fire_charge.png" },
+        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.png" },
+        { label: "失水恶魂", icon: "null" },
+        { label: "抗火药水", icon: "/icons/map/effect/fire_resistance.png" },
+        { label: "灵魂疾行", icon: "/icons/map/items/enchanted_book.png" },
       ],
     }
     , {
@@ -110,18 +112,18 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 96,
       targetZoom: 800,
       kind: "machine",
+      description: "通过摔落处死船吸刷怪塔生成的怪物，启用时能看到“怪物瀑布”，刷怪结构位于主世界",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/船吸刷怪塔收集.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
+        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.png" },
+        { label: "箭", icon: "/icons/map/items/arrow.png" },
+        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
       ],
     }
     , {
@@ -133,16 +135,10 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/岩浆怪农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
       ],
     }
     , {
@@ -153,18 +149,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: 15,
       targetZoom: 800,
       kind: "machine",
+      description: "收集装置位于主世界",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/蛙明灯农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.png" },
+        { label: "珠光蛙明灯", icon: "/icons/map/blocks/pearlescent_froglight_side.png" },
+        { label: "青翠蛙明灯", icon: "/icons/map/blocks/verdant_froglight_side.png" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
       ],
     }
     , {
@@ -177,16 +171,10 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/烈焰人农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "烈焰棒", icon: "/icons/map/items/blaze_rod.png" },
       ],
     }
     , {
@@ -198,16 +186,10 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/玄武岩机.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "玄武岩", icon: "/icons/map/blocks/basalt_side.png" },
       ],
     }
     , {
@@ -219,16 +201,11 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 14, minZoom: 375, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/猪肉塔.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "熟猪排", icon: "/icons/map/items/cooked_porkchop.png" },
+        { label: "皮革", icon: "/icons/map/items/leather.png" },
       ],
     }
     , {
@@ -238,18 +215,15 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -40,
       targetZoom: 800,
       kind: "machine",
+      description: "刷怪结构位于主世界",
       fontSize: { min: 10, max: 12, minZoom: 375, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/nether/守卫者农场收集.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.png" },
+        { label: "海晶砂粒", icon: "/icons/map/items/prismarine_crystals.png" },
+        { label: "生鳕鱼", icon: "/icons/map/items/cod.png" },
       ],
     }
     , {
@@ -261,16 +235,25 @@ export const NETHER_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 14, mid: 12 , midZoom: 150, maxZoom: 800 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/nether/主世界伪和平开关.png",
       ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+    }
+    , {
+      id: "tunnel-boring-machine",
+      name: "盾构机",
+      x: -125,
+      z: 30,
+      targetZoom: 800,
+      kind: "machine",
+      fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800 },
+      images: [
+        "/images/maps/machines/nether/盾构机.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "远古残骸", icon: "/icons/map/blocks/ancient_debris_side.png" },
+        { label: "下界石英", icon: "/icons/map/items/quartz.png" },
+        { label: "金粒", icon: "/icons/map/items/gold_nugget.png" },
+        { label: "下界岩", icon: "/icons/map/blocks/netherrack.png" },
       ],
     },
 
@@ -282,13 +265,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: -6,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于女巫塔附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-女巫塔.png",
+      ]
     },
     {
       id: "boat-mob-farm-exit",
@@ -298,13 +284,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: -7,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于空置域、船吸刷怪塔附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-船吸.png",
+      ],
     },
     {
       id: "trial-chamber-exit",
@@ -313,13 +302,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 286,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于试炼密室附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, minZoom: 150, maxZoom: 800  },
       withLabels: {
         fontSize: { min: 12, max: 14, minZoom: 150, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-试炼密室.png",
+      ],
     },
     {
       id: "raid-farm-exit",
@@ -330,13 +322,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetX: 4,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于袭击塔",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-袭击塔.png",
+      ],
     },
     {
       id: "end-portal-and-sand-duper-exit",
@@ -345,13 +340,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -191,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于末地门刷沙机附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 10, max: 12, mid: 12, midZoom: 300, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-末地门刷沙机.png",
+      ],
     },
     {
       id: "octagonal-pagoda-exit",
@@ -360,13 +358,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -66,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于八角楼",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       withLabels: {
         fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-八角塔.png",
+      ],
     },
     {
       id: "map-art-factory-exit",
@@ -375,13 +376,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -134,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于地图画工厂",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       withLabels: {
         fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-地图画工厂.png",
+      ],
     },
     {
       id: "villager-trading-hall-exit",
@@ -391,7 +395,7 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: -3,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于村民交易所、刷铁机附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 12, minZoom: 300, maxZoom: 800 },
@@ -399,6 +403,9 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 12, minZoom: 800, maxZoom: 800  },
         offsetX: 38,
       },
+      images: [
+        "/images/maps/transit/nether/出口-村民交易所.png",
+      ],
     },
     {
       id: "base-exit",
@@ -408,13 +415,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: 7,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于基地",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 14, max: 18, mid: 16, midZoom: 300, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 12, max: 12, minZoom: 600, maxZoom: 800  },
       },
+      images: [
+        "/images/maps/transit/nether/出口-基地.png",
+      ],
     },
     {
       id: "gdufs-logo-exit",
@@ -424,13 +434,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: 7,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于广外校徽附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-广外校徽.png",
+      ],
     },
     {
       id: "piglin-farm-collection-exit",
@@ -440,13 +453,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetX: 8,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "猪人塔的通勤传送门，可沿冰道前往猪人塔收集",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-猪人塔收集.png",
+      ],
     },
     {
       id: "ice-farm-exit",
@@ -455,13 +471,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: 5,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于冻洋、刷冰机附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-刷冰机.png",
+      ],
     },
     {
       id: "map-art-exit",
@@ -470,13 +489,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -524,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于翁法罗斯英雄纪地图画附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-翁法罗斯英雄纪地图画.png",
+      ],
     },
     {
       id: "bee-farm-exit",
@@ -485,13 +507,16 @@ export const NETHER_LABELS: NewLabel[] = [
       z: -643,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "下界传送门位于蜜蜂农场附近",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-蜜蜂农场.png",
+      ],
     },
     {
       id: "wither-skeleton-farm-collection-exit",
@@ -501,13 +526,16 @@ export const NETHER_LABELS: NewLabel[] = [
       offsetY: -10,
       kind: "region",
       targetZoom: 800,
-      description: "末影珍珠传送点, 传送到主城 spawn 区域。",
+      description: "凋灵骷髅农场的通勤传送门，可沿冰道前往凋灵骷髅农场收集",
       popup: true,
       visibleWhen: "transit",
       fontSize: { min: 12, max: 14, maxZoom: 800 },
       withLabels: {
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300, maxZoom: 800 },
       },
+      images: [
+        "/images/maps/transit/nether/出口-凋灵骷髅农场收集.png",
+      ],
     },
 ]
 
@@ -519,18 +547,10 @@ export const END_LABELS: NewLabel[] = [
       z: 0,
       targetZoom: 800,
       kind: "machine",
+      description: "用于瞬杀末影龙的大型装置",
       fontSize: { min: 14, max: 18, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
-      ],
-      outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        "/images/maps/machines/end/天基屠龙炮.png",
       ],
     }
     , {
@@ -540,18 +560,11 @@ export const END_LABELS: NewLabel[] = [
       z: 160,
       targetZoom: 800,
       kind: "machine",
+      description: "以水流运输为主的大型全物品分类、仓储装置",
       fontSize: { min: 14, max: 18, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
-      ],
-      outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        "/images/maps/machines/end/水流全物品.png",
+        "/images/maps/machines/end/水流全物品-内饰.png",
       ],
     }
     , {
@@ -561,7 +574,11 @@ export const END_LABELS: NewLabel[] = [
       z: 268,
       targetZoom: 600,
       kind: "region",
+      description: "包含粘土量产的全链条机器",
       fontSize: { min: 12, max: 16, mid: 14, midZoom: 200, maxZoom: 500 },
+      images: [
+        "/images/maps/regions/粘土工业园.png",
+      ]
     }
     , {
       id: "chorus-fruit-farm",
@@ -572,16 +589,13 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/end/紫颂果农场.png",
       ],
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "紫颂花", icon: "/icons/map/blocks/chorus_flower.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "紫颂果", icon: "/icons/map/items/chorus_fruit.png" },
       ],
     }
     , {
@@ -591,18 +605,17 @@ export const END_LABELS: NewLabel[] = [
       z: 1,
       targetZoom: 600,
       kind: "machine",
+      description: "可根据情况切换刷沙、固化模式，生产装置位于主世界",
       fontSize: { min: 12, max: 14, minZoom: 320, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/end/固化机及刷沙机收集.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "沙子", icon: "/icons/map/blocks/sand.png" },
+        { label: "沙砾", icon: "/icons/map/blocks/gravel.png" },
+        { label: "混凝土", icon: "/icons/map/blocks/white_concrete.png" },
+        { label: "混凝土粉末", icon: "/icons/map/blocks/white_concrete_powder.png" },
+        { label: "铁砧", icon: "null" },
       ],
     }
     , {
@@ -612,18 +625,13 @@ export const END_LABELS: NewLabel[] = [
       z: 0,
       targetZoom: 600,
       kind: "machine",
+      description: "手动处死可获得大量经验",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/end/小黑塔.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.png" },
       ],
     }
     , {
@@ -635,16 +643,18 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/end/B36炸树场.png",
       ],
+      description: "可适配全类型树苗",
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "树苗", icon: "/icons/map/blocks/spruce_sapling.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "原木", icon: "/icons/map/blocks/spruce_log.png" },
+        { label: "圆石", icon: "/icons/map/blocks/cobblestone.png" },
+        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.png" },
+        { label: "木棍", icon: "/icons/map/items/stick.png" },
       ],
     }
     , {
@@ -656,16 +666,10 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 14, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/end/潜影贝农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "潜影壳", icon: "/icons/map/items/shulker_shell.png" },
       ],
     }
     , {
@@ -675,18 +679,10 @@ export const END_LABELS: NewLabel[] = [
       z: 160,
       targetZoom: 600,
       kind: "machine",
+      description: "装配有白名单系统，可根据情况切换散装、打包模式",
       fontSize: { min: 12, max: 14,minZoom: 250 , maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
-      ],
-      outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        "/images/maps/machines/end/640熔炉组.png",
       ],
     }
     , {
@@ -698,16 +694,13 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/end/泥土机.png",
       ],
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "砂土", icon: "/icons/map/blocks/coarse_dirt.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
       ],
     }
     , {
@@ -719,16 +712,13 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/end/泥巴机.png",
       ],
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
       ],
     }
     , {
@@ -741,16 +731,10 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 10, max: 10, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
-      ],
-      inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        "/images/maps/machines/end/滴水石锥农场.png",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "滴水石锥", icon: "/icons/map/items/pointed_dripstone.png" },
       ],
     }
     , {
@@ -763,16 +747,13 @@ export const END_LABELS: NewLabel[] = [
       kind: "machine",
       fontSize: { min: 12, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/landmarks/sample/machine-hero.svg",
+        "/images/maps/machines/end/粘土机.png",
       ],
       inputs: [
-        { label: "村民", icon: "/icons/landmarks/sample/villager.svg" },
-        { label: "床", icon: "/icons/landmarks/sample/bed.svg" },
-        { label: "僵尸 (威胁)", icon: "/icons/landmarks/sample/zombie.svg" },
+        { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/landmarks/sample/iron-ingot.svg" },
-        { label: "虞美人", icon: "/icons/landmarks/sample/poppy.svg" },
+        { label: "黏土球", icon: "/icons/map/items/clay_ball.png" },
       ],
     }
 ];

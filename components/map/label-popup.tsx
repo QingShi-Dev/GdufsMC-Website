@@ -116,12 +116,7 @@ export function LabelPopup({ label, onClose }: LabelPopupProps) {
       {(hasInputs || hasOutputs) && (
         <div className="px-3 pb-2 space-y-1">
           {hasInputs && (
-            <ProductRow label="输入" products={label.inputs!} tone="sky" />
-          )}
-          {hasInputs && hasOutputs && (
-            <div className="flex items-center justify-center text-slate-300 -my-0.5">
-              <IconArrowRight size={11} />
-            </div>
+            <ProductRow label="投入" products={label.inputs!} tone="sky" />
           )}
           {hasOutputs && (
             <ProductRow label="产出" products={label.outputs!} tone="emerald" />
@@ -189,7 +184,7 @@ function ProductRow({
     <div className="flex items-start gap-1.5">
       <span
         className={cn(
-          "text-[10px] font-semibold uppercase tracking-wider pt-0.5 w-5 shrink-0",
+          "text-[10px] font-semibold uppercase pt-0.5 w-5 shrink-0",
           tone === "sky" ? "text-sky-600" : "text-emerald-600",
         )}
       >
