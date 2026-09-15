@@ -405,8 +405,8 @@ async function main() {
   console.log(
     `query before/after: "${queryBeforeSelect}" → "${queryAfterSelect}"; list visible: ${!!listAfterSelect}; input focused: ${inputFocusedAfterSelect}`,
   );
-  if (queryAfterSelect === "" || queryAfterSelect === "t") {
-    console.log("FAIL: query should be label name, got:", queryAfterSelect);
+  if (queryAfterSelect !== queryBeforeSelect || queryAfterSelect === "") {
+    console.log("FAIL: query should remain unchanged, got:", JSON.stringify(queryAfterSelect), "expected:", JSON.stringify(queryBeforeSelect));
     await browser.close();
     process.exit(1);
   }
@@ -420,7 +420,7 @@ async function main() {
     await browser.close();
     process.exit(1);
   }
-  console.log("PASS: result select sets query to label name + collapses list + blurs input");
+  console.log("PASS: result select keeps query + collapses list + blurs input");
 
   await browser.close();
   console.log("ALL PASS");

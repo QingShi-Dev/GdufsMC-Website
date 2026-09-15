@@ -1877,10 +1877,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 worlds={worlds}
                 onSelect={(label, wid) => {
                   // 点结果: 跳过去 + 弹 popup
-                  // 搜索栏文字变成该 label.name (用户看到自己选了什么, 也能再编辑再搜)
+                  // 搜索栏文字保持不变 (user 选择, 不清空 query, 让搜索栏干净)
                   // 收起 list + blur input (退出"输入"状态, 视觉上跟点地图一致)
                   goToSearchResult(label, wid);
-                  setSearchQuery(label.name);
                   setSearchListOpen(false);
                   searchInputRef.current?.blur();
                 }}
