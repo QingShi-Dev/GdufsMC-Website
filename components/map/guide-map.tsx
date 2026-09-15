@@ -1294,14 +1294,16 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, []);
 
   // 切维度: 重置视图 + 滚到中央 + 关 popup (用户切 tab 旧 label 详情不相关了)
-  // 跳过策略: 比对 worldId 跟初始值, 没变就不滚
-  //   (比 useRef flag 更稳: React 18 StrictMode 双挂载时, ref flag 会被第 1 次跑改成 false,
-  //    第 2 次跑看到 false 就误触发了; 用值对比, 两次 worldId 跟初始值都相等, 都会跳过)
+  // 跳过策略: 比对 prevWorldIdRef 跟当前 worldId, 相同就跳过
+  //   - 首次挂载 (StrictMode 双挂载) 两次 prevRef 都等于 worldId, 都跳过
+  //   - **切回初始 dim (如 主世界 → 下界 → 主世界) 也要跑**: 不能用 initialWorldIdRef
+  //     (那是 mount 时捕获, 切回初始值时会误判为"没变化", 跳过 reset + 关 popup)
   // skipWorldResetRef 由搜索结果点击置 true: search 自己会跳视角, 跳过自动 reset
   //   跨维度搜索也要保留 popup: goToSearchResult 自己 setSelectedLabel(label), 不应被这里覆盖
-  const initialWorldIdRef = useRef<NewWorldId>(worldId);
+  const prevWorldIdRef = useRef<NewWorldId>(worldId);
   useEffect(() => {
-    if (initialWorldIdRef.current === worldId) return;
+    if (prevWorldIdRef.current === worldId) return;
+    prevWorldIdRef.current = worldId;
     // 用户手动切维度 (非跨维度搜索): 关掉旧的 label 详情
     // 跨维度搜索 (skipWorldReset) 跳过这里, 让 goToSearchResult 自己设置新 popup
     if (!skipWorldResetRef.current) {

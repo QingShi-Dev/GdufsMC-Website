@@ -441,6 +441,109 @@ async function main() {
     await sleep(500);
   }
 
+  // ---- 8c. 切回初始 dim (下界→主世界) 也重置 view + 关 popup ----
+  // 之前 initialWorldIdRef 捕获 mount 时 worldId, 切回初始值会被误判为"没变化"
+  // 修复: 用 prevWorldIdRef (跟踪上次值), 任何变化都跑 reset 逻辑
+  if (labelInfo.count > 0) {
+    // 1) 在 overworld 缩放 + 点 label 让 popup 显示
+    await page.evaluate(() => {
+      const i = document.querySelector('input[placeholder*="拼音"]');
+      if (document.activeElement === i) i.blur();
+    });
+    await sleep(100);
+    // mouse wheel 缩放 3 次 (zoom in)
+    await page.mouse.move(640, 400);
+    for (let i = 0; i < 3; i++) {
+      await page.mouse.wheel({ deltaY: -200 });
+      await sleep(150);
+    }
+    await sleep(300);
+    const viewAfterZoom = await page.evaluate(() => {
+      const g = document.querySelector("svg g[transform]");
+      const t = g?.getAttribute("transform") ?? "";
+      const k = parseFloat(t.match(/scale\(([\d.]+)\)/)?.[1] ?? "1");
+      return { k, t };
+    });
+    console.log("after 3x zoom-in (overworld, 8c setup):", { k: viewAfterZoom.k });
+    if (viewAfterZoom.k <= 1) {
+      console.log("WARN: zoom-in did not work, skipping 8c");
+    } else {
+      // 点 label 让 popup 显示
+      await page.evaluate(() => {
+        const label = document.querySelector("button[data-label-id]");
+        if (label) label.click();
+      });
+      await sleep(500);
+      const popupBefore = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+      console.log("popup before dim roundtrip:", !!popupBefore);
+
+      // 2) overworld → nether → 应 popup 关闭 + view 重置
+      await page.click('button[data-worldid="nether"]');
+      await sleep(800);
+      const popupAfterNether = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+      const viewNether = await page.evaluate(() => {
+        const g = document.querySelector("svg g[transform]");
+        const t = g?.getAttribute("transform") ?? "";
+        const tx = parseFloat(t.match(/translate\(([-\d.]+)/)?.[1] ?? "0");
+        const ty = parseFloat(t.match(/translate\([-\d.]+\s+([-\d.]+)/)?.[1] ?? "0");
+        const k = parseFloat(t.match(/scale\(([\d.]+)\)/)?.[1] ?? "1");
+        return { tx, ty, k };
+      });
+      console.log("after overworld→nether:", { popup: !!popupAfterNether, ...viewNether });
+      if (popupAfterNether) {
+        console.log("FAIL: popup should close on overworld→nether");
+        await browser.close();
+        process.exit(1);
+      }
+      if (viewNether.k !== 1 || viewNether.tx !== 0 || viewNether.ty !== 0) {
+        console.log("FAIL: view should reset to (0,0,1) on overworld→nether");
+        await browser.close();
+        process.exit(1);
+      }
+
+      // 3) nether 缩放 + 点 label 让 popup 显示
+      await page.mouse.move(640, 400);
+      for (let i = 0; i < 2; i++) {
+        await page.mouse.wheel({ deltaY: -200 });
+        await sleep(150);
+      }
+      await sleep(300);
+      await page.evaluate(() => {
+        // nether 没 label 时跳到有 label 的 dim — 但 nether 有 nether 维度 label
+        const label = document.querySelector("button[data-label-id]");
+        if (label) label.click();
+      });
+      await sleep(500);
+      const popupInNether = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+      console.log("popup in nether after zoom:", !!popupInNether);
+
+      // 4) nether → overworld → 应 popup 关闭 + view 重置 (这是测试的核心 — 切回初始 dim)
+      await page.click('button[data-worldid="overworld"]');
+      await sleep(800);
+      const popupAfterBack = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
+      const viewBack = await page.evaluate(() => {
+        const g = document.querySelector("svg g[transform]");
+        const t = g?.getAttribute("transform") ?? "";
+        const tx = parseFloat(t.match(/translate\(([-\d.]+)/)?.[1] ?? "0");
+        const ty = parseFloat(t.match(/translate\([-\d.]+\s+([-\d.]+)/)?.[1] ?? "0");
+        const k = parseFloat(t.match(/scale\(([\d.]+)\)/)?.[1] ?? "1");
+        return { tx, ty, k };
+      });
+      console.log("after nether→overworld (back to initial):", { popup: !!popupAfterBack, ...viewBack });
+      if (popupAfterBack) {
+        console.log("FAIL: popup should close when returning to initial dim");
+        await browser.close();
+        process.exit(1);
+      }
+      if (viewBack.k !== 1 || viewBack.tx !== 0 || viewBack.ty !== 0) {
+        console.log("FAIL: view should reset when returning to initial dim");
+        await browser.close();
+        process.exit(1);
+      }
+      console.log("PASS: returning to initial dim closes popup + resets view");
+    }
+  }
+
   // ---- 8b. 跨维度搜索 → popup 保留 (goToSearchResult 自己 setSelectedLabel) ----
   // 搜 "猪人塔" — 在 overworld 跟 nether 都有, 让搜索结果有跨维度选项
   await page.evaluate(() => {
