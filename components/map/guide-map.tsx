@@ -80,16 +80,10 @@ function SearchResults({
   results,
   worlds,
   onSelect,
-  onWheel,
 }: {
   results: SearchResult[];
   worlds: NewWorldMeta[];
   onSelect: (label: NewLabel, worldId: NewWorldId) => void;
-  /**
-   * 滚轮事件 (list 内 wheel 不冒泡到地图, 防止 wheel 同时触发地图缩放)
-   * 父组件传 stopPropagation, SearchResults 内部给 listbox div 挂上
-   */
-  onWheel: (e: React.WheelEvent<HTMLDivElement>) => void;
 }) {
   const worldName = (id: NewWorldId) =>
     worlds.find((w) => w.id === id)?.name ?? id;
@@ -100,7 +94,6 @@ function SearchResults({
       <div
         role="listbox"
         aria-label="搜索结果"
-        onWheel={onWheel}
         className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-400"
       >
         没有匹配的地标
@@ -111,7 +104,6 @@ function SearchResults({
     <div
       role="listbox"
       aria-label="搜索结果"
-      onWheel={onWheel}
       className="border-t border-slate-200 max-h-[40vh] overflow-y-auto"
     >
       {results.map((r) => (
@@ -694,6 +686,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [selectedLabel, setSelectedLabel] = useState<NewLabel | null>(null);
   // 搜索 input ref — 开启时自动 focus
   const searchInputRef = useRef<HTMLInputElement | null>(null);
+  // 搜索 wrapper ref — 用于挂 native event listener 阻止事件冒泡到地图
+  // (React 合成事件的 stopPropagation 在某些 path 下没真阻止 native 冒泡,
+  //  导致 list 内的 wheel 触发地图缩放, list 内的 click 触发地图 onClick 收起)
+  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
 
   // 正在过渡动画中 (click region 跳视角) — 用这个 flag 控制 SVG g 的 transition class
   // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
@@ -737,6 +733,37 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       setSearchQuery("");
       setSearchListOpen(false);
     }
+  }, [searchVisible]);
+
+  // 关键修复: 搜索 wrapper 内的事件需要差异化处理
+  //   - wheel 必须 stopPropagation (capture 阶段, containerRef 上有原生 wheel listener 会缩放)
+  //   - click 不能 stopPropagation, 因为那样 React 合成事件不分发 → input.onFocus/onClick 不触发 → list 不展开
+  //     改用 contains 检查 target 在 wrapper 内时跳过 setSearchListOpen(false) — 见地图 onClick handler
+  //   - 用 native focusin / click 直接挂到 input (input ref 在 commit 后才有效, 这里用 rAF 等)
+  useEffect(() => {
+    if (!searchVisible) return;
+    const raf = requestAnimationFrame(() => {
+      const input = searchInputRef.current;
+      const wrapper = searchWrapperRef.current;
+      const container = containerRef.current;
+      if (!input || !wrapper || !container) return;
+      const stopWheel = (e: Event) => e.stopPropagation();
+      wrapper.addEventListener("wheel", stopWheel, { passive: false, capture: true });
+      const onFocusIn = () => setSearchListOpen(true);
+      wrapper.addEventListener("focusin", onFocusIn);
+      const onClickIn = () => setSearchListOpen(true);
+      wrapper.addEventListener("click", onClickIn);
+      (input as any)._cleanup = () => {
+        wrapper.removeEventListener("wheel", stopWheel, { capture: true } as EventListenerOptions);
+        wrapper.removeEventListener("focusin", onFocusIn);
+        wrapper.removeEventListener("click", onClickIn);
+      };
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      const input = searchInputRef.current;
+      (input as any)?._cleanup?.();
+    };
   }, [searchVisible]);
 
   // 跨 3 维度搜索: 同时匹配 name + 拼音(全拼/缩写) + outputs.label
@@ -1574,14 +1601,22 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         onMouseMove={onContainerMouseMove}
         onMouseLeave={onContainerMouseLeave}
         // 点地图 (非 button) 关闭 popup — 拖动/缩放不触发 onClick, 所以不影响
-        // 搜索栏 input 在 search wrapper 内 (wrapper 自身 stopPropagation),
-        // 所以点 input / list / X 不会冒到这里, 只点地图本身/空白区域才到这里
+        // 搜索 wrapper 内的 click 不能用 stopPropagation 拦 (会阻止 React 合成事件分发,
+        // input.onFocus/onClick 不触发, list 永远展不开), 改用 contains 检查 target
         onClick={(e) => {
           if ((e.target as HTMLElement).closest("button")) return;
+          // search wrapper 内的 click 属于搜索框自己的逻辑, 地图不响应
+          if (searchWrapperRef.current?.contains(e.target as Node)) return;
           setSelectedLabel(null);
-          // 收起搜索 list (query 不清, 让用户可继续编辑; X 按钮显隐仍由 query 决定)
-          // 仅在搜索栏开着时操作, 避免无关 setState
           setSearchListOpen((v) => (searchVisible ? false : v));
+        }}
+        // wheel 必须 stopPropagation 让 list 内 wheel 不缩地图 — 用 capture 阶段 native listener
+        // (不能用 React onWheel, 因为 map 上 wheel handler 也是 native addEventListener,
+        //  React stopPropagation 不影响 native bubble)
+        onWheelCapture={(e) => {
+          if (searchWrapperRef.current?.contains(e.target as Node)) {
+            e.stopPropagation();
+          }
         }}
         className={cn(
           "relative overflow-hidden select-none",
@@ -1693,6 +1728,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             - ESC / X 按钮 / 点结果都能关闭/跳转; 关闭 useEffect 会清空 query */}
         {searchVisible && (
           <div
+            ref={searchWrapperRef}
+            data-list-open={searchListOpen ? "1" : "0"}
             role="search"
             aria-label="搜索地标"
             className={cn(
@@ -1703,9 +1740,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
               "animate-in fade-in slide-in-from-top-2 duration-200",
               "overflow-hidden",
             )}
-            // 跟 popup 一样不冒泡到地图 click (点搜索框不该关掉什么)
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            // 事件冒泡用 native listener (capture 阶段) 统一处理 — 见 useEffect,
+            // 不要在这里再用 React onClick stopPropagation, 双重 stop 反而有副作用
           >
             {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
                 关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
@@ -1765,10 +1801,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                   setSearchQuery("");
                   setSearchListOpen(false);
                   requestAnimationFrame(() => searchInputRef.current?.focus());
-                }}
-                onWheel={(e) => {
-                  // wheel 在 list 内不冒泡, 否则地图 onWheel 触发缩放
-                  e.stopPropagation();
                 }}
               />
             )}
