@@ -758,8 +758,17 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
       const list = wrapper.querySelector('[role="listbox"][aria-label="搜索结果"]');
       if (list) {
-        // list 显示: 阻止地图缩放, 但不阻止 list 自身滚动 (滚到底/顶让 list 自己处理)
+        // list 显示: 阻止地图缩放
         e.stopPropagation();
+        // 滚到边界时阻止 page scroll — 浏览器默认会让 wheel event 触发 page scroll,
+        // 这里 preventDefault 才能拦住 (stopPropagation 只阻止 bubble, 不阻止默认)
+        const el = list as HTMLElement;
+        const atTop = el.scrollTop <= 0;
+        const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+        const scrollingDown = (e as WheelEvent).deltaY > 0;
+        if ((scrollingDown && atBottom) || (!scrollingDown && atTop)) {
+          e.preventDefault();
+        }
       } else {
         // list 收起: 不阻止地图缩放, 但阻止 page scroll (wrapper 跟 page 一起滚会很难看)
         e.preventDefault();

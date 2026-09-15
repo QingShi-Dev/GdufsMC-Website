@@ -258,8 +258,14 @@ async function main() {
     query: document.querySelector('[role="search"]')?.dataset.query,
   }));
   console.log("before re-click:", beforeReClick);
-  // 用真实 mouse click 模拟用户点击
-  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+  // 用 input.click() (React 合成事件路径) 模拟用户点击 input
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="拼音"]');
+    if (i) i.click();
+  });
+  await sleep(100);
+  const listAt100ms = await page.$('[role="listbox"][aria-label="搜索结果"]');
+  console.log("list visible 100ms after re-click:", !!listAt100ms);
   await sleep(500);
   const afterReClick = await page.evaluate(() => ({
     listOpen: document.querySelector('[role="search"]')?.dataset.listOpen,
@@ -267,17 +273,11 @@ async function main() {
   }));
   console.log("after re-click:", afterReClick);
   if (afterReClick.listOpen === "0") {
-    console.log("mouse click didn't expand list — try input.click() (React 合成路径)");
-    await page.evaluate(() => {
-      const i = document.querySelector('input[placeholder*="拼音"]');
-      if (i) i.click();
-    });
-    await sleep(500);
-    const afterInputClick = await page.evaluate(() => ({
-      listOpen: document.querySelector('[role="search"]')?.dataset.listOpen,
-    }));
-    console.log("after input.click():", afterInputClick);
+    console.log("FAIL: list not visible after re-click input");
+    await browser.close();
+    process.exit(1);
   }
+  console.log("PASS: list re-expanded after re-click input");
 
   const listVisible3 = await page.$('[role="listbox"][aria-label="搜索结果"]');
   if (!listVisible3) {
@@ -295,6 +295,37 @@ async function main() {
     process.exit(1);
   }
   console.log("PASS: list stable after 1s");
+
+  // ---- 7. label click 收起 list (但保留 popup) ----
+  // 此时 list 已经显示 (test 6 之后), 直接点 label
+  const labelInfo = await page.evaluate(() => {
+    const labels = document.querySelectorAll("button[data-label-id]");
+    return { count: labels.length, firstText: labels[0]?.textContent };
+  });
+  console.log("label info:", labelInfo);
+  if (labelInfo.count === 0) {
+    console.log("WARN: no labels found, skipping label click test");
+  } else {
+    // 先 focus input, 让 list 显示 (因为 test 6 后 list 已经 stable)
+    await page.focus('input[placeholder*="拼音"]');
+    await sleep(300);
+    const listBefore = await page.$('[role="listbox"][aria-label="搜索结果"]');
+    console.log("list visible before label click:", !!listBefore);
+    // 点 label button
+    await page.evaluate(() => {
+      const label = document.querySelector("button[data-label-id]");
+      if (label) label.click();
+    });
+    await sleep(500);
+    const listAfterLabel = await page.$('[role="listbox"][aria-label="搜索结果"]');
+    console.log("list visible after label click:", !!listAfterLabel);
+    if (listAfterLabel) {
+      console.log("FAIL: list still visible after label click");
+      await browser.close();
+      process.exit(1);
+    }
+    console.log("PASS: label click collapses list");
+  }
 
   await browser.close();
   console.log("ALL PASS");

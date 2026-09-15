@@ -189,7 +189,9 @@ export function MapLabels({
             key={lb.id}
             type="button"
             onClick={(e) => {
-              e.stopPropagation();
+              // 不 stopPropagation: 让 click bubble 到 map.onClick, 那里会根据
+              // target.closest('[data-label-id]') 决定是 setSearchListOpen(false) (收起 list)
+              // 且不 setSelectedLabel(null) (label 自己设了 selectedLabel, 不要清掉)
               // 点击行为:
               //   - 总是 pan/zoom 到 targetZoom (没填就保持当前)
               //   - shouldShowPopup → 弹 popup
