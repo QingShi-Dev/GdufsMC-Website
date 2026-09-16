@@ -8,15 +8,18 @@
  *  - 右上关闭, 右下放大/还原/缩小, 左下其他图片缩略图
  *  - 离开页面 (依赖变化) 自动关
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 /** 缩放范围 — 跟地图保持同款手感: 1× 默认, 最多 8× */
 const MIN_K = 1;
 const MAX_K = 8;
-/** 滚轮缩放因子 */
-const WHEEL_DELTA = 0.0025;
+/** 滚轮缩放因子 — 一次滚轮一个步 (1.25×), 不再是微小 1.0025× */
+const WHEEL_STEP = 1.25;
+/** minimap 固定大小 (px) */
+const MM_W = 132;
+const MM_H = 88;
 
 interface ImageLightboxProps {
   images: string[];
@@ -51,8 +54,65 @@ export function ImageLightbox({
   } | null>(null);
   // 容器 ref — 用于 setPointerCapture / 鼠标位置转换
   const containerRef = useRef<HTMLDivElement | null>(null);
+  // 图片原始尺寸 (naturalWidth/Height) — 用于计算 fit 大小 + drag 边界
+  const [imgNatural, setImgNatural] = useState<{ w: number; h: number } | null>(
+    null,
+  );
+  // 容器尺寸 — 用于 drag 边界 clamp (容器尺寸随 viewport 变化, ResizeObserver 跟随)
+  const [containerSize, setContainerSize] = useState<{
+    w: number;
+    h: number;
+  } | null>(null);
 
   const currentSrc = images[currentIndex] ?? "";
+
+  // 容器尺寸 ResizeObserver — 跟 guide-map 的 containerRect 同款
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const update = () => {
+      const r = el.getBoundingClientRect();
+      setContainerSize({ w: r.width, h: r.height });
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // 计算图片在容器里的"fit"大小 (k=1 时的大小) — CSS max-w-full max-h-full 的同款行为
+  const fit = useMemo(() => {
+    if (!imgNatural || !containerSize) return null;
+    const cw = containerSize.w;
+    const ch = containerSize.h;
+    const aspect = imgNatural.w / imgNatural.h;
+    // CSS max-w-full max-h-full: 取 width-limited 或 height-limited 哪个更小
+    let fitW: number;
+    if (aspect > cw / ch) {
+      fitW = ch * aspect;
+    } else {
+      fitW = cw;
+    }
+    const fitH = fitW / aspect;
+    return { fitW, fitH };
+  }, [imgNatural, containerSize]);
+
+  /** clamp tx/ty 让图片不拖出容器边界 */
+  const clampPan = useCallback(
+    (nextTx: number, nextTy: number, nextK: number): { tx: number; ty: number } => {
+      // k=1 时图片刚好 fit 容器, tx/ty 必须 = 0
+      if (nextK <= MIN_K || !fit) return { tx: 0, ty: 0 };
+      const cw = containerSize?.w ?? 0;
+      const ch = containerSize?.h ?? 0;
+      const maxX = Math.max(0, (fit.fitW * nextK - cw) / 2);
+      const maxY = Math.max(0, (fit.fitH * nextK - ch) / 2);
+      return {
+        tx: Math.max(-maxX, Math.min(maxX, nextTx)),
+        ty: Math.max(-maxY, Math.min(maxY, nextTy)),
+      };
+    },
+    [fit, containerSize],
+  );
 
   // rAF 提交 (跟 guide-map 同款)
   const commit = useCallback(() => {
@@ -66,12 +126,14 @@ export function ImageLightbox({
   }, []);
   const schedule = useCallback(
     (nextTx: number, nextTy: number, nextK: number) => {
-      pendingRef.current = { tx: nextTx, ty: nextTy, k: nextK };
+      // 应用 clamp (边界 + k=1 时强制 tx=ty=0)
+      const clamped = clampPan(nextTx, nextTy, nextK);
+      pendingRef.current = { tx: clamped.tx, ty: clamped.ty, k: nextK };
       if (rafRef.current === null) {
         rafRef.current = requestAnimationFrame(commit);
       }
     },
-    [commit],
+    [commit, clampPan],
   );
 
   /** 重置 (还原) */
@@ -109,6 +171,17 @@ export function ImageLightbox({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentIndex]);
 
+  // imgNatural 变化时重新 clamp tx/ty (图片原始尺寸变化 → fit 大小变 → clamp 范围变)
+  //   - 用 schedule 而非直接 setTx/setTy, 走 rAF 一致性
+  //   - 翻图时 currentIndex useEffect 已经 reset 过, 这里不重置 (新图 naturalSize 加载后
+  //     第一次 render 时 tx=ty=0 已经合法, 没必要再 clamp 一次)
+  useEffect(() => {
+    if (!imgNatural) return;
+    schedule(tx, ty, k);
+    // 故意依赖 imgNatural (img 加载完才触发), 避免 clampPan stale 闭包
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgNatural]);
+
   // ESC 关闭 / 方向键翻图
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -137,7 +210,7 @@ export function ImageLightbox({
     };
   }, []);
 
-  // 滚轮缩放 (中心保持光标位置)
+  // 滚轮缩放 — 大步长 (1.25×), 一次操作明显放大/缩小
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -150,10 +223,9 @@ export function ImageLightbox({
       const curK = k;
       const curTx = tx;
       const curTy = ty;
-      const newK = Math.max(
-        MIN_K,
-        Math.min(MAX_K, curK * (1 - e.deltaY * WHEEL_DELTA)),
-      );
+      // 一次滚轮 = 一个步长 (向上滚放大, 向下滚缩小)
+      const factor = e.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP;
+      const newK = Math.max(MIN_K, Math.min(MAX_K, curK * factor));
       if (newK === curK) return;
       // 保持光标位置不变: 让光标下的 content 坐标不动
       //   contentX = (cursorX - tx) / k; 改 k 后新 tx = cursorX - contentX * newK
@@ -234,6 +306,8 @@ export function ImageLightbox({
     //     drag 永远 return early
     const target = e.target as HTMLElement;
     if (target.closest("button")) return;
+    // k=1 时图片刚好 fit 容器, 没东西可拖 — 禁止 drag (用户要求)
+    if (k <= MIN_K) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
       x: e.clientX,
@@ -288,6 +362,12 @@ export function ImageLightbox({
             alt=""
             className="absolute left-1/2 top-1/2 max-w-full max-h-full select-none"
             draggable={false}
+            onLoad={(e) => {
+              const img = e.currentTarget;
+              if (img.naturalWidth && img.naturalHeight) {
+                setImgNatural({ w: img.naturalWidth, h: img.naturalHeight });
+              }
+            }}
             style={{
               transform: `translate(-50%, -50%) translate(${tx}px, ${ty}px) scale(${k})`,
               transformOrigin: "center center",
@@ -303,18 +383,84 @@ export function ImageLightbox({
         </div>
       )}
 
-      {/* 右上关闭 */}
+      {/* 左上 minimap — 显示整张图片 + 白色边框表示当前 viewport 位置
+          用户要求: 视图用白色边框表示 */}
+      {fit && (
+        <div
+          data-lightbox-control
+          className="absolute top-4 left-4 z-10 rounded overflow-hidden ring-1 ring-white/40 shadow-md bg-black/30 backdrop-blur-sm"
+          style={{ width: MM_W, height: MM_H }}
+        >
+          {/* 整张图片的缩略图 — 用 CSS transform 缩放图片填满 minimap */}
+          <img
+            src={currentSrc}
+            alt=""
+            className="absolute select-none pointer-events-none"
+            draggable={false}
+            style={{
+              width: fit.fitW,
+              height: fit.fitH,
+              // 把 (fitW × fitH) 缩放到 (MM_W × MM_H): 缩放比 = MM_W / fitW (= MM_H / fitH)
+              // 左上角对齐到 minimap (0,0): translate(-50%, -50%) 把图片中心放 (0,0), 再 translate(MM_W/2, MM_H/2) 移到 minimap 中心
+              transform: `translate(${MM_W / 2}px, ${MM_H / 2}px) scale(${MM_W / fit.fitW}) translate(-50%, -50%)`,
+              transformOrigin: "center center",
+            }}
+          />
+          {/* viewport 白色边框 — 当前可见区域 */}
+          {(() => {
+            const cw = containerSize?.w ?? 0;
+            const ch = containerSize?.h ?? 0;
+            // viewport 在图片 fit 大小上的位置 (相对图片中心)
+            //   图片 fit 时居中, viewport 中心 = (tx, ty) (相对图片中心)
+            //   viewport 大小 = (cw, ch) 相对图片 fit 大小
+            //   viewport 左上 = (tx - cw/2, ty - ch/2) 相对图片 fit 大小
+            //   minimap 坐标 = 图片 fit 大小 × (MM_W / fit.fitW)
+            const scale = MM_W / fit.fitW;
+            let rx = (tx - cw / 2) * scale + MM_W / 2;
+            let ry = (ty - ch / 2) * scale + MM_H / 2;
+            let rw = cw * scale;
+            let rh = ch * scale;
+            // clamp 到 minimap 边界 (viewport 可能比 minimap 大, 此时取整 minimap)
+            if (rw > MM_W) {
+              rw = MM_W;
+              rx = 0;
+            } else {
+              rx = Math.max(0, Math.min(MM_W - rw, rx));
+            }
+            if (rh > MM_H) {
+              rh = MM_H;
+              ry = 0;
+            } else {
+              ry = Math.max(0, Math.min(MM_H - rh, ry));
+            }
+            return (
+              <div
+                className="absolute border-2 border-white pointer-events-none rounded-sm"
+                style={{
+                  left: rx,
+                  top: ry,
+                  width: rw,
+                  height: rh,
+                  boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
+                }}
+              />
+            );
+          })()}
+        </div>
+      )}
+
+      {/* 右上关闭 — 用户新加的图标, 无背景 */}
       <button
         type="button"
         onClick={onClose}
         data-lightbox-control
         aria-label="关闭"
-        className="absolute top-4 right-4 z-10 w-10 h-10 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition-colors backdrop-blur-md"
+        className="absolute top-4 right-4 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
       >
-        <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-5 h-5 invert" />
+        <img src="/icons/map/tabs/关闭按钮.svg" alt="" className="w-7 h-7 invert" />
       </button>
 
-      {/* 左右翻图 (只 >1 张时) */}
+      {/* 左右翻图 (只 >1 张时) — 用户新加的右侧箭头按钮, 无背景, 左箭头镜像 rotate */}
       {images.length > 1 && (
         <>
           <button
@@ -322,24 +468,32 @@ export function ImageLightbox({
             onClick={goPrev}
             data-lightbox-control
             aria-label="上一张"
-            className="absolute top-1/2 left-4 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition-colors backdrop-blur-md"
+            className="absolute top-1/2 left-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
           >
-            <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-5 h-5 invert rotate-180" />
+            <img
+              src="/icons/map/tabs/右侧箭头按钮.svg"
+              alt=""
+              className="w-7 h-7 invert rotate-180"
+            />
           </button>
           <button
             type="button"
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-4 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-slate-900/60 hover:bg-slate-900/80 text-white flex items-center justify-center transition-colors backdrop-blur-md"
+            className="absolute top-1/2 right-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
           >
-            <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-5 h-5 invert" />
+            <img
+              src="/icons/map/tabs/右侧箭头按钮.svg"
+              alt=""
+              className="w-7 h-7 invert"
+            />
           </button>
         </>
       )}
 
-      {/* 右下缩放控制 — 跟 map 的 ZoomBtn 同款 (w-9 h-9 rounded-lg bg-white/60 border ...)
-          用户要求: 删全屏按钮, 只留 放大 + 缩小 (跟 map 一样, 但去掉全屏) */}
+      {/* 右下缩放控制 — 跟 map 的 ZoomBtn 同款 (w-9 h-9 rounded-lg 边框) 但**无背景** (用户要求)
+          用户要求: 删全屏按钮, 只留 放大 + 缩小; 操作一次就放大到图片能填满窗口 */}
       <div
         data-lightbox-control
         className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5"
@@ -347,11 +501,11 @@ export function ImageLightbox({
         <button
           type="button"
           onClick={() => {
-            const newK = Math.min(MAX_K, k * 1.3);
+            const newK = Math.min(MAX_K, k * 1.5);
             schedule(tx, ty, newK);
           }}
           aria-label="放大"
-          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-9 h-9 rounded-lg border border-slate-200/80 bg-white/60 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
           disabled={k >= MAX_K}
         >
           <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
@@ -359,11 +513,11 @@ export function ImageLightbox({
         <button
           type="button"
           onClick={() => {
-            const newK = Math.max(MIN_K, k / 1.3);
+            const newK = Math.max(MIN_K, k / 1.5);
             schedule(tx, ty, newK);
           }}
           aria-label="缩小"
-          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-9 h-9 rounded-lg border border-slate-200/80 bg-white/60 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
           disabled={k <= MIN_K}
         >
           <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
