@@ -1479,6 +1479,8 @@ useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
+      // lightbox 打开时 (image-lightbox.tsx 的 dialog 接管滚轮) 不响应 — 避免双触发
+      if ((e.target as HTMLElement | null)?.closest('[role="dialog"][aria-modal="true"]')) return;
       // 搜索框有内容时, 缩放地图顺手收起搜索列表 — 用户进入"专注地图"模式
       if (searchQueryRef.current.trim().length > 0) {
         setSearchListOpen(false);
@@ -1613,6 +1615,10 @@ useEffect(() => {
     //     必须用 searchWrapperRef.contains 兜底
     if (searchWrapperRef.current?.contains(e.target as Node)) return;
     if ((e.target as HTMLElement).closest("button")) return;
+    // lightbox 打开时, map 内的 pointerdown 不响应 (lightbox 接管拖动)
+    //   - 阻止用户拖动 lightbox 图片时, 地图同时跟着拖 (双触发)
+    //   - lightbox 在 map container 内 (DOM 嵌套), React 事件会冒泡到 map
+    if ((e.target as HTMLElement | null)?.closest('[role="dialog"][aria-modal="true"]')) return;
     // 搜索框有内容时, 在地图上按下鼠标拖动也收起搜索列表
     if (searchQueryRef.current.trim().length > 0) {
       setSearchListOpen(false);

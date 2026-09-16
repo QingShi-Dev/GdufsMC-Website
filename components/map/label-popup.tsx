@@ -99,7 +99,7 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
             <img
               src="/icons/map/tabs/查看图片图标.svg"
               alt=""
-              className="w-5 h-5 invert opacity-0 group-hover:opacity-90 transition-opacity"
+              className="w-5 h-5 opacity-0 group-hover:opacity-90 transition-opacity"
             />
             <span className="text-[12px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
               查看大图
@@ -240,7 +240,7 @@ function ImageThumbnails({
               <img
                 src="/icons/map/tabs/查看图片图标.svg"
                 alt=""
-                className="w-4 h-4 invert opacity-0 group-hover:opacity-90 transition-opacity"
+                className="w-4 h-4 opacity-0 group-hover:opacity-90 transition-opacity"
               />
               <span className="text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
                 查看大图

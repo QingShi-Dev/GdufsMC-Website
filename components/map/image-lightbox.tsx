@@ -228,10 +228,11 @@ export function ImageLightbox({
 
   // 鼠标拖动平移
   const onPointerDown = (e: React.PointerEvent) => {
-    // 点按钮 / 缩略图时不启动拖动
+    // 点按钮时不启动拖动 (按钮自己处理 click)
+    //   - 注意: 容器本身不带 data-lightbox-control, 否则 target.closest 会命中容器自己
+    //     drag 永远 return early
     const target = e.target as HTMLElement;
     if (target.closest("button")) return;
-    if (target.closest("[data-lightbox-control]")) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
       x: e.clientX,
@@ -256,7 +257,8 @@ export function ImageLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={title ?? "图片查看"}
-      className="fixed inset-0 z-50 bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
+      // z-[200] 盖在 header (z-100) 和 search wrapper (z-[60]) 上面
+      className="fixed inset-0 z-[200] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         // 点遮罩空白处关; 点图片 / 控件不关
         if (e.target === e.currentTarget) onClose();
@@ -265,7 +267,8 @@ export function ImageLightbox({
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
         <div
           ref={containerRef}
-          data-lightbox-control
+          // 注意: 这里**不加** data-lightbox-control, 否则 onPointerDown 检查 closest 时
+          // 会找到容器自己 (target.img → container), 永远 return early, drag 永远不启动
           className="relative pointer-events-auto select-none cursor-grab active:cursor-grabbing w-[90vw] h-[90vh] max-w-[1400px] max-h-[900px]"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -328,42 +331,31 @@ export function ImageLightbox({
         </>
       )}
 
-      {/* 右下缩放控制 */}
+      {/* 右下缩放控制 — 跟 map 的 ZoomBtn 同款 (w-9 h-9 rounded-lg bg-white/60 border ...)
+          用户要求: 删缩小, 只留 还原 + 放大, 外观跟 map 一致 */}
       <div
         data-lightbox-control
-        className="absolute bottom-4 right-4 z-10 flex items-center gap-1 bg-slate-900/60 rounded-full p-1 backdrop-blur-md"
+        className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5"
       >
         <button
           type="button"
           onClick={() => {
-            const newK = Math.max(MIN_K, k / 1.25);
+            const newK = Math.min(MAX_K, k * 1.3);
             schedule(tx, ty, newK);
           }}
-          aria-label="缩小"
-          className="w-9 h-9 rounded-full hover:bg-slate-700/60 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-          disabled={k <= MIN_K}
+          aria-label="放大"
+          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          disabled={k >= MAX_K}
         >
-          <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4 invert" />
+          <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
         </button>
         <button
           type="button"
           onClick={reset}
           aria-label="还原"
-          className="w-9 h-9 rounded-full hover:bg-slate-700/60 text-white flex items-center justify-center transition-colors"
+          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors"
         >
-          <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4 h-4 invert" />
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const newK = Math.min(MAX_K, k * 1.25);
-            schedule(tx, ty, newK);
-          }}
-          aria-label="放大"
-          className="w-9 h-9 rounded-full hover:bg-slate-700/60 text-white flex items-center justify-center transition-colors disabled:opacity-30"
-          disabled={k >= MAX_K}
-        >
-          <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4 invert" />
+          <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4.5 h-4.5" />
         </button>
       </div>
 
