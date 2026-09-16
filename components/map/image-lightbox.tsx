@@ -17,9 +17,6 @@ const MIN_K = 1;
 const MAX_K = 8;
 /** 滚轮缩放因子 — 一次滚轮一个步 (1.25×), 不再是微小 1.0025× */
 const WHEEL_STEP = 1.25;
-/** minimap 固定大小 (px) */
-const MM_W = 132;
-const MM_H = 88;
 
 interface ImageLightboxProps {
   images: string[];
@@ -383,76 +380,11 @@ export function ImageLightbox({
         </div>
       </div>
 
-      {/* 顶部标题 */}
+      {/* 顶部标题 — 显示图片完整名称 (label.name), 用户要求
+          max-w-[80vw] 防止超长, 不用 truncate 让完整名字显示出来 */}
       {title && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-1.5 rounded-full bg-slate-900/60 text-white text-[13px] font-medium backdrop-blur-md pointer-events-none">
+        <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-5 py-2 rounded-full bg-slate-900/60 text-white text-[15px] font-medium backdrop-blur-md pointer-events-none whitespace-nowrap">
           {title}
-        </div>
-      )}
-
-      {/* 左上 minimap — 显示整张图片 + 白色边框表示当前 viewport 位置
-          用户要求: 视图用白色边框表示 */}
-      {fit && (
-        <div
-          data-lightbox-control
-          className="absolute top-4 left-4 z-10 rounded overflow-hidden ring-1 ring-white/40 shadow-md bg-black/30 backdrop-blur-sm"
-          style={{ width: MM_W, height: MM_H }}
-        >
-          {/* 整张图片的缩略图 — 用 CSS transform 缩放图片填满 minimap */}
-          <img
-            src={currentSrc}
-            alt=""
-            className="absolute select-none pointer-events-none"
-            draggable={false}
-            style={{
-              width: fit.fitW,
-              height: fit.fitH,
-              // 把 (fitW × fitH) 缩放到 (MM_W × MM_H): 缩放比 = MM_W / fitW (= MM_H / fitH)
-              // 左上角对齐到 minimap (0,0): translate(-50%, -50%) 把图片中心放 (0,0), 再 translate(MM_W/2, MM_H/2) 移到 minimap 中心
-              transform: `translate(${MM_W / 2}px, ${MM_H / 2}px) scale(${MM_W / fit.fitW}) translate(-50%, -50%)`,
-              transformOrigin: "center center",
-            }}
-          />
-          {/* viewport 白色边框 — 当前可见区域 */}
-          {(() => {
-            const cw = containerSize?.w ?? 0;
-            const ch = containerSize?.h ?? 0;
-            // viewport 在图片 fit 大小上的位置 (相对图片中心)
-            //   图片 fit 时居中, viewport 中心 = (tx, ty) (相对图片中心)
-            //   viewport 大小 = (cw, ch) 相对图片 fit 大小
-            //   viewport 左上 = (tx - cw/2, ty - ch/2) 相对图片 fit 大小
-            //   minimap 坐标 = 图片 fit 大小 × (MM_W / fit.fitW)
-            const scale = MM_W / fit.fitW;
-            let rx = (tx - cw / 2) * scale + MM_W / 2;
-            let ry = (ty - ch / 2) * scale + MM_H / 2;
-            let rw = cw * scale;
-            let rh = ch * scale;
-            // clamp 到 minimap 边界 (viewport 可能比 minimap 大, 此时取整 minimap)
-            if (rw > MM_W) {
-              rw = MM_W;
-              rx = 0;
-            } else {
-              rx = Math.max(0, Math.min(MM_W - rw, rx));
-            }
-            if (rh > MM_H) {
-              rh = MM_H;
-              ry = 0;
-            } else {
-              ry = Math.max(0, Math.min(MM_H - rh, ry));
-            }
-            return (
-              <div
-                className="absolute border-2 border-white pointer-events-none rounded-sm"
-                style={{
-                  left: rx,
-                  top: ry,
-                  width: rw,
-                  height: rh,
-                  boxShadow: "0 0 0 1px rgba(0,0,0,0.5)",
-                }}
-              />
-            );
-          })()}
         </div>
       )}
 
@@ -462,7 +394,7 @@ export function ImageLightbox({
         onClick={onClose}
         data-lightbox-control
         aria-label="关闭"
-        className="absolute top-4 right-4 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
+        className="absolute top-6 right-6 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
       >
         <img src="/icons/map/tabs/关闭按钮.svg" alt="" className="w-7 h-7" />
       </button>
@@ -475,7 +407,7 @@ export function ImageLightbox({
             onClick={goPrev}
             data-lightbox-control
             aria-label="上一张"
-            className="absolute top-1/2 left-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 left-6 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
           >
             <img
               src="/icons/map/tabs/右侧箭头按钮.svg"
@@ -488,7 +420,7 @@ export function ImageLightbox({
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 items-center justify-center transition-colors"
+            className="absolute top-1/2 right-6 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 items-center justify-center transition-colors"
           >
             <img
               src="/icons/map/tabs/右侧箭头按钮.svg"
@@ -503,7 +435,7 @@ export function ImageLightbox({
           用户要求: 删全屏按钮, 只留 放大 + 缩小; 操作一次就放大到图片能填满窗口 */}
       <div
         data-lightbox-control
-        className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5"
+        className="absolute bottom-6 right-6 z-10 flex flex-col gap-1.5"
       >
         <button
           type="button"
@@ -535,7 +467,7 @@ export function ImageLightbox({
       {images.length > 1 && (
         <div
           data-lightbox-control
-          className="absolute bottom-4 left-4 z-10 max-w-[60vw] flex gap-2 bg-slate-900/60 rounded-lg p-2 backdrop-blur-md"
+          className="absolute bottom-6 left-6 z-10 max-w-[60vw] flex gap-2 bg-slate-900/60 rounded-lg p-2 backdrop-blur-md"
         >
           {images.map((src, i) => {
             const active = i === currentIndex;
