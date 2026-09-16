@@ -107,7 +107,7 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
           {label.name}
         </span>
         {hasDescription && (
-          <p className="text-[15px] mt-1.5 leading-snug text-slate-600 line-clamp-2">
+          <p className="text-[15px] mt-1.5 leading-snug text-slate-600">
             {label.description}
           </p>
         )}
@@ -125,8 +125,14 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
                 <span className="text-[13px] uppercase w-11 shrink-0 text-slate-600">
                   建设者
                 </span>
-                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 truncate">
-                  {label.builder}
+                {/* builder 名字按空格分成多个 span — 用户能控制 gap, 名字多时 flex-wrap 换行 */}
+                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-3 gap-y-1">
+                  {label.builder
+                    .split(/\s+/)
+                    .filter((name) => name.length > 0)
+                    .map((name, i) => (
+                      <span key={i}>{name}</span>
+                    ))}
                 </span>
               </div>
           )}
