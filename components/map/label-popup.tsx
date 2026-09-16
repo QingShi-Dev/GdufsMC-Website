@@ -15,10 +15,7 @@
 "use client";
 
 import { useEffect } from "react";
-import {
-  IconX,
-  IconArrowRight,
-} from "@tabler/icons-react";
+import { IconArrowRight } from "@tabler/icons-react";
 import type {
   NewLabel,
   NewLabelProduct,
@@ -73,15 +70,7 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
       onClick={(e) => e.stopPropagation()}
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* 关闭按钮 */}
-      <button
-        type="button"
-        onClick={onClose}
-        aria-label="关闭"
-        className="absolute top-1.5 right-1.5 z-10 w-7 h-7 rounded-full bg-slate-100/80 hover:bg-slate-200 text-slate-500 hover:text-slate-800 flex items-center justify-center transition-colors"
-      >
-        <IconX size={14} />
-      </button>
+      {/* (关闭按钮已删除 — 用户要求) */}
 
       {/* hero 图 — 容器用图片原始 aspect (2560/1361 ≈ 1.88) 适配,
           这样不管 popup 宽度 (288/320px), 图片都以原比例显示, 不会上下裁切 */}
@@ -121,12 +110,12 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
             </span>
           </div>
           {label.builder && (
-              <div className="flex items-start gap-1.5 pt-1">
+              <div className="flex  items-center gap-1.5 pt-1">
                 <span className="text-[13px] uppercase w-11 shrink-0 text-slate-600">
                   建设者
                 </span>
                 {/* builder 名字按空格分成多个 span — 用户能控制 gap, 名字多时 flex-wrap 换行 */}
-                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-3 gap-y-1">
+                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-1.5">
                   {label.builder
                     .split(/\s+/)
                     .filter((name) => name.length > 0)
@@ -166,6 +155,23 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
 
 /* ============================== Sub-views ============================== */
 
+/**
+ * 从图片路径提取"-横杠后面"的标注 — "labels/foo-材料展示馆.png" → "材料展示馆"
+ *  - 没横杠 (e.g. "八角塔.png") 返回 null, 调用方不显示
+ *  - 多横杠 (e.g. "八角塔-材料-内饰.png") → 取首个横杠之后整段 "材料-内饰"
+ *  - URL 末尾可能带 query (?v=xxx) — 先剥掉再处理
+ */
+function parseCaption(src: string): string | null {
+  const filename = src.split("/").pop() ?? "";
+  // 剥 query / hash
+  const base = filename.split(/[?#]/)[0] ?? "";
+  // 剥扩展名 (.png / .webp / .jpg 等)
+  const stem = base.replace(/\.[^.]+$/, "");
+  const dashIdx = stem.indexOf("-");
+  if (dashIdx < 0 || dashIdx === stem.length - 1) return null;
+  return stem.slice(dashIdx + 1);
+}
+
 function ImageThumbnails({ images }: { images: string[] }) {
   const show = images.slice(0, 3);
   const more = images.length - show.length;
@@ -190,6 +196,21 @@ function ImageThumbnails({ images }: { images: string[] }) {
             )}
           </div>
         ))}
+      </div>
+      {/* 标注 (文件名 - 横杠后面) — "八角塔-材料展示馆.png" → "材料展示馆"
+          没横杠的文件名 (e.g. "八角塔.png") 不显示标注 */}
+      <div className="flex gap-1 mt-1">
+        {show.map((src, i) => {
+          const caption = parseCaption(src);
+          return (
+            <div
+              key={i}
+              className="flex-1 text-center text-[10px] text-slate-500 leading-tight truncate"
+            >
+              {caption ?? ""}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
