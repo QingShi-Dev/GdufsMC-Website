@@ -7,7 +7,9 @@ import { TILE_PX } from "./constants";
  * Server-side 数据加载器 — 把 public/images/maps/20260907/{overworld,nether,end}
  * 下的瓦片拼成 GuideMap 需要的 NewWorld[] 数据
  *
- * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.png
+ * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.{png|webp}
+ *   - overworld 现在用 webp (q=95), 跟 PNG 同目录, 这里优先 webp
+ *   - nether / end 仍然用 PNG (用户要求其他维度不变)
  * 坐标系: x = (col - minCol) * 1024,  z = (row - minRow) * 1024  (viewBox 单位 = 1024 block)
  *  跟 public/test/ 不同, 这里不显式存世界坐标, 全部映射到 viewBox 局部坐标
  *
@@ -67,7 +69,10 @@ export interface NewWorldMeta {
 }
 
 // TILE_PX 从 ./new-guide-map-constants 引入 (single source of truth, client 端也用同一份)
-const RE = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.png$/;
+// 注意: overworld 现在有 .webp 跟 .png 同目录, 我们**优先 webp** (体积小, 浏览器原生支持)
+// nether / end 仍然只有 PNG (用户要求其他维度不变)
+const RE_PNG = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.png$/;
+const RE_WEBP = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.webp$/;
 
 /**
  * 主世界右下角 8 张瓦片 (col 12-13, row 9-12) 实际是 relayout 时从其他位置搬来的:
@@ -127,10 +132,18 @@ function loadDimension(
 ): NewMapLayer | null {
   const dimDir = path.join(baseDir, dimId);
   if (!fs.existsSync(dimDir)) return null;
-  const files = fs
-    .readdirSync(dimDir)
-    .filter((f) => f.endsWith(".png"))
-    .sort(); // 文件名有序, 排好调试方便
+  // overworld 同时有 .png 和 .webp — 优先选 webp (q=95, 体积小, 浏览器原生支持)
+  // nether / end 只有 .png — 跟以前一样
+  const isOverworld = dimId === "overworld";
+  const files = isOverworld
+    ? fs
+        .readdirSync(dimDir)
+        .filter((f) => f.endsWith(".webp"))
+        .sort()
+    : fs
+        .readdirSync(dimDir)
+        .filter((f) => f.endsWith(".png"))
+        .sort();
   if (files.length === 0) return null;
 
   const tiles: NewMapTile[] = [];
@@ -140,7 +153,7 @@ function loadDimension(
   let maxRow = -Infinity;
 
   for (const f of files) {
-    const m = f.match(RE);
+    const m = f.match(isOverworld ? RE_WEBP : RE_PNG);
     if (!m) continue;
     const col = Number(m[1]);
     const row = Number(m[2]);

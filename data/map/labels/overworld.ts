@@ -26,7 +26,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "玩家出生点，兼具工业生成和仓储功能，是建筑和机器最密集的区域",
       fontSize: { min: 16, max: 22, maxZoom: 1200 },
       images: [
-         "/images/maps/regions/基地.png"
+         "/images/maps/thumbs/regions/基地.webp"
       ],
     },
     {
@@ -40,7 +40,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "资源共享仓库，存放了一部分常用物品",
       fontSize: { min: 18, max: 18, minZoom: 1201 },
       images: [
-        "/images/maps/regions/基地仓库.png"
+        "/images/maps/thumbs/regions/基地仓库.webp"
       ],
     },
     {
@@ -54,7 +54,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "KirkLee123",
       fontSize: { min: 12, max: 22 },
       images: [
-        "/images/maps/regions/地图画工厂.png"
+        "/images/maps/thumbs/regions/地图画工厂.webp"
       ],
     },
     {
@@ -92,9 +92,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "玩家聚居区，岛上散布玩家家园和装饰性建筑",
       fontSize: { min: 12, max: 22, minZoom: 200 },
       images: [
-        "/images/maps/regions/北苑.png",
-        "/images/maps/regions/北苑-西南角.png",
-        "/images/maps/regions/北苑-西北角.png",
+        "/images/maps/thumbs/regions/北苑.webp",
+        "/images/maps/thumbs/regions/北苑-西南角.webp",
+        "/images/maps/thumbs/regions/北苑-西北角.webp",
       ],
     },
     {
@@ -108,7 +108,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "可通过钻石兑换游戏币开启游戏设施",
       fontSize: { min: 12, max: 18, minZoom: 500 },
       images: [
-        "/images/maps/regions/游乐场.png",
+        "/images/maps/thumbs/regions/游乐场.webp",
       ],
     },
     {
@@ -121,9 +121,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 16, minZoom: 500 },
       images: [
-        "/images/maps/buildings/overworld/星穹列车.png",
-        "/images/maps/buildings/overworld/星穹列车-派对车厢.png",
-        "/images/maps/buildings/overworld/星穹列车-观景车厢.png",
+        "/images/maps/thumbs/buildings/overworld/星穹列车.webp",
+        "/images/maps/thumbs/buildings/overworld/星穹列车-派对车厢.webp",
+        "/images/maps/thumbs/buildings/overworld/星穹列车-观景车厢.webp",
       ],
     },
     {
@@ -137,10 +137,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "过去两届全服PVP的比赛场地，配套有活动广场",
       fontSize: { min: 12, max: 18, minZoom: 200 },
       images: [
-        "/images/maps/buildings/overworld/沙城竞技场.png",
-        "/images/maps/buildings/overworld/沙城竞技场-西南角.png",
-        "/images/maps/buildings/overworld/沙城竞技场-东北角.png",
-        "/images/maps/buildings/overworld/沙城竞技场-主席台.png",
+        "/images/maps/thumbs/buildings/overworld/沙城竞技场.webp",
+        "/images/maps/thumbs/buildings/overworld/沙城竞技场-西南角.webp",
+        "/images/maps/thumbs/buildings/overworld/沙城竞技场-东北角.webp",
+        "/images/maps/thumbs/buildings/overworld/沙城竞技场-主席台.webp",
       ],
     },
     {
@@ -154,9 +154,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 20, minZoom: 200 },
       images: [
-        "/images/maps/buildings/overworld/愿结局如你我所书.png",
-        "/images/maps/buildings/overworld/愿结局如你我所书-侧方.png",
-        "/images/maps/buildings/overworld/愿结局如你我所书-侧后方.png",
+        "/images/maps/thumbs/buildings/overworld/愿结局如你我所书.webp",
+        "/images/maps/thumbs/buildings/overworld/愿结局如你我所书-侧方.webp",
+        "/images/maps/thumbs/buildings/overworld/愿结局如你我所书-侧后方.webp",
       ],
     },
     {
@@ -170,10 +170,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Aurora1229937",
       fontSize: { min: 12, max: 16, minZoom: 700 },
       images: [
-        "/images/maps/buildings/overworld/祖国母亲在呼唤.png",
-        "/images/maps/buildings/overworld/祖国母亲在呼唤-正面.png",
-        "/images/maps/buildings/overworld/祖国母亲在呼唤-背面.png",
-        "/images/maps/buildings/overworld/祖国母亲在呼唤-仰视角.png",
+        "/images/maps/thumbs/buildings/overworld/祖国母亲在呼唤.webp",
+        "/images/maps/thumbs/buildings/overworld/祖国母亲在呼唤-正面.webp",
+        "/images/maps/thumbs/buildings/overworld/祖国母亲在呼唤-背面.webp",
+        "/images/maps/thumbs/buildings/overworld/祖国母亲在呼唤-仰视角.webp",
       ],
     },
     {
@@ -187,8 +187,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "布设「翁法罗斯英雄纪」地图画",
       fontSize: { min: 12, max: 14, minZoom: 500 },
       images: [
-        "/images/maps/buildings/overworld/地图画展览馆.png",
-        "/images/maps/buildings/overworld/地图画展览馆-内饰.png",
+        "/images/maps/thumbs/buildings/overworld/地图画展览馆.webp",
+        "/images/maps/thumbs/buildings/overworld/地图画展览馆-内饰.webp",
       ],
     },
     {
@@ -202,7 +202,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "hideswa",
       fontSize: { min: 10, max: 16, minZoom: 500 },
       images: [
-        "/images/maps/buildings/overworld/八芒垂星舆.png",
+        "/images/maps/thumbs/buildings/overworld/八芒垂星舆.webp",
       ],
     },
     {
@@ -215,8 +215,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/buildings/overworld/村民公寓.png",
-        "/images/maps/buildings/overworld/村民公寓-内饰.png",
+        "/images/maps/thumbs/buildings/overworld/村民公寓.webp",
+        "/images/maps/thumbs/buildings/overworld/村民公寓-内饰.webp",
       ],
     },
     {
@@ -229,8 +229,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi hideswa",
       fontSize: { min: 12, max: 16, minZoom: 200 },
       images: [
-        "/images/maps/buildings/overworld/八角塔.png",
-        "/images/maps/buildings/overworld/八角塔-材料展示馆.png",
+        "/images/maps/thumbs/buildings/overworld/八角塔.webp",
+        "/images/maps/thumbs/buildings/overworld/八角塔-材料展示馆.webp",
       ],
     },
     {
@@ -243,9 +243,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 16, minZoom: 500 },
       images: [
-        "/images/maps/buildings/overworld/繁英府.png",
-        "/images/maps/buildings/overworld/繁英府-街道.png",
-        "/images/maps/buildings/overworld/繁英府-内饰.png",
+        "/images/maps/thumbs/buildings/overworld/繁英府.webp",
+        "/images/maps/thumbs/buildings/overworld/繁英府-街道.webp",
+        "/images/maps/thumbs/buildings/overworld/繁英府-内饰.webp",
       ],
     },
     {
@@ -258,7 +258,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Aurora1229937",
       fontSize: { min: 12, max: 16, minZoom: 800 },
       images: [
-        "/images/maps/buildings/overworld/樱花神木.png",
+        "/images/maps/thumbs/buildings/overworld/樱花神木.webp",
       ],
     },
     {
@@ -271,7 +271,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Aurora1229937",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/buildings/overworld/樱花阁.png",
+        "/images/maps/thumbs/buildings/overworld/樱花阁.webp",
       ],
     },
     {
@@ -286,8 +286,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "纪念2025年12月11日，云城像素社成立一周年",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/buildings/overworld/蛋糕城堡.png",
-        "/images/maps/buildings/overworld/蛋糕城堡-内饰.png",
+        "/images/maps/thumbs/buildings/overworld/蛋糕城堡.webp",
+        "/images/maps/thumbs/buildings/overworld/蛋糕城堡-内饰.webp",
       ],
     },
     {
@@ -300,7 +300,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "KirkLee123",
       fontSize: { min: 12, max: 16, minZoom: 500 },
       images: [
-        "/images/maps/machines/overworld/鱿鱼农场.png",
+        "/images/maps/thumbs/machines/overworld/鱿鱼农场.webp",
       ],
       outputs: [
         { label: "墨囊", icon: "/icons/map/items/ink_sac.png" },
@@ -316,7 +316,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 16, minZoom: 200 },
       images: [
-        "/images/maps/machines/overworld/溺尸塔.png",
+        "/images/maps/thumbs/machines/overworld/溺尸塔.webp",
       ],
       outputs: [
         { label: "铜锭", icon: "/icons/map/items/copper_ingot.png" },
@@ -335,7 +335,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "收集装置位于下界",
       fontSize: { min: 12, max: 16, minZoom: 200 },
       images: [
-        "/images/maps/machines/overworld/守卫者农场.png",
+        "/images/maps/thumbs/machines/overworld/守卫者农场.webp",
       ],
       outputs: [
         { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.png" },
@@ -354,7 +354,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "超高效率的刷怪装置，建于全服第一个空置域，收集装置位于下界",
       fontSize: { min: 10, max: 20, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/船吸刷怪塔.png",
+        "/images/maps/thumbs/machines/overworld/船吸刷怪塔.webp",
       ],
       outputs: [
         { label: "火药", icon: "/icons/map/items/gunpowder.png" },
@@ -376,7 +376,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "刷怪结构位于下界",
       fontSize: { min: 12, max: 16 },
       images: [
-        "/images/maps/machines/overworld/猪人塔收集.png",
+        "/images/maps/thumbs/machines/overworld/猪人塔收集.webp",
       ],
       outputs: [
         { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
@@ -392,7 +392,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 18 },
       images: [
-        "/images/maps/machines/overworld/刷冰机.png",
+        "/images/maps/thumbs/machines/overworld/刷冰机.webp",
       ],
       outputs: [
         { label: "冰", icon: "/icons/map/blocks/ice.png" },
@@ -408,7 +408,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi Aurora1229937",
       fontSize: { min: 12, max: 16 },
       images: [
-        "/images/maps/machines/overworld/袭击塔.png",
+        "/images/maps/thumbs/machines/overworld/袭击塔.webp",
       ],
       outputs: [
         { label: "绿宝石", icon: "/icons/map/items/emerald.png" },
@@ -428,7 +428,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       fontSize: { min: 12, max: 16 },
       builder: "CMLOCK 核摇Prog_Metalcore Aurora1229937",
       images: [
-        "/images/maps/machines/overworld/女巫塔.png",
+        "/images/maps/thumbs/machines/overworld/女巫塔.webp",
       ],
       outputs: [
         { label: "红石粉", icon: "/icons/map/items/redstone.png" },
@@ -450,7 +450,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 16, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/蛙明灯农场收集.png",
+        "/images/maps/thumbs/machines/overworld/蛙明灯农场收集.webp",
       ],
       outputs: [
         { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.png" },
@@ -470,7 +470,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "mc_zte",
       fontSize: { min: 10, max: 16, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/蜜蜂农场.png",
+        "/images/maps/thumbs/machines/overworld/蜜蜂农场.webp",
       ],
       inputs: [
         { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
@@ -492,7 +492,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 16, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/凋灵骷髅农场收集.png",
+        "/images/maps/thumbs/machines/overworld/凋灵骷髅农场收集.webp",
       ],
       outputs: [
         { label: "凋灵骷髅头颅", icon: "null" },
@@ -511,7 +511,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 16, minZoom: 500 },
       images: [
-        "/images/maps/machines/overworld/村民交易所.png",
+        "/images/maps/thumbs/machines/overworld/村民交易所.webp",
       ],
     },
     {
@@ -525,7 +525,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/刷铁机.png",
+        "/images/maps/thumbs/machines/overworld/刷铁机.webp",
       ],
       outputs: [
         { label: "铁锭", icon: "/icons/map/items/iron_ingot.png" },
@@ -543,7 +543,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Aurora1229937 yunzhongxian",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/史莱姆农场.png",
+        "/images/maps/thumbs/machines/overworld/史莱姆农场.webp",
       ],
       outputs: [
         { label: "粘液球", icon: "/icons/map/items/slime_ball.png" },
@@ -559,7 +559,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK Aurora1229937 核摇Prog_Metalcore",
       fontSize: { min: 12, max: 16, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/320熔炉组.png",
+        "/images/maps/thumbs/machines/overworld/320熔炉组.webp",
       ],
     },
     {
@@ -573,7 +573,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 12, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/海泡菜机.png",
+        "/images/maps/thumbs/machines/overworld/海泡菜机.webp",
       ],
       inputs: [
         { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
@@ -593,7 +593,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 12, max: 14, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/甘蔗机.png",
+        "/images/maps/thumbs/machines/overworld/甘蔗机.webp",
       ],
       outputs: [
         { label: "甘蔗", icon: "/icons/map/items/sugar_cane.png" },
@@ -609,7 +609,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/全自动农场.png",
+        "/images/maps/thumbs/machines/overworld/全自动农场.webp",
       ],
       outputs: [
         { label: "面包", icon: "/icons/map/items/bread.png" },
@@ -632,7 +632,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/仙人掌农场.png",
+        "/images/maps/thumbs/machines/overworld/仙人掌农场.webp",
       ],
       outputs: [
         { label: "仙人掌", icon: "/icons/map/blocks/cactus_side.png" },
@@ -649,7 +649,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Y6Z9J",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/金胡萝卜机.png",
+        "/images/maps/thumbs/machines/overworld/金胡萝卜机.webp",
       ],
       inputs: [
         { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
@@ -669,7 +669,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "mc_zte",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/烤鸡机.png",
+        "/images/maps/thumbs/machines/overworld/烤鸡机.webp",
       ],
       outputs: [
         { label: "熟鸡肉", icon: "/icons/map/items/cooked_chicken.png" },
@@ -686,7 +686,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/竹子机及铁轨机.png",
+        "/images/maps/thumbs/machines/overworld/竹子机及铁轨机.webp",
       ],
       outputs: [
         { label: "竹子", icon: "/icons/map/items/bamboo.png" },
@@ -704,7 +704,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Aurora1229937 CMLOCK",
       fontSize: { min: 12, max: 16, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/水流刷怪塔.png",
+        "/images/maps/thumbs/machines/overworld/水流刷怪塔.webp",
       ],
       outputs: [
         { label: "火药", icon: "/icons/map/items/gunpowder.png" },
@@ -725,7 +725,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "核摇Prog_Metalcore",
       fontSize: { min: 12, max: 14, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/简易树场.png",
+        "/images/maps/thumbs/machines/overworld/简易树场.webp",
       ],
       inputs: [
         { label: "树苗", icon: "/icons/map/blocks/oak_sapling.png" },
@@ -748,7 +748,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 12, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/泥巴机.png",
+        "/images/maps/thumbs/machines/overworld/泥巴机.webp",
       ],
       inputs: [
         { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
@@ -767,7 +767,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "mc_zte",
       fontSize: { min: 10, max: 14, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/木船台球桌.png",
+        "/images/maps/thumbs/machines/overworld/木船台球桌.webp",
       ],
     },
     {
@@ -781,7 +781,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/竹筏炸雪机.png",
+        "/images/maps/thumbs/machines/overworld/竹筏炸雪机.webp",
       ],
       outputs: [
         { label: "雪块", icon: "/icons/map/blocks/snow.png" },
@@ -798,7 +798,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 12, minZoom: 1200 },
       images: [
-        "/images/maps/machines/overworld/紫水晶农场.png",
+        "/images/maps/thumbs/machines/overworld/紫水晶农场.webp",
       ],
       outputs: [
         { label: "紫水晶碎片", icon: "/icons/map/items/amethyst_shard.png" },
@@ -815,7 +815,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 12, max: 16, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/红树树场.png",
+        "/images/maps/thumbs/machines/overworld/红树树场.webp",
       ],
       inputs: [
         { label: "红树胎生苗", icon: "/icons/map/blocks/mangrove_propagule.png" },
@@ -839,7 +839,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "CMLOCK",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/炼药机.png",
+        "/images/maps/thumbs/machines/overworld/炼药机.webp",
       ],
       inputs: [
         { label: "下界疣", icon: "/icons/map/items/nether_wart.png" },
@@ -867,7 +867,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "Evenstar_X",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/刷石机.png",
+        "/images/maps/thumbs/machines/overworld/刷石机.webp",
       ],
       outputs: [
         { label: "圆石", icon: "/icons/map/blocks/cobblestone.png" },
@@ -884,7 +884,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "刷怪结构位于下界",
       fontSize: { min: 10, max: 16, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/恶魂农场收集.png",
+        "/images/maps/thumbs/machines/overworld/恶魂农场收集.webp",
       ],
       outputs: [
         { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.png" },
@@ -902,7 +902,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 800 },
       images: [
-        "/images/maps/machines/overworld/矢车菊刷花机.png",
+        "/images/maps/thumbs/machines/overworld/矢车菊刷花机.webp",
       ],
       inputs: [
         { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
@@ -922,7 +922,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "KirkLee123",
       fontSize: { min: 12, max: 14, minZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/骨粉机.png",
+        "/images/maps/thumbs/machines/overworld/骨粉机.webp",
       ],
       outputs: [
         { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
@@ -939,7 +939,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       description: "刷沙机的收集装置位于末地",
       fontSize: { min: 12, max: 16 },
       images: [
-        "/images/maps/machines/overworld/末地门刷沙机.png",
+        "/images/maps/thumbs/machines/overworld/末地门刷沙机.webp",
       ],
       outputs: [
         { label: "沙子", icon: "/icons/map/blocks/sand.png" },
@@ -958,7 +958,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 14, mid: 12, midZoom: 300 },
       images: [
-        "/images/maps/machines/overworld/珊瑚扇机.png",
+        "/images/maps/thumbs/machines/overworld/珊瑚扇机.webp",
       ],
       inputs: [
         { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
@@ -977,7 +977,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       builder: "mc_zte",
       fontSize: { min: 10, max: 12, minZoom: 1201 },
       images: [
-        "/images/maps/machines/overworld/善魂基地.png",
+        "/images/maps/thumbs/machines/overworld/善魂基地.webp",
       ],
     },
 
@@ -1007,7 +1007,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetX: 20,
       },
       images: [
-        "/images/maps/transit/overworld/基地站.png",
+        "/images/maps/thumbs/transit/overworld/基地站.webp",
       ],
     },
     {
@@ -1027,9 +1027,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetX: 23,
       },
       images: [
-        "/images/maps/transit/overworld/基地北站.png",
-        "/images/maps/transit/overworld/基地北站-A出口.png",
-        "/images/maps/transit/overworld/基地北站-B出口.png",
+        "/images/maps/thumbs/transit/overworld/基地北站.webp",
+        "/images/maps/thumbs/transit/overworld/基地北站-A出口.webp",
+        "/images/maps/thumbs/transit/overworld/基地北站-B出口.webp",
       ],
     },
     {
@@ -1051,10 +1051,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetX: 20,
       },
       images: [
-        "/images/maps/transit/overworld/北苑站.png",
-        "/images/maps/transit/overworld/北苑站-地下站台.png",
-        "/images/maps/transit/overworld/北苑站-A出口.png",
-        "/images/maps/transit/overworld/北苑站-B出口.png",
+        "/images/maps/thumbs/transit/overworld/北苑站.webp",
+        "/images/maps/thumbs/transit/overworld/北苑站-地下站台.webp",
+        "/images/maps/thumbs/transit/overworld/北苑站-A出口.webp",
+        "/images/maps/thumbs/transit/overworld/北苑站-B出口.webp",
       ],
     },
     {
@@ -1074,7 +1074,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetX: 23,
       },
       images: [
-        "/images/maps/transit/overworld/八角楼站.png",
+        "/images/maps/thumbs/transit/overworld/八角楼站.webp",
       ],
     },
     {
@@ -1094,7 +1094,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetY: -8,
       },
       images: [
-        "/images/maps/transit/overworld/崩铁港站.png",
+        "/images/maps/thumbs/transit/overworld/崩铁港站.webp",
       ],
     },
     {
@@ -1114,7 +1114,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetX: 23,
       },
       images: [
-        "/images/maps/transit/overworld/竞技场站.png",
+        "/images/maps/thumbs/transit/overworld/竞技场站.webp",
       ],
     },
     {
@@ -1151,7 +1151,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetY: 8,
       },
       images: [
-        "/images/maps/transit/overworld/游乐场站.png",
+        "/images/maps/thumbs/transit/overworld/游乐场站.webp",
       ]
     },
     /* 珍珠传送 — 跟站名同款, visibleWhen: "transit" */
@@ -1173,7 +1173,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         offsetY: -5.5,
       },
       images: [
-        "/images/maps/transit/overworld/01 传送站.png",
+        "/images/maps/thumbs/transit/overworld/01 传送站.webp",
       ]
     },
     {
@@ -1193,7 +1193,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/02 传送站.png",
+        "/images/maps/thumbs/transit/overworld/02 传送站.webp",
       ]
     },
     {
@@ -1213,7 +1213,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/03 传送站.png",
+        "/images/maps/thumbs/transit/overworld/03 传送站.webp",
       ]
     },
     {
@@ -1232,7 +1232,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-女巫塔.png",
+        "/images/maps/thumbs/transit/overworld/副站-女巫塔.webp",
       ]
     },
     {
@@ -1250,7 +1250,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-船吸.png",
+        "/images/maps/thumbs/transit/overworld/副站-船吸.webp",
       ]
     },
     {
@@ -1269,7 +1269,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-刷冰机.png",
+        "/images/maps/thumbs/transit/overworld/副站-刷冰机.webp",
       ]
     },
     {
@@ -1288,7 +1288,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-袭击塔.png",
+        "/images/maps/thumbs/transit/overworld/副站-袭击塔.webp",
       ]
     },
     {
@@ -1307,7 +1307,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-蜜蜂农场.png",
+        "/images/maps/thumbs/transit/overworld/副站-蜜蜂农场.webp",
       ]
     },
     {
@@ -1325,7 +1325,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 14, mid: 12, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-地图画.png",
+        "/images/maps/thumbs/transit/overworld/副站-地图画.webp",
       ]
     },
     {
@@ -1344,7 +1344,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 12, mid: 10, midZoom: 300  },
       },
       images: [
-        "/images/maps/transit/overworld/副站-凋灵骷髅农场.png",
+        "/images/maps/thumbs/transit/overworld/副站-凋灵骷髅农场.webp",
       ]
     },
 ]

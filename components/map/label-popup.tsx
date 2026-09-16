@@ -180,7 +180,12 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
       {/* 图片查看器 (lightbox) — 全屏 modal, ESC / 点遮罩关闭 */}
       {lightboxIndex !== null && (
         <ImageLightbox
+          // 缩略图条用 thumbs (省流量, 本来 popup 也用同一份)
           images={images}
+          // 主图用 full 高清版 (data 里存的是 thumbs/, 这里把 thumbs/ → full/ 派生大图)
+          //   - 大图 q=95 webp, lightbox 放大 8× 也不糊
+          //   - popup 仍然显示低分辨率的 thumbs
+          imagesFull={images.map(toFullImagePath)}
           initialIndex={lightboxIndex}
           title={label.name}
           onClose={() => setLightboxIndex(null)}
@@ -191,6 +196,17 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
 }
 
 /* ============================== Sub-views ============================== */
+
+/**
+ * 把 thumbs 路径派生 full 路径 (用于 lightbox 高清大图)
+ *   - "/images/maps/thumbs/buildings/overworld/八角塔.webp"
+ *   - → "/images/maps/full/buildings/overworld/八角塔.webp"
+ *  - 只替换第一个 "/thumbs/" 段, 避免重复处理
+ *  - 如果路径里没有 /thumbs/ 段 (e.g. 直接传 full), 原样返回
+ */
+function toFullImagePath(thumbPath: string): string {
+  return thumbPath.replace("/thumbs/", "/full/");
+}
 
 /**
  * 从图片路径提取"-横杠后面"的标注 — "labels/foo-材料展示馆.png" → "材料展示馆"

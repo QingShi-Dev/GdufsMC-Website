@@ -19,7 +19,17 @@ const MAX_K = 8;
 const WHEEL_STEP = 1.25;
 
 interface ImageLightboxProps {
+  /**
+   * 缩略图列表 (popup 用的低分辨率版) — 显示在底部缩略图条 + 当前主图缺省时的 fallback
+   *  - 跟 `imagesFull` 长度一致, 按 index 一一对应
+   */
   images: string[];
+  /**
+   * 大图列表 (高清原图) — 主图 / 翻图时实际显示的版本
+   *  - 不传就 fallback 到 `images`
+   *  - 一般是 popup 用 thumbs (省流量), lightbox 用 full (高清)
+   */
+  imagesFull?: string[];
   /** 打开时显示第几张 */
   initialIndex: number;
   /** 顶部标题 (一般是建筑名), 可选 */
@@ -29,6 +39,7 @@ interface ImageLightboxProps {
 
 export function ImageLightbox({
   images,
+  imagesFull,
   initialIndex,
   title,
   onClose,
@@ -61,7 +72,9 @@ export function ImageLightbox({
     h: number;
   } | null>(null);
 
-  const currentSrc = images[currentIndex] ?? "";
+  // 主图优先用 imagesFull (高清), 没有就 fallback 到 images
+  const hiResImages = imagesFull ?? images;
+  const currentSrc = hiResImages[currentIndex] ?? images[currentIndex] ?? "";
 
   // 容器尺寸 ResizeObserver — 跟 guide-map 的 containerRect 同款
   useEffect(() => {

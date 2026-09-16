@@ -19,7 +19,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "实现超远距离传送的大型装置，选定目的地，投掷珍珠，即可在数秒内抵达对应出口",
       fontSize: { min: 14, max: 20, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/矢量珍珠炮.png",
+        "/images/maps/thumbs/machines/nether/矢量珍珠炮.webp",
       ],
     }
     , {
@@ -33,7 +33,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 16, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/猪人塔.png",
+        "/images/maps/thumbs/machines/nether/猪人塔.webp",
       ],
       outputs: [
         { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
@@ -50,7 +50,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 16, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/恶魂农场.png",
+        "/images/maps/thumbs/machines/nether/恶魂农场.webp",
       ],
       outputs: [
         { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.png" },
@@ -68,7 +68,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "收集装置位于主世界",
       fontSize: { min: 12, max: 16, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/凋灵骷髅农场.png",
+        "/images/maps/thumbs/machines/nether/凋灵骷髅农场.webp",
       ],
       outputs: [
         { label: "凋灵骷髅头颅", icon: "null" },
@@ -86,7 +86,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "Aurora1229937 CMLOCK 核摇Prog_Metalcore",
       fontSize: { min: 12, max: 16, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/猪灵交易所.png",
+        "/images/maps/thumbs/machines/nether/猪灵交易所.webp",
       ],
       inputs: [
         { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
@@ -119,7 +119,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "通过摔落处死船吸刷怪塔生成的怪物，启用时能看到“怪物瀑布”，刷怪结构位于主世界",
       fontSize: { min: 12, max: 18, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/船吸刷怪塔收集.png",
+        "/images/maps/thumbs/machines/nether/船吸刷怪塔收集.webp",
       ],
       outputs: [
         { label: "火药", icon: "/icons/map/items/gunpowder.png" },
@@ -140,7 +140,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "Aurora1229937 yunzhongxian",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/岩浆怪农场.png",
+        "/images/maps/thumbs/machines/nether/岩浆怪农场.webp",
       ],
       outputs: [
         { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
@@ -158,7 +158,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "收集装置位于主世界",
       fontSize: { min: 10, max: 16, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/蛙明灯农场.png",
+        "/images/maps/thumbs/machines/nether/蛙明灯农场.webp",
       ],
       outputs: [
         { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.png" },
@@ -178,7 +178,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "mc_zte",
       fontSize: { min: 10, max: 14, minZoom: 150, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/烈焰人农场.png",
+        "/images/maps/thumbs/machines/nether/烈焰人农场.webp",
       ],
       outputs: [
         { label: "烈焰棒", icon: "/icons/map/items/blaze_rod.png" },
@@ -194,7 +194,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 12, minZoom: 200, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/玄武岩机.png",
+        "/images/maps/thumbs/machines/nether/玄武岩机.webp",
       ],
       outputs: [
         { label: "玄武岩", icon: "/icons/map/blocks/basalt_side.png" },
@@ -210,7 +210,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "核摇Prog_Metalcore",
       fontSize: { min: 10, max: 14, minZoom: 400, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/猪肉塔.png",
+        "/images/maps/thumbs/machines/nether/猪肉塔.webp",
       ],
       outputs: [
         { label: "熟猪排", icon: "/icons/map/items/cooked_porkchop.png" },
@@ -228,7 +228,7 @@ export const NETHER_LABELS: NewLabel[] = [
       description: "刷怪结构位于主世界",
       fontSize: { min: 10, max: 14, minZoom: 375, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/守卫者农场收集.png",
+        "/images/maps/thumbs/machines/nether/守卫者农场收集.webp",
       ],
       outputs: [
         { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.png" },
@@ -246,7 +246,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 16, mid: 12 , midZoom: 150, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/主世界伪和平开关.png",
+        "/images/maps/thumbs/machines/nether/主世界伪和平开关.webp",
       ],
     }
     , {
@@ -259,7 +259,7 @@ export const NETHER_LABELS: NewLabel[] = [
       builder: "Marcus",
       fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800 },
       images: [
-        "/images/maps/machines/nether/盾构机.png",
+        "/images/maps/thumbs/machines/nether/盾构机.webp",
       ],
       outputs: [
         { label: "远古残骸", icon: "/icons/map/blocks/ancient_debris_side.png" },
@@ -285,7 +285,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-女巫塔.png",
+        "/images/maps/thumbs/transit/nether/出口-女巫塔.webp",
       ]
     },
     {
@@ -304,7 +304,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-船吸.png",
+        "/images/maps/thumbs/transit/nether/出口-船吸.webp",
       ],
     },
     {
@@ -322,7 +322,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 14, minZoom: 150, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-试炼密室.png",
+        "/images/maps/thumbs/transit/nether/出口-试炼密室.webp",
       ],
     },
     {
@@ -342,7 +342,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-袭击塔.png",
+        "/images/maps/thumbs/transit/nether/出口-袭击塔.webp",
       ],
     },
     {
@@ -360,7 +360,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 16, mid: 12, midZoom: 300, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-末地门刷沙机.png",
+        "/images/maps/thumbs/transit/nether/出口-末地门刷沙机.webp",
       ],
     },
     {
@@ -378,7 +378,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-八角塔.png",
+        "/images/maps/thumbs/transit/nether/出口-八角塔.webp",
       ],
     },
     {
@@ -396,7 +396,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 10, max: 14, minZoom: 200, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-地图画工厂.png",
+        "/images/maps/thumbs/transit/nether/出口-地图画工厂.webp",
       ],
     },
     {
@@ -416,7 +416,7 @@ export const NETHER_LABELS: NewLabel[] = [
         offsetX: 38,
       },
       images: [
-        "/images/maps/transit/nether/出口-村民交易所.png",
+        "/images/maps/thumbs/transit/nether/出口-村民交易所.webp",
       ],
     },
     {
@@ -435,7 +435,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 16, minZoom: 600, maxZoom: 800  },
       },
       images: [
-        "/images/maps/transit/nether/出口-基地.png",
+        "/images/maps/thumbs/transit/nether/出口-基地.webp",
       ],
     },
     {
@@ -454,7 +454,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-广外校徽.png",
+        "/images/maps/thumbs/transit/nether/出口-广外校徽.webp",
       ],
     },
     {
@@ -473,7 +473,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-猪人塔收集.png",
+        "/images/maps/thumbs/transit/nether/出口-猪人塔收集.webp",
       ],
     },
     {
@@ -491,7 +491,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-刷冰机.png",
+        "/images/maps/thumbs/transit/nether/出口-刷冰机.webp",
       ],
     },
     {
@@ -509,7 +509,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-翁法罗斯英雄纪地图画.png",
+        "/images/maps/thumbs/transit/nether/出口-翁法罗斯英雄纪地图画.webp",
       ],
     },
     {
@@ -527,7 +527,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 12, max: 14, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-蜜蜂农场.png",
+        "/images/maps/thumbs/transit/nether/出口-蜜蜂农场.webp",
       ],
     },
     {
@@ -546,7 +546,7 @@ export const NETHER_LABELS: NewLabel[] = [
         fontSize: { min: 8, max: 14, mid: 10, midZoom: 300, maxZoom: 800 },
       },
       images: [
-        "/images/maps/transit/nether/出口-凋灵骷髅农场收集.png",
+        "/images/maps/thumbs/transit/nether/出口-凋灵骷髅农场收集.webp",
       ],
     },
 ]
@@ -563,7 +563,7 @@ export const END_LABELS: NewLabel[] = [
       description: "用于瞬杀末影龙的大型装置",
       fontSize: { min: 14, max: 20, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/天基屠龙炮.png",
+        "/images/maps/thumbs/machines/end/天基屠龙炮.webp",
       ],
     }
     , {
@@ -577,8 +577,8 @@ export const END_LABELS: NewLabel[] = [
       description: "以水流运输为主的大型全物品分类、仓储装置",
       fontSize: { min: 14, max: 20, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/水流全物品.png",
-        "/images/maps/machines/end/水流全物品-内饰.png",
+        "/images/maps/thumbs/machines/end/水流全物品.webp",
+        "/images/maps/thumbs/machines/end/水流全物品-内饰.webp",
       ],
     }
     , {
@@ -592,7 +592,7 @@ export const END_LABELS: NewLabel[] = [
       description: "包含粘土量产的全链条机器",
       fontSize: { min: 12, max: 16, mid: 14, midZoom: 200, maxZoom: 500 },
       images: [
-        "/images/maps/regions/粘土工业园.png",
+        "/images/maps/thumbs/regions/粘土工业园.webp",
       ]
     }
     , {
@@ -605,7 +605,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 16, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/紫颂果农场.png",
+        "/images/maps/thumbs/machines/end/紫颂果农场.webp",
       ],
       inputs: [
         { label: "紫颂花", icon: "/icons/map/blocks/chorus_flower.png" },
@@ -625,7 +625,7 @@ export const END_LABELS: NewLabel[] = [
       description: "可根据情况切换刷沙、固化模式，生产装置位于主世界",
       fontSize: { min: 12, max: 14, minZoom: 320, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/固化机及刷沙机收集.png",
+        "/images/maps/thumbs/machines/end/固化机及刷沙机收集.webp",
       ],
       outputs: [
         { label: "沙子", icon: "/icons/map/blocks/sand.png" },
@@ -646,7 +646,7 @@ export const END_LABELS: NewLabel[] = [
       description: "手动处死可获得大量经验",
       fontSize: { min: 12, max: 16, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/小黑塔.png",
+        "/images/maps/thumbs/machines/end/小黑塔.webp",
       ],
       outputs: [
         { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.png" },
@@ -662,7 +662,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 16, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/B36炸树场.png",
+        "/images/maps/thumbs/machines/end/B36炸树场.webp",
       ],
       description: "可适配全类型树苗",
       inputs: [
@@ -686,7 +686,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 16, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/潜影贝农场.png",
+        "/images/maps/thumbs/machines/end/潜影贝农场.webp",
       ],
       outputs: [
         { label: "潜影壳", icon: "/icons/map/items/shulker_shell.png" },
@@ -703,7 +703,7 @@ export const END_LABELS: NewLabel[] = [
       description: "装配有白名单系统，可根据情况切换散装、打包模式",
       fontSize: { min: 12, max: 16,minZoom: 250 , maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/640熔炉组.png",
+        "/images/maps/thumbs/machines/end/640熔炉组.webp",
       ],
     }
     , {
@@ -716,7 +716,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/泥土机.png",
+        "/images/maps/thumbs/machines/end/泥土机.webp",
       ],
       inputs: [
         { label: "砂土", icon: "/icons/map/blocks/coarse_dirt.png" },
@@ -735,7 +735,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/泥巴机.png",
+        "/images/maps/thumbs/machines/end/泥巴机.webp",
       ],
       inputs: [
         { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
@@ -755,7 +755,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 10, max: 12, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/滴水石锥农场.png",
+        "/images/maps/thumbs/machines/end/滴水石锥农场.webp",
       ],
       outputs: [
         { label: "滴水石锥", icon: "/icons/map/items/pointed_dripstone.png" },
@@ -772,7 +772,7 @@ export const END_LABELS: NewLabel[] = [
       builder: "QingShi",
       fontSize: { min: 12, max: 14, minZoom: 501, maxZoom: 600 },
       images: [
-        "/images/maps/machines/end/粘土机.png",
+        "/images/maps/thumbs/machines/end/粘土机.webp",
       ],
       inputs: [
         { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
