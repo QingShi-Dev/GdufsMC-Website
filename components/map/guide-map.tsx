@@ -191,7 +191,7 @@ function WorldTabs({
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
     // w-full: 跟下方地图同宽 (地图也是 100% 宽)
-    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/70 rounded-t-2xl p-1.5 flex flex-wrap items-center gap-2 shadow-sm shadow-slate-900/5">
+    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/70 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-2.5 shadow-sm shadow-slate-900/5">
       {worlds.map((w) => {
         const active = value === w.id;
         return (
@@ -203,21 +203,21 @@ function WorldTabs({
             onFocus={() => preloadWorld(w.id)}
             onTouchStart={() => preloadWorld(w.id)}
             className={cn(
-              "px-3 sm:px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center gap-2",
+              "px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center text-center gap-1.5",
               active
                 ? "bg-white text-slate-800"
-                : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+                : "text-slate-500 hover:text-slate-700 hover:bg-white/40",
             )}
           >
             <span
               className="w-2.5 h-2.5 rounded-full transition-all"
               style={{
                 background: active ? w.accent : "#cbd5e1",
-                boxShadow: active ? `0 0 8px ${w.accent}80` : "none",
+                boxShadow: active ? `0 0 2px ${w.accent}80` : "none",
               }}
             />
-            <span className="text-[16px] ml-0.5">{w.name}</span>
-            <span className="text-[14px] text-slate-500 font-mono hidden sm:inline">
+            <span className="text-[17px] ml-0.5">{w.name}</span>
+            <span className="text-[15px] text-slate-500 font-mono hidden sm:inline">
               {w.version}
             </span>
           </button>
@@ -233,21 +233,19 @@ function WorldTabs({
         aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
         aria-pressed={searchVisible}
         className={cn(
-          "ml-2 sm:ml-4",
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
-          "transition-all flex items-center gap-1.5",
-          searchVisible
-            ? "text-slate-800"
-            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+          "ml-2 sm:ml-3.5",
+          "px-2.5 sm:px-3.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "transition-all flex items-center text-center gap-2",
+          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
         {searchVisible ? (
-          <IconSearch className="w-3.5 h-3.5" />
+          <IconSearch className="w-4 h-4" />
         ) : (
-          <IconSearchOff className="w-3.5 h-3.5" />
+          <IconSearchOff className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
-          {searchVisible ? "隐藏搜索" : "显示搜索"}
+          搜索
         </span>
       </button>
       {/* 标签文字开关 — 紧贴搜索开关右边, 同样不挤坐标 */}
@@ -257,20 +255,18 @@ function WorldTabs({
         aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
         aria-pressed={labelsVisible}
         className={cn(
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
-          "transition-all flex items-center gap-1.5",
-          labelsVisible
-            ? "text-slate-800"
-            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "transition-all flex items-center gap-2",
+          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
         {labelsVisible ? (
-          <IconMapPin className="w-3.5 h-3.5" />
+          <IconMapPin className="w-4 h-4" />
         ) : (
-          <IconMapPinOff className="w-3.5 h-3.5" />
+          <IconMapPinOff className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
-          {labelsVisible ? "隐藏地名" : "显示地名"}
+          地名
         </span>
       </button>
       {/* 交通信息开关 — 现排第三 (最右), 桌面端给坐标预留 ~280px (lg+ 才显示坐标)
@@ -282,20 +278,18 @@ function WorldTabs({
         aria-pressed={transitVisible}
         className={cn(
           "lg:mr-72",
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold",
-          "transition-all flex items-center gap-1.5",
-          transitVisible
-            ? "text-slate-800"
-            : "text-slate-500 hover:text-slate-800 hover:bg-white/40",
+          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "transition-all flex items-center gap-2",
+          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
         {transitVisible ? (
-          <IconBus className="w-3.5 h-3.5" />
+          <IconBus className="w-4 h-4" />
         ) : (
-          <IconBusOff className="w-3.5 h-3.5" />
+          <IconBusOff className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
-          {transitVisible ? "隐藏交通" : "显示交通"}
+          交通
         </span>
       </button>
     </div>
@@ -1661,13 +1655,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           // 文字大小跟上方两个开关按钮 (text-xs sm:text-sm) 对齐
           <div
             ref={coordBoxRef}
-            className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 items-center gap-1.5 text-xs sm:text-sm font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
+            className="hidden sm:flex absolute right-5 top-1/2 -translate-y-1/2 items-center gap-2 text-xs sm:text-[15px] font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
             aria-live="polite"
             style={{ display: "none" }}
           >
             <span className="text-slate-500">x</span>
             <span data-x className="text-slate-900">-</span>
-            <span className="text-slate-400">·</span>
+            <span className="text-slate-400"> </span>
             <span className="text-slate-500">z</span>
             <span data-z className="text-slate-900">-</span>
           </div>
@@ -1813,7 +1807,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
-            topClassName={searchVisible ? "absolute top-[60px] left-3" : undefined}
+            topClassName={searchVisible ? "absolute top-[65px] left-4" : undefined}
           />
         )}
 
@@ -1830,7 +1824,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             role="search"
             aria-label="搜索地标"
             className={cn(
-              "absolute top-3 left-3 z-[60]",
+              "absolute top-4 left-4 z-[60]",
               "w-72 sm:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
@@ -1842,8 +1836,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           >
             {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
                 关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
-            <div className="flex items-center pl-3 pr-1.5 h-9">
-              <IconSearch className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+            <div className="flex items-center pl-3 pr-1.5 h-9.5">
+              <IconSearch className="w-4 h-4 text-slate-400 shrink-0" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1865,8 +1859,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                     setSearchVisible(false);
                   }
                 }}
-                placeholder="名称/拼音/产出"
-                className="flex-1 min-w-0 px-2 text-xs text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
+                placeholder="搜索建筑名称或机器产物"
+                className="flex-1 min-w-0 px-2 text-[14px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/95"
               />
               {searchQuery.length > 0 && (
                 <button
@@ -1934,20 +1928,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             )}
           </ZoomBtn>
         </div>
-
-        {/* 竖屏提示 */}
-        {showRotateHint && (
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 px-3.5 py-2 rounded-xl bg-slate-800 border border-slate-700 text-xs text-slate-100 shadow-lg pointer-events-none">
-            <div className="relative w-5 h-5 flex items-center justify-center">
-              <IconDeviceMobile className="w-4 h-4" />
-              <IconRotate
-                className="w-3 h-3 absolute -top-0.5 -right-1 text-emerald-400"
-                stroke={2.5}
-              />
-            </div>
-            <span>建议横屏查看以获得最佳体验</span>
-          </div>
-        )}
       </div>
 
       {/* popup 改放到 map container 内 (顶部 absolute), 详见 LabelPopup 组件 */}

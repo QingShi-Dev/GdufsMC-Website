@@ -62,8 +62,8 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
       aria-modal="false"
       aria-labelledby="lm-popup-name"
       className={cn(
-        "absolute left-3 z-20",
-        topClassName ?? "top-3",
+        "absolute left-4 z-20",
+        topClassName ?? "top-4",
         "w-72 sm:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
@@ -99,38 +99,43 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
       )}
 
       {/* 名称 + 坐标 + 简介 */}
-      <div className="p-3 space-y-1.5">
-        <div className="flex items-center gap-1.5 text-[10px] text-slate-400">
-          <span className="font-mono">
-            x={label.x} z={label.z}
-          </span>
-        </div>
-        <h3
+      <div className="px-4.5 pt-5.5 pb-5 space-y-1.5">
+        <span
           id="lm-popup-name"
-          className="text-sm font-semibold text-slate-800 leading-tight pr-6"
+          className="text-[23px] font-normal text-slate-800 leading-tight"
         >
           {label.name}
-        </h3>
+        </span>
         {hasDescription && (
-          <p className="text-[11px] leading-snug text-slate-500 line-clamp-2">
+          <p className="text-[15px] mt-1.5 leading-snug text-slate-600 line-clamp-2">
             {label.description}
           </p>
         )}
-        {label.builder && (
-          <div className="flex items-start gap-1.5 pt-0.5">
-            <span className="text-[10px] font-semibold uppercase pt-0.5 w-8 shrink-0 text-slate-500">
-              建设者
+        <div className="mt-3 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[14px] text-slate-600">
+            <span className="text-[13px] uppercase w-8 shrink-0 text-slate-600">
+              坐标
             </span>
-            <span className="text-[11px] leading-snug text-slate-600 flex-1 min-w-0 truncate">
-              {label.builder}
+            <span className="font-mono">
+              x={label.x} z={label.z}
             </span>
           </div>
-        )}
+          {label.builder && (
+              <div className="flex items-start gap-1.5 pt-1">
+                <span className="text-[13px] uppercase w-11 shrink-0 text-slate-600">
+                  建设者
+                </span>
+                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 truncate">
+                  {label.builder}
+                </span>
+              </div>
+          )}
+        </div>
       </div>
 
       {/* 产物区 — inputs / outputs 都各自一段, 有就显示 */}
       {(hasInputs || hasOutputs) && (
-        <div className="px-3 pb-2 space-y-1">
+        <div className="flex flex-col px-4.5 pb-5.5 gap-1 space-y-1">
           {hasInputs && (
             <ProductRow label="投入" products={label.inputs!} tone="sky" />
           )}
@@ -142,7 +147,7 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
 
       {/* 细节图缩略图 (images[1..]) — 有就显示 */}
       {hasDetails && (
-        <div className="px-3 pb-3">
+        <div className="px-4.5 pb-5.5 mt-1">
           <ImageThumbnails images={detailImages} />
         </div>
       )}
@@ -180,9 +185,6 @@ function ImageThumbnails({ images }: { images: string[] }) {
           </div>
         ))}
       </div>
-      <p className="mt-1 text-[10px] text-slate-400">
-        {images.length} 张细节图
-      </p>
     </div>
   );
 }
@@ -200,7 +202,7 @@ function ProductRow({
     <div className="flex items-start gap-1.5">
       <span
         className={cn(
-          "text-[10px] font-semibold uppercase pt-0.5 w-5 shrink-0",
+          "text-[13px] font-medium uppercase pt-0.5 w-7 shrink-0",
           tone === "sky" ? "text-sky-600" : "text-emerald-600",
         )}
       >
@@ -208,7 +210,7 @@ function ProductRow({
       </span>
       <div className="flex flex-wrap gap-1 flex-1 min-w-0">
         {products.length === 0 ? (
-          <span className="text-[10px] text-slate-400">—</span>
+          <span className="text-[13px] text-slate-400">—</span>
         ) : (
           products.map((p) => <ProductPill key={p.label} product={p} tone={tone} />)
         )}
@@ -226,15 +228,15 @@ function ProductPill({
 }) {
   const toneClass =
     tone === "sky"
-      ? "bg-sky-50 text-sky-700 ring-sky-200"
-      : "bg-emerald-50 text-emerald-700 ring-emerald-200";
+      ? "bg-sky-50 text-sky-700 ring-sky-200/90"
+      : "bg-emerald-50 text-emerald-700 ring-emerald-200/90";
   // icon 为空 / "null" 字符串 / undefined 时不渲染 img, 也不留 gap 占位
   const rawIcon = product.icon?.trim();
   const showIcon = !!rawIcon && rawIcon !== "null";
   return (
     <span
       className={cn(
-        "inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium ring-1",
+        "inline-flex items-center text-center px-1.5 py-0.5 rounded text-[12px] font-medium ring-1",
         showIcon && "gap-1",
         toneClass,
       )}
@@ -243,13 +245,13 @@ function ProductPill({
         <img
           src={rawIcon}
           alt=""
-          className="w-3 h-3 object-contain shrink-0"
+          className="w-3.5 h-3.5 object-contain shrink-0"
           onError={(e) => {
             e.currentTarget.style.display = "none";
           }}
         />
       )}
-      <span className="truncate">{product.label}</span>
+      <span>{product.label}</span>
     </span>
   );
 }

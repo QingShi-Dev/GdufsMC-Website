@@ -798,7 +798,6 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       fontSize: { min: 12, max: 12, minZoom: 1200 },
       images: [
         "/images/maps/machines/overworld/紫水晶农场.png",
-        "/images/maps/machines/overworld/紫水晶农场-钻井.png",
       ],
       outputs: [
         { label: "紫水晶碎片", icon: "/icons/map/items/amethyst_shard.png" },
