@@ -302,12 +302,14 @@ export function ImageLightbox({
   // 鼠标拖动平移
   const onPointerDown = (e: React.PointerEvent) => {
     // 点按钮时不启动拖动 (按钮自己处理 click)
-    //   - 注意: 容器本身不带 data-lightbox-control, 否则 target.closest 会命中容器自己
-    //     drag 永远 return early
     const target = e.target as HTMLElement;
     if (target.closest("button")) return;
     // k=1 时图片刚好 fit 容器, 没东西可拖 — 禁止 drag (用户要求)
     if (k <= MIN_K) return;
+    // 只在图片本身 (IMG) 上能拖 — 用户要求拖动区域 = 图片范围, 不是 container 周边
+    //   - 之前 target 是容器内任何位置 (含 padding) 都可拖, 用户觉得超出图片范围
+    //   - 现在只 IMG 元素触发拖动, container padding / minimap / 控件 都不触发
+    if (target.tagName !== "IMG") return;
     e.currentTarget.setPointerCapture(e.pointerId);
     dragRef.current = {
       x: e.clientX,
@@ -340,9 +342,14 @@ export function ImageLightbox({
       aria-label={title ?? "图片查看"}
       // z-[300] 远超 header (z-100) 和 search wrapper (z-[60]), 确保在最上层
       className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
-      onClick={(e) => {
-        // 点遮罩空白处关; 点图片 / 控件不关
-        if (e.target === e.currentTarget) onClose();
+      // 注意: 不再有 onClick 关闭 (用户要求: 只有右上角关闭按钮能关)
+      //   - 之前点 backdrop (target === currentTarget) 也关, 用户觉得太容易误关
+      //   - 现在只能点右上角关闭按钮关
+      onWheel={(e) => {
+        // 整个 dialog 上滚轮都 preventDefault, 避免:
+        //   - 在 container padding 上滚轮: page scroll (lightbox wheel handler 只挂在 containerRef)
+        //   - 在 backdrop 上滚轮: page scroll + map wheel handler (虽然有 dialog closest 兜底, 双保险)
+        e.preventDefault();
       }}
     >
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -457,7 +464,7 @@ export function ImageLightbox({
         aria-label="关闭"
         className="absolute top-4 right-4 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
       >
-        <img src="/icons/map/tabs/关闭按钮.svg" alt="" className="w-7 h-7 invert" />
+        <img src="/icons/map/tabs/关闭按钮.svg" alt="" className="w-7 h-7" />
       </button>
 
       {/* 左右翻图 (只 >1 张时) — 用户新加的右侧箭头按钮, 无背景, 左箭头镜像 rotate */}
@@ -473,7 +480,7 @@ export function ImageLightbox({
             <img
               src="/icons/map/tabs/右侧箭头按钮.svg"
               alt=""
-              className="w-7 h-7 invert rotate-180"
+              className="w-10 h-10 rotate-180"
             />
           </button>
           <button
@@ -481,12 +488,12 @@ export function ImageLightbox({
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 right-4 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 items-center justify-center transition-colors"
           >
             <img
               src="/icons/map/tabs/右侧箭头按钮.svg"
               alt=""
-              className="w-7 h-7 invert"
+              className="w-10 h-10"
             />
           </button>
         </>
