@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable @next/next/no-img-element -- 项目图标用 /public 下的 SVG 文件, next/image 只优化位图不优化 SVG, 这里 <img> 是正确的 */
 
 /**
  * 新版导览地图 — 多瓦片 SVG 拼图
@@ -16,17 +17,12 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ReactNode } from "react";
-import {
-  IconDeviceMobile,
-  IconRotate,
-  IconX,
-} from "@tabler/icons-react";
+import { IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 import { logger } from "@/lib/logger";
 import type {
   NewMapLayer,
   NewMapTile,
-  NewMapTone,
   NewWorldId,
   NewWorldMeta,
 } from "@/lib/map/loader";
@@ -109,6 +105,7 @@ function SearchResults({
           key={`${r.worldId}:${r.label.id}`}
           type="button"
           role="option"
+          aria-selected="false"
           onClick={(e) => {
             // 拖动时跳过 onSelect (用户拖动是来 scroll list, 不是选结果)
             //   - mousedown 后 mousemove 距离 > 3px → listDraggingRef=true
@@ -420,12 +417,6 @@ function MapCanvas({
 
 /* ============================== Helpers ============================== */
 
-const MAP_BG: Record<NewMapTone, string> = {
-  plains: "#a7f3d0",
-  nether: "#fecaca",
-  end: "#ddd6fe",
-};
-
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
 
@@ -540,7 +531,11 @@ function worldToVB(
  * 注: 容器 size 用 getBoundingClientRect() 实时取, 不缓存 (resize 时自动跟)
  */
 function worldToScreenFactory(args: {
-  container: HTMLElement | null;
+  // 容器尺寸 (state, 不是 ref) — react-hooks/refs 规则要求 render 阶段不能读 ref.current
+  //   - 之前用 containerRef.current, 在 React 19 下报 "Cannot access refs during render"
+  //   - ResizeObserver 在 layout 完成后回调, 把 {width, height} 存到 state
+  //   - render 阶段用 state 即可, 不需要 ref
+  containerRect: { width: number; height: number } | null;
   world: NewWorldMeta | null;
   tx: number;
   ty: number;
@@ -548,11 +543,10 @@ function worldToScreenFactory(args: {
   isFullscreen: boolean;
   isMobile: boolean;
 }): (worldX: number, worldZ: number) => { x: number; y: number } | null {
-  const { container, world, tx, ty, k, isFullscreen, isMobile } = args;
-  if (!container || !world) return () => null;
-  const rect = container.getBoundingClientRect();
-  const cw = rect.width;
-  const ch = rect.height;
+  const { containerRect, world, tx, ty, k, isFullscreen, isMobile } = args;
+  if (!containerRect || !world) return () => null;
+  const cw = containerRect.width;
+  const ch = containerRect.height;
   if (cw === 0 || ch === 0) return () => null;
   const vbW = world.map.width;
   const vbH = world.map.height;
@@ -619,18 +613,26 @@ export interface GuideMapProps {
 }
 
 export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
-  // 缺省: 三个维度都空数组 (不开 toggle 就完全不渲染标签, 兼容老用法)
-  const lb: NewLabelGroups = labels ?? {
-    overworld: [],
-    nether: [],
-    end: [],
-  };
-  // 缺省: 三个维度都空 (同 labels)
-  const mt: NewTransitGroups = transit ?? {
-    overworld: { lines: [], stations: [] },
-    nether: { lines: [], stations: [] },
-    end: { lines: [], stations: [] },
-  };
+  // 缺省 fallback 用 useMemo 包装 — 让引用稳定, 不然放进 deps 会让 useMemo/useCallback 每次重 render
+  //   (空对象每次新建, 引用变化, deps 看着像变了)
+  const lb: NewLabelGroups = useMemo(
+    () =>
+      labels ?? {
+        overworld: [],
+        nether: [],
+        end: [],
+      },
+    [labels],
+  );
+  const mt: NewTransitGroups = useMemo(
+    () =>
+      transit ?? {
+        overworld: { lines: [], stations: [] },
+        nether: { lines: [], stations: [] },
+        end: { lines: [], stations: [] },
+      },
+    [transit],
+  );
   // ---- 1. 路由/视图 ----
   // 列表为空时 fallback 到 overworld 防止 .find 出 undefined
   const initialId: NewWorldId = worlds[0]?.id ?? "overworld";
@@ -650,8 +652,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
   // ---- 3. 全屏 + 竖屏提示 + 视口宽度 (是否移动端) ----
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isPortrait, setIsPortrait] = useState(false);
-  const [showRotateHint, setShowRotateHint] = useState(false);
   // 是否 < sm (640px): SSR 默认 false, 客户端 mount 后再读 window.innerWidth
   //  - 初始 false 保证 server render 跟 client 第一次 render 结果一致 (hydration 匹配)
   //  - mount 后 setIsMobile(true) 会触发 re-render, MapCanvas 切到 slice
@@ -706,23 +706,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     window.addEventListener("resize", update);
     return () => window.removeEventListener("resize", update);
   }, []);
-  useEffect(() => {
-    const mq = window.matchMedia("(orientation: portrait)");
-    const update = () => setIsPortrait(mq.matches);
-    update();
-    mq.addEventListener("change", update);
-    return () => mq.removeEventListener("change", update);
-  }, []);
-  useEffect(() => {
-    if (isFullscreen && isPortrait) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setShowRotateHint(true);
-      const t = setTimeout(() => setShowRotateHint(false), 3000);
-      return () => clearTimeout(t);
-    } else {
-      setShowRotateHint(false);
-    }
-  }, [isFullscreen, isPortrait]);
+  // (showRotateHint + isPortrait 已删除 — 之前想加"全屏时竖屏提示旋转"但没实际渲染, 死代码)
 
   // 搜索开关切换:
   //  - 开启 → input 自动 focus (focus 顺带触发 onFocus → list 展开)
@@ -745,6 +729,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       });
       return () => cancelAnimationFrame(id);
     } else {
+      // 关闭搜索时清空 query + 收起 list — 避免下次开启时残留旧关键词/旧展开态
+      //   - 这是 toggle 边界用例 (searchVisible → false), 不是普通 setState 同步重 render
+      //   - 触发频率低 (用户主动关闭搜索), 不存在 cascade render 性能问题
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSearchQuery("");
       setSearchListOpen(false);
     }
@@ -1007,15 +995,26 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //    浏览器 layout 还没完全 settled, React 同步 re-render 算 label 位置时 rect 错位
   //    ResizeObserver 在 layout 完成后异步 fire, 此时再 setState 触发 render, labels 位置正确
   //    不再需要"拖一下地图才刷新"
+  //  - 同时维护 containerRect state — render 阶段传给 worldToScreenFactory, 不读 ref (react-hooks/refs 规则)
   //  用户体验: 刷新 / 退出全屏 / 窗口 resize — label 都立刻正确显示
   const [, setContainerTick] = useState(0);
+  const [containerRect, setContainerRect] = useState<{
+    width: number;
+    height: number;
+  } | null>(null);
   useEffect(() => {
-    setContainerTick((t) => t + 1);  // 首次 mount: ref 已 attach 后 setState
+    const update = () => {
+      const el = containerRef.current;
+      if (el) {
+        const r = el.getBoundingClientRect();
+        setContainerRect({ width: r.width, height: r.height });
+      }
+      setContainerTick((t) => t + 1);  // 触发 render, 重新读 containerRect
+    };
+    update();  // 首次 mount: ref 已 attach 后 setState
     const target = containerRef.current;
     if (!target) return;
-    const observer = new ResizeObserver(() => {
-      setContainerTick((t) => t + 1);  // 尺寸变化: layout settled 后再 setState
-    });
+    const observer = new ResizeObserver(update);  // 尺寸变化: layout settled 后再 setState
     observer.observe(target);
     return () => observer.disconnect();
   }, []);
@@ -1214,7 +1213,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     [tileMap, isFullscreen, isMobile],
   );
   // 同步 ref, 让更早定义的 commitImmediate 能调到最新 writeHoverCoordFromScreen
-  writeHoverRef.current = writeHoverCoordFromScreen;
+  //   - 不能在 render 阶段写 ref (react-hooks/refs 规则), 放 useEffect 里在 commit 后同步
+  useEffect(() => {
+    writeHoverRef.current = writeHoverCoordFromScreen;
+  }, [writeHoverCoordFromScreen]);
   const onContainerMouseMove = useCallback(
     (e: React.MouseEvent) => {
       writeHoverCoordFromScreen(e.clientX, e.clientY);
@@ -1369,7 +1371,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       // 滚到 header 下 (跟按钮缩放/退出全屏行为一致, 桌面端)
       scrollMapIntoView();
     },
-    [scrollMapIntoView],
+    [scrollMapIntoView, isFullscreen],
   );
 
   /**
@@ -1401,7 +1403,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         panToLandmark(label.x, label.z, label.targetZoom ?? 100);
       }
     },
-    [worldId, panToLandmark],
+    // deps: worldId (当前维度, 切维度时才生效) + panToLandmark (内部用 worldRef, 跟 worldId 解耦)
+    // setSelectedLabel/setWorldId 是 useState setter (引用稳定) — React Compiler 仍要求显式列出
+    [worldId, panToLandmark, setSelectedLabel, setWorldId],
   );
 
   /**
@@ -1510,7 +1514,7 @@ useEffect(() => {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, [schedule, scheduleScrollAfterWheel, writeHoverCoordFromScreen]);
+  }, [schedule, scheduleScrollAfterWheel, writeHoverCoordFromScreen, isFullscreen]);
 
   /**
    * 双指缩放 (pinch-to-zoom) — 移动端
@@ -1598,7 +1602,7 @@ useEffect(() => {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [schedule, writeHoverCoordFromScreen]);
+  }, [schedule, writeHoverCoordFromScreen, isFullscreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
     // 在搜索 wrapper 子树内 (input / list / icon / padding) pointerdown 不触发地图 drag
@@ -1925,7 +1929,7 @@ const toggleFullscreen = () => {
           labelsVisible={labelsVisible}
           transitVisible={transitVisible}
           toScreen={worldToScreenFactory({
-            container: containerRef.current,
+            containerRect,
             // 用 React state 的 world (不是 worldRef.current),
             // 切维度时 useEffect 还没跑, ref 还是旧 world,
             // 用 ref 会让标签位置错 (parScale 用错世界算)
@@ -1957,7 +1961,7 @@ const toggleFullscreen = () => {
           isPanning={isPanning}
           transitVisible={transitVisible}
           toScreen={worldToScreenFactory({
-            container: containerRef.current,
+            containerRect,
             world,
             tx,
             ty,
