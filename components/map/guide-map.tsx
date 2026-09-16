@@ -181,7 +181,7 @@ function WorldTabs({
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
     // w-full: 跟下方地图同宽 (地图也是 100% 宽)
-    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/70 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-2.5 shadow-sm shadow-slate-900/5">
+    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-2.5 shadow-sm shadow-slate-900/10">
       {worlds.map((w) => {
         const active = value === w.id;
         return (
@@ -230,9 +230,9 @@ function WorldTabs({
         )}
       >
         {searchVisible ? (
-          <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
-        ) : (
           <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4" />
+        ) : (
+          <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           搜索
@@ -251,9 +251,9 @@ function WorldTabs({
         )}
       >
         {labelsVisible ? (
-          <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
-        ) : (
           <img src="/icons/map/tabs/显示地名图标.svg" alt="" className="w-4 h-4" />
+        ) : (
+          <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           地名
@@ -274,9 +274,9 @@ function WorldTabs({
         )}
       >
         {transitVisible ? (
-          <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
-        ) : (
           <img src="/icons/map/tabs/显示交通图标.svg" alt="" className="w-4 h-4" />
+        ) : (
+          <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           交通
