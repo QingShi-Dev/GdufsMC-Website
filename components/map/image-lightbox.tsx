@@ -9,6 +9,7 @@
  *  - 离开页面 (依赖变化) 自动关
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 /** 缩放范围 — 跟地图保持同款手感: 1× 默认, 最多 8× */
@@ -252,14 +253,19 @@ export function ImageLightbox({
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  return (
+  // 用 createPortal 渲染到 document.body
+  //   - 之前 lightbox 在 map container 内, map container 有 transition: transform
+  //     让 position: fixed 被 contained, z-index 跟 header (z-100) 比较时
+  //     不是 sibling 比较, 而是跟 map container 的 z-index 比较 — header 浮在上面
+  //   - Portal 让 lightbox 直接成为 body 的子元素, 脱离 ancestor 的 containing block,
+  //     z-index 跟 header 平级比较, 高者胜
+  return createPortal(
     <div
       role="dialog"
       aria-modal="true"
       aria-label={title ?? "图片查看"}
-      // z-[55] — 在 popup (z-20) 之上, 但低于 search wrapper (z-[60]) 和 header (z-100)
-      //   用户要求 header 和搜索栏依旧在 lightbox 之上 (它们是常驻 UI 控件, 不能被遮)
-      className="fixed inset-0 z-[55] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
+      // z-[300] 远超 header (z-100) 和 search wrapper (z-[60]), 确保在最上层
+      className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         // 点遮罩空白处关; 点图片 / 控件不关
         if (e.target === e.currentTarget) onClose();
@@ -396,6 +402,7 @@ export function ImageLightbox({
           })}
         </div>
       )}
-    </div>
+    </div>,
+    document.body,
   );
 }
