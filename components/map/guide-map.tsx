@@ -745,8 +745,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //         (滚到边界时浏览器默认 page scroll, list 自己处理滚到底/顶)
   //       list 收起 → 不 stopPropagation, wheel bubble 到 containerRef 缩地图
   //         但 preventDefault 阻止 page scroll (避免页面滚走 wrapper)
-  //   - mousedown/move/up: drag 判定 (mousemove > 3px 算 drag, setSearchListOpen(false))
-  //   - click 在 input 上: 兜底 setSearchListOpen(true) (避免 React 18 batched 让 onClick 失效)
+  //   - mousedown/move/up: 按 hit-test 分模式
+  //       input 内: 让用户选文字, 不干预 (不 preventDefault, 让浏览器默认 selection 行为)
+  //       list 内: drag 转 wheel 翻页 — pointermove 累加 deltaY 直接写 scrollTop
+  //         跟 wheel 一样翻页 (滚到底/顶 preventDefault page scroll)
+  //       其他 (wrapper padding / icon / 列表外的 wrapper 部分): drag 收起 list
+  //   - click 在 wrapper 内: 兜底 setSearchListOpen(true) (任何位置 click 都展开列表)
+  //     让搜索栏可点击区域更大 — 不只 input 本身
   useEffect(() => {
     if (!searchVisible) return;
     const stopWheel = (e: Event) => {
@@ -757,7 +762,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         // list 显示: 阻止地图缩放
         e.stopPropagation();
         // 滚到边界时阻止 page scroll — 浏览器默认会让 wheel event 触发 page scroll,
-        // 这里 preventDefault 才能拦住 (stopPropagation 只阻止 bubble, 不阻止默认)
+        // 这里 preventDefault 才能拦 (stopPropagation 只阻止 bubble, 不阻止默认)
         const el = list as HTMLElement;
         const atTop = el.scrollTop <= 0;
         const atBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
@@ -771,37 +776,92 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       }
     };
     window.addEventListener("wheel", stopWheel, { passive: false, capture: true });
-    // drag 判定: mousedown 在 wrapper 内 + mousemove > 3px → 收起 list
+    // mousedown 按 hit-test 分模式:
+    //   "input":   mousedown 在 input 内 — 让用户选文字, 不阻止默认
+    //   "list":    mousedown 在 list 内 — drag 转 wheel 翻页模式
+    //   "drag":    mousedown 在 wrapper 其他位置 — 原"drag 收起 list"模式
+    let mode: "input" | "list" | "drag" | null = null;
     let dragOrigin: { x: number; y: number } | null = null;
     let dragActive = false;
+    // list drag-scroll 状态: 上次 pointer Y + 上次 scrollTop, 累加避免大延迟
+    let listDragLastY = 0;
+    let listDragLastScrollTop = 0;
     const onMouseDown = (e: MouseEvent) => {
       const wrapper = document.querySelector('[role="search"]');
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
+      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      if (!hit) return;
+      // input 内 — 让用户选文字, 不启动自定义 drag
+      if (hit.tagName === "INPUT") {
+        mode = "input";
+        return;
+      }
+      // list 内 — drag 转 wheel 翻页
+      const list = hit.closest('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
+      if (list) {
+        mode = "list";
+        listDragLastY = e.clientY;
+        listDragLastScrollTop = list.scrollTop;
+        return;
+      }
+      // 其他 wrapper 区域 — 原"drag 收起 list"
+      mode = "drag";
       dragOrigin = { x: e.clientX, y: e.clientY };
       dragActive = false;
     };
     const onMouseMove = (e: MouseEvent) => {
-      if (!dragOrigin || dragActive) return;
-      if (
-        Math.abs(e.clientX - dragOrigin.x) > 3 ||
-        Math.abs(e.clientY - dragOrigin.y) > 3
-      ) {
-        dragActive = true;
-        setSearchListOpen(false);
+      // list drag-scroll: pointermove 直接写 scrollTop, 跟 wheel 翻页一样
+      if (mode === "list") {
+        const wrapper = document.querySelector('[role="search"]');
+        const list = wrapper?.querySelector('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
+        if (!list) return;
+        const dy = listDragLastY - e.clientY;  // 手指往上拖 = scrollTop 增加
+        let next = listDragLastScrollTop + dy;
+        // 边界 clamp + preventDefault 阻止 page scroll
+        const atTop = next <= 0;
+        const atBottom = next + list.clientHeight >= list.scrollHeight - 1;
+        next = Math.max(0, Math.min(next, list.scrollHeight - list.clientHeight));
+        list.scrollTop = next;
+        listDragLastScrollTop = next;
+        listDragLastY = e.clientY;
+        // 在边界时, 浏览器可能继续触发 page scroll, 阻止默认
+        if (atTop || atBottom) e.preventDefault();
+        return;
+      }
+      // drag 模式: mousemove > 3px 触发收起 list
+      if (mode === "drag" && dragOrigin && !dragActive) {
+        if (
+          Math.abs(e.clientX - dragOrigin.x) > 3 ||
+          Math.abs(e.clientY - dragOrigin.y) > 3
+        ) {
+          dragActive = true;
+          setSearchListOpen(false);
+        }
       }
     };
     const onMouseUp = () => {
+      mode = null;
       dragOrigin = null;
       dragActive = false;
+      listDragLastY = 0;
+      listDragLastScrollTop = 0;
     };
-    // click 在 input 上: 兜底 setSearchListOpen(true) (避免 React 18 batched 让 onClick 失效)
+    // click 在 wrapper 内任何位置都展开 list (不只 input)
+    //   - 之前只 input 触发, 点 wrapper padding / icon 周围 不展开
+    //   - 用户滚轮缩放后 list 收起, 再次点搜索栏 (任何位置) 都应展开
+    //   - 但点 result button / X 按钮时这两个 element 自己会处理, 没必要再开 list
     const onClickNative = (e: MouseEvent) => {
       const wrapper = document.querySelector('[role="search"]');
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
       const target = e.target as HTMLElement;
-      if (target.tagName === "INPUT") {
-        setSearchListOpen(true);
-      }
+      // 点 result button 时结果自己处理 (跳视角 + 弹 popup), 不再开 list
+      if (target.closest('[role="option"]')) return;
+      // 点 X 按钮 (清空) 时清空自己处理, 不再开 list
+      if (target.closest('button[aria-label="清空搜索"]')) return;
+      // wrapper 内任何 click 都展开 list (不只 input 本身)
+      //   - 之前只 input 触发, 点 wrapper padding / icon 周围 不展开
+      //   - 用户滚轮缩放后 list 收起, 再次点搜索栏 (任何位置) 都应展开
+      setSearchListOpen(true);
     };
     window.addEventListener("mousedown", onMouseDown);
     window.addEventListener("mousemove", onMouseMove);
@@ -869,6 +929,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
   // ---- 4. 拖拽 / 滚轮 ref ----
   const containerRef = useRef<HTMLDivElement>(null);
+  // container DOM 已 mount 标记 — render 阶段 inline 调用 worldToScreenFactory 时
+  //   containerRef.current 还是 null (ref 在 commit 阶段才 attach), labels 会渲染 0 个
+  //  用 useState + callback ref 在 commit 后 setState(true) 触发重 render, 此时 ref 已有值
+  //  用户体验: 刷新后立刻拖动一下地图 label 才出现 — 加这个让 label 第一次 render 就显示
+  const [, setContainerMounted] = useState(false);
+  useEffect(() => { setContainerMounted(true); }, []);
   /**
    * 整个 GuideMap 根容器 (包含 WorldTabs + 地图)
    *  scrollMapIntoView 用这个 ref, 这样切维度 / 缩放 / 退出全屏时

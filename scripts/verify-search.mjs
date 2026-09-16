@@ -246,6 +246,61 @@ async function main() {
   }
   console.log("PASS: zoom-wheel collapses list when searchQuery non-empty");
 
+  // ---- 5b. 缩放后再次点搜索栏 → list 重新展开 (bug 2 修复)
+  // 用 dispatchEvent 模拟用户点击 wrapper 任意位置 (mouse.click 在 absolute 元素 click target 不可靠)
+  const listReopen = await page.evaluate(async () => {
+    const wrapper = document.querySelector('[role="search"]');
+    wrapper?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+    // 等 React 18 batched setState 渲染
+    await new Promise((r) => setTimeout(r, 100));
+    return {
+      dataListOpen: wrapper?.getAttribute("data-list-open"),
+      hasList: !!document.querySelector('[role="listbox"][aria-label="搜索结果"]'),
+    };
+  });
+  if (!listReopen.hasList) {
+    console.log("FAIL: list should re-expand after re-click search bar");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: re-click search bar re-expands list (bug 2)");
+
+  // ---- 5c. input 内拖动 (mousedown + move + up) 不应该关 list (bug 3a 修复)
+  // dispatchEvent 模拟 mouse down/move/up 序列 (puppeteer mouse 在 absolute 元素不可靠)
+  // dispatchEvent setSearchListOpen=true 模拟 "list 已重新展开", 然后验证 input drag 不把它收回
+  await page.evaluate(() => {
+    const wrapper = document.querySelector('[role="search"]');
+    wrapper?.dispatchEvent(new MouseEvent("click", { bubbles: true, cancelable: true }));
+  });
+  await sleep(100);
+  // input drag: mousedown + move > 3px + mouseup — 之前会触发 setSearchListOpen(false)
+  const inputDragResult = await page.evaluate(() => {
+    const input = document.querySelector('input[placeholder*="搜索建筑"]');
+    const rect = input.getBoundingClientRect();
+    input.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true, cancelable: true, clientX: rect.x + 10, clientY: rect.y + 5,
+    }));
+    window.dispatchEvent(new MouseEvent("mousemove", {
+      bubbles: true, clientX: rect.x + 50, clientY: rect.y + 5,
+    }));
+    window.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true, clientX: rect.x + 50, clientY: rect.y + 5,
+    }));
+    const wrapper = document.querySelector('[role="search"]');
+    return {
+      inputValue: input.value,
+      listOpen: wrapper?.getAttribute("data-list-open"),
+      hasList: !!document.querySelector('[role="listbox"][aria-label="搜索结果"]'),
+    };
+  });
+  console.log("after input drag:", inputDragResult);
+  if (!inputDragResult.hasList) {
+    console.log("FAIL: input drag should NOT close list (bug 3a)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: input drag doesn't close list (bug 3a)");
+
   // 重新验证 list 收起时 wrapper wheel 不阻止
   // 把 k 重置回 1 通过 wheel
   for (let i = 0; i < 10; i++) await page.mouse.wheel({ deltaY: 200 });
