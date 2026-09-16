@@ -1440,17 +1440,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     scrollMapIntoView();
   }, [worldId, scrollMapIntoView]);
 
-  // 退出全屏: 等 fullscreenchange 完结后滚动
-  const prevFullscreenRef = useRef(isFullscreen);
-  useEffect(() => {
-    const wasFullscreen = prevFullscreenRef.current;
-    prevFullscreenRef.current = isFullscreen;
-    if (wasFullscreen && !isFullscreen) {
-      // 150ms 让浏览器完成 fullscreenchange + 布局稳定
-      const t = setTimeout(scrollMapIntoView, 150);
-      return () => clearTimeout(t);
-    }
-  }, [isFullscreen, scrollMapIntoView]);
+  // 退出全屏: 不再 scrollMapIntoView (2026-09-16 改)
+  //   - 之前 150ms 后滚到 header 下方, 强制地图进视野
+  //   - 但用户在全屏中浏览了地图, 退出全屏时浏览器会保留之前的 page scroll 位置
+  //   - 如果之前是滚到地图下方阅读, 强制滚动会跳回 tab 栏, 体验突兀
+  //   - 现在保持退出前的页面位置, 地图仍按当时视角 (tx/ty/k 不变) 显示
+  //   - 注释保留 prevFullscreenRef + useEffect 占位 — 防止后续误判为"该滚"; 真正要做时再加
 
   // 滚轮缩放
   useEffect(() => {
@@ -1976,7 +1971,12 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                 ref={searchInputRef}
                 type="text"
                 value={searchQuery}
-                onClick={() => setSearchListOpen(true)}
+                onClick={() => {
+                  // 跟 toggle labels / transit / search 一致 — 点击搜索框也触发地图滚到 header 下方
+                  // 用户从其他位置 (e.g. 滚到页面底部) 想用搜索时, 地图应该滚回视野
+                  scrollMapIntoView();
+                  setSearchListOpen(true);
+                }}
                 onFocus={() => {
                   setSearchListOpen(true);
                   // 聚焦输入框时关掉之前的 popup — 用户进入"搜索模式", 不想看旧 label 详情

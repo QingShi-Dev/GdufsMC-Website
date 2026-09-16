@@ -318,7 +318,7 @@ export function HeaderNav() {
     }, []);
 
     return (
-        <header className="fixed top-0 inset-x-0 z-50">
+        <header className="fixed top-0 inset-x-0 z-100 bg-white/55">
             <div
                 ref={containerRef}
                 className="relative w-full"
