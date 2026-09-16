@@ -778,9 +778,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     window.addEventListener("wheel", stopWheel, { passive: false, capture: true });
     // mousedown 按 hit-test 分模式:
     //   "input":   mousedown 在 input 内 — 让用户选文字, 不阻止默认
-    //   "list":    mousedown 在 list 内 — drag 转 wheel 翻页模式
+    //   "list-drag": mousedown 在 list (option button / padding) 内 — drag 转 wheel 翻页 + 阻止 option click 误触发
     //   "drag":    mousedown 在 wrapper 其他位置 — 原"drag 收起 list"模式
-    let mode: "input" | "list" | "drag" | null = null;
+    let mode: "input" | "list-drag" | "drag" | null = null;
     let dragOrigin: { x: number; y: number } | null = null;
     let dragActive = false;
     // list drag-scroll 状态: 上次 pointer Y + 上次 scrollTop, 累加避免大延迟
@@ -791,27 +791,51 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
       const hit = document.elementFromPoint(e.clientX, e.clientY);
       if (!hit) return;
-      // input 内 — 让用户选文字, 不启动自定义 drag
+      // input 内 — 让用户选文字 + 不触发地图拖动, 不启动自定义 drag
+      //   - 不 preventDefault: 浏览器默认 selection 行为 (允许拖动选文字)
+      //   - 不 setPointerCapture: 让 wheel 还能滚到地图 (input focus 状态下 wheel 会缩地图)
       if (hit.tagName === "INPUT") {
         mode = "input";
+        // bug 2 修: mousedown 在 input 立即展开 list (不依赖 click event)
+        //   - user 滚轮缩放后 input 仍 focus, 再次点击 input 没用 click event (focus 已在了)
+        //   - 直接在 mousedown 时展开, 保证 user 体验
+        setSearchListOpen(true);
         return;
       }
-      // list 内 — drag 转 wheel 翻页
+      // option button (搜索结果) 内 — drag 转 wheel + 阻止 button 默认 click 派发
+      //   - bug 3 修: button mousedown 默认会触发 click (mousedown + mouseup 在同一 button)
+      //   - 用户拖动 option 时不希望误触发 onSelect 跳转
+      //   - preventDefault on mousedown 阻止 button 的默认 click 序列开始
+      const option = hit.closest('[role="option"]');
+      if (option) {
+        mode = "list-drag";
+        e.preventDefault();
+        setSearchListOpen(true);
+        listDragLastY = e.clientY;
+        listDragLastScrollTop = option.parentElement?.scrollTop ?? 0;
+        return;
+      }
+      // list padding 内 — drag 转 wheel 翻页 (跟 option 一样, 只是不进 option button)
       const list = hit.closest('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
       if (list) {
-        mode = "list";
+        mode = "list-drag";
+        setSearchListOpen(true);
         listDragLastY = e.clientY;
         listDragLastScrollTop = list.scrollTop;
         return;
       }
-      // 其他 wrapper 区域 — 原"drag 收起 list"
+      // 其他 wrapper 区域 (放大镜 icon / X 按钮附近 / padding) — 原"drag 收起 list"模式
+      //   bug 2 修: 同样在 mousedown 时展开 list (不是等 click event)
+      //   - 但 drag 模式如果移动 > 3px 仍会 setSearchListOpen(false)
+      //   - 所以这里先展开, drag 后再收 (跟之前一致)
       mode = "drag";
+      setSearchListOpen(true);
       dragOrigin = { x: e.clientX, y: e.clientY };
       dragActive = false;
     };
     const onMouseMove = (e: MouseEvent) => {
       // list drag-scroll: pointermove 直接写 scrollTop, 跟 wheel 翻页一样
-      if (mode === "list") {
+      if (mode === "list-drag") {
         const wrapper = document.querySelector('[role="search"]');
         const list = wrapper?.querySelector('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
         if (!list) return;

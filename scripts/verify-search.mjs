@@ -301,6 +301,47 @@ async function main() {
   }
   console.log("PASS: input drag doesn't close list (bug 3a)");
 
+  // ---- 5d. list 内 pointerdown + move 触发 scrollTop 累加 (bug 3b 修复)
+  // verify-search.mjs 不能用 puppeteer mouse.click 在 absolute wrapper — 用 dispatchEvent
+  // 让 list 重新打开
+  await page.evaluate(() => {
+    const w = document.querySelector('[role="search"]');
+    w?.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    w?.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    w?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+  await sleep(200);
+  const scrollBefore = await page.evaluate(() => document.querySelector('[role="listbox"][aria-label="搜索结果"]')?.scrollTop ?? 0);
+  // 在 list 内 dispatch mousedown + mousemove + mouseup
+  await page.evaluate(() => {
+    const list = document.querySelector('[role="listbox"][aria-label="搜索结果"]');
+    if (!list) return;
+    const rect = list.getBoundingClientRect();
+    // mousedown 在 list padding (y 在中段, 不在 option 上)
+    list.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 60,
+    }));
+    // mousemove 向上 80px — 触发 list drag-scroll
+    window.dispatchEvent(new MouseEvent("mousemove", {
+      bubbles: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 60 - 80,
+    }));
+    window.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 60 - 80,
+    }));
+  });
+  await sleep(300);
+  const scrollAfter = await page.evaluate(() => document.querySelector('[role="listbox"][aria-label="搜索结果"]')?.scrollTop ?? 0);
+  console.log(`list scrollTop: ${scrollBefore} → ${scrollAfter}`);
+  if (scrollAfter <= scrollBefore) {
+    console.log("FAIL: list scrollTop should increase after drag (bug 3b)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: list drag scrolls list (bug 3b)");
+
   // 重新验证 list 收起时 wrapper wheel 不阻止
   // 把 k 重置回 1 通过 wheel
   for (let i = 0; i < 10; i++) await page.mouse.wheel({ deltaY: 200 });
