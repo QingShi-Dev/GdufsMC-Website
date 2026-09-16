@@ -95,13 +95,13 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
             }}
           />
           {/* hover 遮罩 + "查看大图"图标 + 文字 (跟 detail 缩略图同款) */}
-          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/55 transition-colors flex items-center justify-center gap-1.5">
+          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center gap-1.5">
             <img
               src="/icons/map/tabs/查看图片图标.svg"
               alt=""
               className="w-5 h-5 opacity-0 group-hover:opacity-90 transition-opacity"
             />
-            <span className="text-[12px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[13px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
               查看大图
             </span>
           </div>
@@ -217,48 +217,67 @@ function ImageThumbnails({
   /** 点击缩略图 → 打开 lightbox, 传回点击的索引 */
   onOpenLightbox: (index: number) => void;
 }) {
-  const show = images.slice(0, 3);
-  const more = images.length - show.length;
+  // slot 数量: 最少 2 (1 张图也占 2 个 slot, 旁边加占位), 最多 3
+  //   - 0 张: 不渲染 (父组件 hasDetails 判断)
+  //   - 1 张: [图, 占位] — 1 张图不要占画面太多, 跟 2 张图一样宽
+  //   - 2 张: [图, 图]
+  //   - 3+ 张: [图, 图, 图 + "+N more"]
+  const totalSlots = Math.min(3, Math.max(2, images.length));
+  const slots = Array.from({ length: totalSlots }, (_, i) => images[i] ?? null);
+  const more = Math.max(0, images.length - totalSlots);
   return (
     <div>
       <div className="flex gap-1">
-        {show.map((src, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onOpenLightbox(i)}
-            className="group relative flex-1 aspect-video rounded overflow-hidden bg-slate-100 ring-1 ring-slate-200 cursor-zoom-in"
-          >
-            <img
-              src={src}
-              alt=""
-              className="w-full h-full object-cover"
-              loading="lazy"
-            />
-            {/* hover 遮罩 + "查看大图"图标 + 文字 */}
-            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/55 transition-colors flex items-center justify-center gap-1.5">
+        {slots.map((src, i) =>
+          src ? (
+            <button
+              key={i}
+              type="button"
+              onClick={() => {
+                // src 在 slots 里的索引 = 在原 images 里的索引 (因为 slots = images 截取+占位)
+                onOpenLightbox(i);
+              }}
+              className="group relative flex-1 aspect-video rounded overflow-hidden bg-slate-100 ring-1 ring-slate-200 cursor-zoom-in"
+            >
               <img
-                src="/icons/map/tabs/查看图片图标.svg"
+                src={src}
                 alt=""
-                className="w-4 h-4 opacity-0 group-hover:opacity-90 transition-opacity"
+                className="w-full h-full object-cover"
+                loading="lazy"
               />
-              <span className="text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
-                查看大图
-              </span>
-            </div>
-            {i === show.length - 1 && more > 0 && (
-              <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[10px] font-semibold text-white pointer-events-none">
-                +{more}
+              {/* hover 遮罩 + "查看大图"图标 + 文字 */}
+              <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center gap-1.5">
+                <img
+                  src="/icons/map/tabs/查看图片图标.svg"
+                  alt=""
+                  className="w-4 h-4 opacity-0 group-hover:opacity-90 transition-opacity"
+                />
+                <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                  查看大图
+                </span>
               </div>
-            )}
-          </button>
-        ))}
+              {i === totalSlots - 1 && more > 0 && (
+                <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[10px] font-semibold text-white pointer-events-none">
+                  +{more}
+                </div>
+              )}
+            </button>
+          ) : (
+            // 占位 slot — 没图时空 slot, 保持排版一致 (跟 2 张图一样的宽)
+            <div
+              key={i}
+              className="flex-1 aspect-video rounded border border-dashed border-slate-200 bg-slate-50/30"
+              aria-hidden="true"
+            />
+          ),
+        )}
       </div>
       {/* 标注 (文件名 - 横杠后面) — "八角塔-材料展示馆.png" → "材料展示馆"
-          没横杠的文件名 (e.g. "八角塔.png") 不显示标注 */}
+          没横杠的文件名 (e.g. "八角塔.png") 不显示标注
+          占位 slot 的 caption 是空 (保持对齐) */}
       <div className="flex gap-1 mt-1">
-        {show.map((src, i) => {
-          const caption = parseCaption(src);
+        {slots.map((src, i) => {
+          const caption = src ? parseCaption(src) : null;
           return (
             <div
               key={i}
