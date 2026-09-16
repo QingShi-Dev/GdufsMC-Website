@@ -1440,21 +1440,16 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     scrollMapIntoView();
   }, [worldId, scrollMapIntoView]);
 
-  // 退出全屏: 恢复 scrollY 到全屏前位置 (2026-09-16 加回, 之前以为浏览器会自动恢复, 实测部分浏览器不恢复)
-  //   - 全屏子元素 (containerRef) 时, 浏览器经常把页面 scroll 重置到 0, 退出 fullscreen 也不自动恢复
-  //   - savedScrollYRef 在 toggleFullscreen 进入前记录 window.scrollY
-  //   - 这里 100ms 后 window.scrollTo(0, y) 恢复, 让用户继续在地图位置 (跟进入前一致)
-  //   - map 视角 (tx/ty/k) 不动 — 用户在全屏中怎么浏览的, 退出还是怎么显示
-  useEffect(() => {
-    if (isFullscreen || savedScrollYRef.current === 0) return;
-    const y = savedScrollYRef.current;
-    savedScrollYRef.current = 0;
-    // 100ms 等浏览器完成 fullscreenchange + 布局稳定, 再 set scroll back
-    const t = setTimeout(() => {
-      window.scrollTo(0, y);
-    }, 100);
-    return () => clearTimeout(t);
-  }, [isFullscreen]);
+  // 退出全屏: 兜底恢复 scrollY (主路径在 fullscreenchange listener 里同步处理 — 见上面 useEffect)
+//   - listener 必然触发 (fullscreenchange 浏览器原生事件), 但保留 effect 兜底
+//   - 万一 listener 因为某些 race condition 没机会跑, 这里还能补救
+//   - 不需要 setTimeout 了 — listener 已经同步处理, 100ms 延迟反而给 tab 栏闪一帧的机会
+useEffect(() => {
+  if (isFullscreen || savedScrollYRef.current === 0) return;
+  const y = savedScrollYRef.current;
+  savedScrollYRef.current = 0;
+  window.scrollTo(0, y);
+}, [isFullscreen]);
 
   // 滚轮缩放
   useEffect(() => {
@@ -1700,7 +1695,19 @@ const toggleFullscreen = () => {
     }
   };
   useEffect(() => {
-    const onChange = () => setIsFullscreen(!!document.fullscreenElement);
+    const onChange = () => {
+      const isNowFs = !!document.fullscreenElement;
+      setIsFullscreen(isNowFs);
+      // 退出全屏: 同步立即恢复 scrollY (不等 effect / setTimeout, 避免浏览器 paint scrollY=0 那帧)
+      //   - fullscreenchange 是同步事件, 在它回调里直接 scrollTo(0, y), 浏览器还没 layout/paint
+      //   - 用户看到的就是 scrollY = y (地图位置), 没有 "0 → y" 的中间闪一下 tab 栏
+      //   - savedScrollYRef 在 toggleFullscreen 进入前已经保存 (在 requestFullscreen 之前)
+      if (!isNowFs && savedScrollYRef.current > 0) {
+        const y = savedScrollYRef.current;
+        savedScrollYRef.current = 0;
+        window.scrollTo(0, y);
+      }
+    };
     document.addEventListener("fullscreenchange", onChange);
     return () => document.removeEventListener("fullscreenchange", onChange);
   }, []);
