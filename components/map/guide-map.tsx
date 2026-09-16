@@ -1440,12 +1440,21 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     scrollMapIntoView();
   }, [worldId, scrollMapIntoView]);
 
-  // 退出全屏: 不再 scrollMapIntoView (2026-09-16 改)
-  //   - 之前 150ms 后滚到 header 下方, 强制地图进视野
-  //   - 但用户在全屏中浏览了地图, 退出全屏时浏览器会保留之前的 page scroll 位置
-  //   - 如果之前是滚到地图下方阅读, 强制滚动会跳回 tab 栏, 体验突兀
-  //   - 现在保持退出前的页面位置, 地图仍按当时视角 (tx/ty/k 不变) 显示
-  //   - 注释保留 prevFullscreenRef + useEffect 占位 — 防止后续误判为"该滚"; 真正要做时再加
+  // 退出全屏: 恢复 scrollY 到全屏前位置 (2026-09-16 加回, 之前以为浏览器会自动恢复, 实测部分浏览器不恢复)
+  //   - 全屏子元素 (containerRef) 时, 浏览器经常把页面 scroll 重置到 0, 退出 fullscreen 也不自动恢复
+  //   - savedScrollYRef 在 toggleFullscreen 进入前记录 window.scrollY
+  //   - 这里 100ms 后 window.scrollTo(0, y) 恢复, 让用户继续在地图位置 (跟进入前一致)
+  //   - map 视角 (tx/ty/k) 不动 — 用户在全屏中怎么浏览的, 退出还是怎么显示
+  useEffect(() => {
+    if (isFullscreen || savedScrollYRef.current === 0) return;
+    const y = savedScrollYRef.current;
+    savedScrollYRef.current = 0;
+    // 100ms 等浏览器完成 fullscreenchange + 布局稳定, 再 set scroll back
+    const t = setTimeout(() => {
+      window.scrollTo(0, y);
+    }, 100);
+    return () => clearTimeout(t);
+  }, [isFullscreen]);
 
   // 滚轮缩放
   useEffect(() => {
@@ -1660,9 +1669,15 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     scrollMapIntoView();
   };
 
-  const toggleFullscreen = () => {
+  // 全屏切换前保存页面 scroll 位置 — 浏览器 fullscreen 子元素时经常把页面 scroll 重置 0,
+//   退出 fullscreen 也不自动恢复. 这里手动 save & restore
+const savedScrollYRef = useRef(0);
+
+const toggleFullscreen = () => {
     const el = containerRef.current;
     if (!document.fullscreenElement) {
+      // 进入前先记 scrollY (之后 browser 可能 reset 到 0, 再记就晚了)
+      savedScrollYRef.current = window.scrollY;
       const tryFullscreen = (target: Element) => {
         const req = target.requestFullscreen?.();
         if (req && typeof req.then === "function") {
