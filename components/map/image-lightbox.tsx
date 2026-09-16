@@ -257,8 +257,9 @@ export function ImageLightbox({
       role="dialog"
       aria-modal="true"
       aria-label={title ?? "图片查看"}
-      // z-[200] 盖在 header (z-100) 和 search wrapper (z-[60]) 上面
-      className="fixed inset-0 z-[200] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
+      // z-[55] — 在 popup (z-20) 之上, 但低于 search wrapper (z-[60]) 和 header (z-100)
+      //   用户要求 header 和搜索栏依旧在 lightbox 之上 (它们是常驻 UI 控件, 不能被遮)
+      className="fixed inset-0 z-[55] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={(e) => {
         // 点遮罩空白处关; 点图片 / 控件不关
         if (e.target === e.currentTarget) onClose();
@@ -332,7 +333,7 @@ export function ImageLightbox({
       )}
 
       {/* 右下缩放控制 — 跟 map 的 ZoomBtn 同款 (w-9 h-9 rounded-lg bg-white/60 border ...)
-          用户要求: 删缩小, 只留 还原 + 放大, 外观跟 map 一致 */}
+          用户要求: 删全屏按钮, 只留 放大 + 缩小 (跟 map 一样, 但去掉全屏) */}
       <div
         data-lightbox-control
         className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5"
@@ -351,11 +352,15 @@ export function ImageLightbox({
         </button>
         <button
           type="button"
-          onClick={reset}
-          aria-label="还原"
-          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors"
+          onClick={() => {
+            const newK = Math.max(MIN_K, k / 1.3);
+            schedule(tx, ty, newK);
+          }}
+          aria-label="缩小"
+          className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          disabled={k <= MIN_K}
         >
-          <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4.5 h-4.5" />
+          <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
         </button>
       </div>
 
