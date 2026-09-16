@@ -17,18 +17,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ReactNode } from "react";
 import {
-  IconArrowsMaximize,
-  IconArrowsMinimize,
-  IconPlus,
-  IconMinus,
   IconDeviceMobile,
   IconRotate,
-  IconMapPin,
-  IconMapPinOff,
-  IconBus,
-  IconBusOff,
-  IconSearch,
-  IconSearchOff,
   IconX,
 } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
@@ -240,9 +230,9 @@ function WorldTabs({
         )}
       >
         {searchVisible ? (
-          <IconSearch className="w-4 h-4" />
+          <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
         ) : (
-          <IconSearchOff className="w-4 h-4" />
+          <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           搜索
@@ -261,9 +251,9 @@ function WorldTabs({
         )}
       >
         {labelsVisible ? (
-          <IconMapPin className="w-4 h-4" />
+          <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
         ) : (
-          <IconMapPinOff className="w-4 h-4" />
+          <img src="/icons/map/tabs/显示地名图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           地名
@@ -284,9 +274,9 @@ function WorldTabs({
         )}
       >
         {transitVisible ? (
-          <IconBus className="w-4 h-4" />
+          <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
         ) : (
-          <IconBusOff className="w-4 h-4" />
+          <img src="/icons/map/tabs/显示交通图标.svg" alt="" className="w-4 h-4" />
         )}
         <span className="hidden sm:inline">
           交通
@@ -1837,7 +1827,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
                 关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
             <div className="flex items-center pl-3 pr-1.5 h-9.5">
-              <IconSearch className="w-4 h-4 text-slate-400 shrink-0" />
+              <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4 shrink-0" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1912,19 +1902,19 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         {/* 右下: 放大 / 缩小 / 全屏 */}
         <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
           <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
-            <IconPlus className="w-4 h-4" />
+            <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
           <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
-            <IconMinus className="w-4 h-4" />
+            <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
           <ZoomBtn
             onClick={toggleFullscreen}
             ariaLabel={isFullscreen ? "退出全屏" : "进入全屏"}
           >
             {isFullscreen ? (
-              <IconArrowsMinimize className="w-4 h-4" />
+              <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4 h-4" />
             ) : (
-              <IconArrowsMaximize className="w-4 h-4" />
+              <img src="/icons/map/tabs/全屏图标.svg" alt="" className="w-4 h-4" />
             )}
           </ZoomBtn>
         </div>

@@ -67,9 +67,9 @@ async function main() {
   console.log("(real wheel triggered - check [wheel] log above)");
 
   // ---- 2. 输入查询 ----
-  await page.waitForSelector('input[placeholder*="拼音"]', { timeout: 5000 });
-  await page.click('input[placeholder*="拼音"]');
-  await page.type('input[placeholder*="拼音"]', "yzz", { delay: 50 });
+  await page.waitForSelector('input[placeholder*="搜索建筑"]', { timeout: 5000 });
+  await page.click('input[placeholder*="搜索建筑"]');
+  await page.type('input[placeholder*="搜索建筑"]', "yzz", { delay: 50 });
   await sleep(500);
 
   const listVisible1 = await page.$('[role="listbox"][aria-label="搜索结果"]');
@@ -82,12 +82,12 @@ async function main() {
 
   // ---- 3. wheel 在 list 内 — list 自己滚, 不缩地图 ----
   // 找一个有多个结果能滚的 query
-  await page.click('input[placeholder*="拼音"]');
+  await page.click('input[placeholder*="搜索建筑"]');
   await page.keyboard.down('Control');
   await page.keyboard.press('A');
   await page.keyboard.up('Control');
   await page.keyboard.press('Delete');
-  await page.type('input[placeholder*="拼音"]', "t", { delay: 30 });
+  await page.type('input[placeholder*="搜索建筑"]', "t", { delay: 30 });
   await sleep(400);
   // 检查 list 实际结果数
   const listInfo = await page.evaluate(() => {
@@ -143,7 +143,7 @@ async function main() {
 
   const listVisible2 = await page.$('[role="listbox"][aria-label="搜索结果"]');
   const inputVal = await page.evaluate(
-    () => document.querySelector('input[placeholder*="拼音"]')?.value,
+    () => document.querySelector('input[placeholder*="搜索建筑"]')?.value,
   );
   if (listVisible2) {
     console.log("FAIL: list still visible after click map");
@@ -225,7 +225,7 @@ async function main() {
   // 重新打开搜索, 输入 query, 看 wheel 缩放时 list 是否收起
   // 当前 searchQuery='t', searchVisible=true (没关闭)
   // 重新打开 list (input 重新 focus 触发)
-  await page.focus('input[placeholder*="拼音"]');
+  await page.focus('input[placeholder*="搜索建筑"]');
   await sleep(300);
   const listOpenBeforeWheel = await page.evaluate(() => {
     return !!document.querySelector('[role="listbox"][aria-label="搜索结果"]');
@@ -259,7 +259,7 @@ async function main() {
   //   - 移除测试 5b, 避免 false negative
 
   // ---- 6. 再次点 input → list 重新展开 (稳定不消失) ----
-  const inputEl = await page.$('input[placeholder*="拼音"]');
+  const inputEl = await page.$('input[placeholder*="搜索建筑"]');
   const box = await inputEl.boundingBox();
   console.log("input box for re-click:", box);
   const beforeReClick = await page.evaluate(() => ({
@@ -269,7 +269,7 @@ async function main() {
   console.log("before re-click:", beforeReClick);
   // 用 input.click() (React 合成事件路径) 模拟用户点击 input
   await page.evaluate(() => {
-    const i = document.querySelector('input[placeholder*="拼音"]');
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
     if (i) i.click();
   });
   await sleep(100);
@@ -308,7 +308,7 @@ async function main() {
   // ---- 6b. 真实 mouse click on input — list 稳定展开 (不闪) ----
   // 先收起 list
   await page.evaluate(() => {
-    const i = document.querySelector('input[placeholder*="拼音"]');
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
     i?.blur();
   });
   await page.mouse.click(900, 500); // 点地图收起
@@ -316,7 +316,7 @@ async function main() {
   const listBeforeRealClick = await page.$('[role="listbox"][aria-label="搜索结果"]');
   console.log("list visible before real-click:", !!listBeforeRealClick);
   // 用真实 mouse click on input
-  const inputBox = await page.$eval('input[placeholder*="拼音"]', (el) => {
+  const inputBox = await page.$eval('input[placeholder*="搜索建筑"]', (el) => {
     const r = el.getBoundingClientRect();
     return { x: r.x, y: r.y, w: r.width, h: r.height };
   });
@@ -349,7 +349,7 @@ async function main() {
     console.log("WARN: no labels found, skipping label click test");
   } else {
     // 先 focus input, 让 list 显示 (因为 test 6 后 list 已经 stable)
-    await page.focus('input[placeholder*="拼音"]');
+    await page.focus('input[placeholder*="搜索建筑"]');
     await sleep(300);
     const listBefore = await page.$('[role="listbox"][aria-label="搜索结果"]');
     console.log("list visible before label click:", !!listBefore);
@@ -374,7 +374,7 @@ async function main() {
   if (labelInfo.count > 0) {
     // 先 blur input — 之前 test 6/7 已 focus, page.focus 不会再触发 focus event
     await page.evaluate(() => {
-      const i = document.querySelector('input[placeholder*="拼音"]');
+      const i = document.querySelector('input[placeholder*="搜索建筑"]');
       if (document.activeElement === i) i.blur();
     });
     await sleep(100);
@@ -387,7 +387,7 @@ async function main() {
     const popupAfterLabel = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
     console.log("popup visible after label click:", !!popupAfterLabel);
     // 然后点 input (focus) — 应触发 onFocus → setSelectedLabel(null)
-    await page.focus('input[placeholder*="拼音"]');
+    await page.focus('input[placeholder*="搜索建筑"]');
     await sleep(300);
     const popupAfterInputFocus = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
     console.log("popup visible after input focus:", !!popupAfterInputFocus);
@@ -403,7 +403,7 @@ async function main() {
   if (labelInfo.count > 0) {
     // 先 blur input + 收起 list — 模拟用户切 tab 前状态 (list 收起, 没输入)
     await page.evaluate(() => {
-      const i = document.querySelector('input[placeholder*="拼音"]');
+      const i = document.querySelector('input[placeholder*="搜索建筑"]');
       if (document.activeElement === i) i.blur();
     });
     await sleep(100);
@@ -447,7 +447,7 @@ async function main() {
   if (labelInfo.count > 0) {
     // 1) 在 overworld 缩放 + 点 label 让 popup 显示
     await page.evaluate(() => {
-      const i = document.querySelector('input[placeholder*="拼音"]');
+      const i = document.querySelector('input[placeholder*="搜索建筑"]');
       if (document.activeElement === i) i.blur();
     });
     await sleep(100);
@@ -547,21 +547,21 @@ async function main() {
   // ---- 8b. 跨维度搜索 → popup 保留 (goToSearchResult 自己 setSelectedLabel) ----
   // 搜 "猪人塔" — 在 overworld 跟 nether 都有, 让搜索结果有跨维度选项
   await page.evaluate(() => {
-    const i = document.querySelector('input[placeholder*="拼音"]');
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
     i?.blur();
   });
   // 清空 input
-  await page.focus('input[placeholder*="拼音"]');
+  await page.focus('input[placeholder*="搜索建筑"]');
   await sleep(200);
   await page.evaluate(() => {
-    const i = document.querySelector('input[placeholder*="拼音"]');
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
     if (i) {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value").set;
       setter.call(i, "");
       i.dispatchEvent(new Event("input", { bubbles: true }));
     }
   });
-  await page.type('input[placeholder*="拼音"]', "猪人塔", { delay: 30 });
+  await page.type('input[placeholder*="搜索建筑"]', "猪人塔", { delay: 30 });
   await sleep(400);
   // 找当前 dim 之外的结果
   const crossDimResult = await page.evaluate(() => {
@@ -574,10 +574,10 @@ async function main() {
     });
   });
   console.log("results for '猪人塔':", JSON.stringify(crossDimResult));
-  // 当前激活 dim (Chinese name, e.g. "主世界") — 从 dim tab 第一个 text-[16px] span 拿
+  // 当前激活 dim (Chinese name, e.g. "主世界") — 从 dim tab 第一个 text-[17px] span 拿
   const currentDim8b = await page.evaluate(() => {
     const btn = document.querySelector('button[data-worldid].bg-white');
-    const span = btn?.querySelector('span.text-\\[16px\\]');
+    const span = btn?.querySelector('span.text-\\[17px\\]');
     return span?.textContent?.trim();
   });
   console.log("current dim (8b):", currentDim8b);
@@ -597,7 +597,7 @@ async function main() {
     const popupAfterSearch = await page.$('[role="dialog"][aria-labelledby="lm-popup-name"]');
     const dimAfterSearch = await page.evaluate(() => {
       const btn = document.querySelector('button[data-worldid].bg-white');
-      const span = btn?.querySelector('span.text-\\[16px\\]');
+      const span = btn?.querySelector('span.text-\\[17px\\]');
       return span?.textContent?.trim();
     });
     console.log(`popup after cross-dim search: ${!!popupAfterSearch}, dim: ${dimAfterSearch}`);
@@ -618,10 +618,10 @@ async function main() {
   }
 
   // ---- 9. 点搜索结果 → query 变 label.name + list 收起 + input blur ----
-  await page.focus('input[placeholder*="拼音"]');
+  await page.focus('input[placeholder*="搜索建筑"]');
   await sleep(300);
   const queryBeforeSelect = await page.evaluate(
-    () => document.querySelector('input[placeholder*="拼音"]')?.value,
+    () => document.querySelector('input[placeholder*="搜索建筑"]')?.value,
   );
   // 点搜索结果第一个
   await page.evaluate(() => {
@@ -630,7 +630,7 @@ async function main() {
   });
   await sleep(800);
   const queryAfterSelect = await page.evaluate(
-    () => document.querySelector('input[placeholder*="拼音"]')?.value,
+    () => document.querySelector('input[placeholder*="搜索建筑"]')?.value,
   );
   const listAfterSelect = await page.$('[role="listbox"][aria-label="搜索结果"]');
   const inputFocusedAfterSelect = await page.evaluate(
