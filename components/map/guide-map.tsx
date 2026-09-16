@@ -103,21 +103,21 @@ function SearchResults({
           role="option"
           onClick={() => onSelect(r.label, r.worldId)}
           className={cn(
-            "w-full flex items-center gap-2 px-3 py-2 text-left",
+            "w-full flex items-center gap-2.5 px-3 py-2.5 text-left",
             "border-b border-slate-100 last:border-b-0",
             "hover:bg-slate-50 transition-colors",
             "focus:outline-none focus:bg-slate-50",
           )}
         >
           <span
-            className="w-1.5 h-1.5 rounded-full shrink-0"
+            className="w-2 h-2 rounded-full shrink-0"
             style={{ background: worldAccent(r.worldId) }}
             aria-hidden="true"
           />
-          <span className="text-xs font-medium text-slate-800 truncate flex-1 min-w-0">
+          <span className="text-[14px] font-medium text-slate-800 truncate flex-1 min-w-0">
             {r.label.name}
           </span>
-          <span className="text-[10px] font-mono text-slate-400 shrink-0">
+          <span className="text-[13px] font-mono text-slate-500 shrink-0">
             {worldName(r.worldId)}
           </span>
           {/* 命中的字段 chip — 让用户知道是 name / 拼音 / 产出 命中 */}
@@ -139,7 +139,7 @@ function SearchResults({
           )}
           {r.matched.includes("output") && (
             <span
-              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
+              className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
               title="该地标的产出匹配搜索词"
             >
               产出
@@ -224,7 +224,7 @@ function WorldTabs({
         aria-pressed={searchVisible}
         className={cn(
           "ml-2 sm:ml-3.5",
-          "px-2.5 sm:px-3.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
           "transition-all flex items-center text-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -245,7 +245,7 @@ function WorldTabs({
         aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
         aria-pressed={labelsVisible}
         className={cn(
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
           "transition-all flex items-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -268,7 +268,7 @@ function WorldTabs({
         aria-pressed={transitVisible}
         className={cn(
           "lg:mr-72",
-          "px-2.5 sm:px-3 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
           "transition-all flex items-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -1827,7 +1827,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
                 关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
             <div className="flex items-center pl-3 pr-1.5 h-9.5">
-              <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4 shrink-0" />
+              <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4 shrink-0" />
               <input
                 ref={searchInputRef}
                 type="text"
@@ -1850,7 +1850,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                   }
                 }}
                 placeholder="搜索建筑名称或机器产物"
-                className="flex-1 min-w-0 px-2 text-[14px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/95"
+                className="flex-1 min-w-0 px-2 text-[14px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/90"
               />
               {searchQuery.length > 0 && (
                 <button
@@ -1894,7 +1894,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
         {/* 缩放百分比 — 右上角 */}
         <div className="absolute top-3 right-3 z-10 pointer-events-none">
-          <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[14px] font-mono text-slate-600 shadow-sm tabular-nums">
+          <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
             {Math.round(k * 100)}%
           </div>
         </div>
@@ -1912,9 +1912,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             ariaLabel={isFullscreen ? "退出全屏" : "进入全屏"}
           >
             {isFullscreen ? (
-              <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4 h-4" />
+              <img src="/icons/map/tabs/还原图标.svg" alt="" className="w-4.5 h-4.5" />
             ) : (
-              <img src="/icons/map/tabs/全屏图标.svg" alt="" className="w-4 h-4" />
+              <img src="/icons/map/tabs/全屏图标.svg" alt="" className="w-4.5 h-4.5" />
             )}
           </ZoomBtn>
         </div>

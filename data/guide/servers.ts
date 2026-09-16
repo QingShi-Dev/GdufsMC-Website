@@ -28,7 +28,7 @@ export const SERVERS: ServerGroup[] = [
     icon: "/icons/home/生存服图标.svg",
     desc: "群组服间可通过 /server 指令快捷切换",
     items: [
-      { tag: "校园网", host: "server.gdufscraft.top", note: "无限带宽", primary: true },
+      { tag: "校园网", host: "mc.gdufscraft.top", note: "无限带宽", primary: true },
       { tag: "公网主线", host: "mc2.gdufscraft.top", note: "24M 带宽", primary: true },
       { tag: "公网备线", host: "mc3.gdufscraft.top", note: "3M 带宽，仅作应急", warn: true },
     ],
@@ -38,7 +38,7 @@ export const SERVERS: ServerGroup[] = [
     icon: "/icons/home/粤高联图标.svg",
     desc: "广东高校 MC 联盟联合服务器",
     items: [
-      { tag: "联合群组门户", host: "server.ghm-mua.org", note: "- 1.21" },
+      { tag: "联合群组门户", host: "mc.ghm-mua.org", note: "- 1.21" },
       { tag: "复原项目", host: "hemc.ghm-mua.org", note: "- 1.20.1" },
     ],
   },
