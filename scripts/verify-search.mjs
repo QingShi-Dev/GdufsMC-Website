@@ -491,6 +491,73 @@ async function main() {
   }
   console.log("PASS: input pointerdown doesn't drag map (bug 4)");
 
+  // ---- 5h. 拼音匹配产出物: "tie" 应命中产出含"铁"的 label (2026-09-16 新搜索逻辑)
+  // 之前 output 匹配只查 label.includes(q), 拼音 query ("tie") 找不到产出"铁"
+  // 现在 output 匹配也参与 pinyin: toPinyin(output.label).includes(qLower)
+  //   - 用 label 测试 "铁" 找产铁的机器: 输入 "tie" (拼音) 应命中
+  await page.focus('input[placeholder*="搜索建筑"]');
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(i, 'tie');
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(300);
+  const outputPinyinResults = await page.evaluate(() => {
+    const opts = Array.from(document.querySelectorAll('[role="option"]'));
+    return {
+      count: opts.length,
+      names: opts.slice(0, 5).map((o) => o.querySelector('span.text-\\[14px\\]')?.textContent ?? ''),
+      chips: opts.slice(0, 5).map((o) => Array.from(o.querySelectorAll('span[title]')).map(s => s.textContent)),
+    };
+  });
+  console.log("search 'tie' results:", outputPinyinResults);
+  if (outputPinyinResults.count === 0) {
+    console.log("FAIL: 'tie' should match labels producing 铁 via output pinyin");
+    await browser.close();
+    process.exit(1);
+  }
+  // 至少有一个结果通过 output 命中 (有"产出" chip)
+  //   - 'tie' 也可能命中 label.name 的 pinyin (如 "铁匠铺" → tiejiangpu 含 tie), 这些 matched=["pinyin"] 没 chip
+  //   - 但只要有一个 output 命中, 说明 output pinyin 匹配生效
+  const someHaveOutputChip = outputPinyinResults.chips.some((c) => c.includes("产出"));
+  if (!someHaveOutputChip) {
+    console.log("FAIL: 'tie' should match at least one label via output pinyin (no '产出' chip found)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: pinyin 'tie' matches via output pinyin (at least one '产出' chip)");
+
+  // ---- 5i. 剔除中文输入法拼音分隔号: 加 ' 的 query 应等价于去 ' 的 query
+  //   中文输入法输入 "你" 时打 "ni" 再按 ' 分隔拼音段 (飞键/搜狗/微软拼音都会加)
+  //   - 我们 replace(/['\u2018\u2019]/g, "") 把这些分隔号去掉再搜
+  //   - 测试用已知有结果的 query "tie" 对比: "tie" vs "ti\u2019e" 应返回相同数量
+  //     (任意位置的分隔号都该被剔除, 这里用 "ti'e" 测试是因为它在中间, 接近真实 IME 行为)
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(i, 'tie');
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(300);
+  const cleanQueryCount = await page.evaluate(() => document.querySelectorAll('[role="option"]').length);
+  // 用弯引号 ' (U+2019) 在中间, 测试剥离
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(i, "ti\u2019e");
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(300);
+  const imeQueryCount = await page.evaluate(() => document.querySelectorAll('[role="option"]').length);
+  console.log(`'tie' → ${cleanQueryCount} results; "ti'e" → ${imeQueryCount} results`);
+  if (cleanQueryCount !== imeQueryCount || cleanQueryCount === 0) {
+    console.log(`FAIL: IME apostrophe should be stripped (clean=${cleanQueryCount}, ime=${imeQueryCount})`);
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: IME apostrophe stripped from query");
+
   // 重新验证 list 收起时 wrapper wheel 不阻止
   // 把 k 重置回 1 通过 wheel
   for (let i = 0; i < 10; i++) await page.mouse.wheel({ deltaY: 200 });

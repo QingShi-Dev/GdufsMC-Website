@@ -44,13 +44,18 @@ import {
   TransitStations,
   PearlLines,
 } from "./transit-overlay";
-import { toPinyin, toPinyinAbbr } from "@/lib/search/pinyin";
+import { toPinyin } from "@/lib/search/pinyin";
 
 /**
  * 搜索匹配类型 — 同一地标可能多个字段同时命中 (e.g. 既匹配 name 也匹配 output)
  * 排序时 name 优先级最高, 用户搜的如果是"产铁"应该优先显示 name 命中的
+ *
+ * 注意: pinyin-abbr 已在 2026-09-16 删除 — 缩写匹配用户体验差 (太多误命中),
+ *   全拼 includes 已能覆盖典型拼音输入
+ *
+ * 输出 chip 也只显示"产出"一种 — 用户搜出来看 chip 就知道 "这里是因为我搜的产出物", 拼音/缩写 chip 信息冗余
  */
-type SearchMatchKind = "name" | "pinyin" | "pinyin-abbr" | "output";
+type SearchMatchKind = "name" | "pinyin" | "output";
 
 interface SearchResult {
   label: NewLabel;
@@ -138,23 +143,8 @@ function SearchResults({
           <span className="text-[13px] font-mono text-slate-500 shrink-0">
             {worldName(r.worldId)}
           </span>
-          {/* 命中的字段 chip — 让用户知道是 name / 拼音 / 产出 命中 */}
-          {r.matched.includes("pinyin") && (
-            <span
-              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200 shrink-0"
-              title="地标名的拼音匹配搜索词"
-            >
-              拼音
-            </span>
-          )}
-          {r.matched.includes("pinyin-abbr") && (
-            <span
-              className="px-1 py-0.5 rounded text-[9px] font-semibold bg-violet-50 text-violet-700 ring-1 ring-violet-200 shrink-0"
-              title="地标名的拼音首字母缩写匹配"
-            >
-              缩写
-            </span>
-          )}
+          {/* 命中的字段 chip — 只显示"产出"一种, 让用户知道 "这里是因为我搜的产出物命中"
+              (拼音/缩写 chip 信息冗余: 搜的就是这两个, 显示出来没新增信息) */}
           {r.matched.includes("output") && (
             <span
               className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
@@ -955,14 +945,17 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     };
   }, [searchVisible]);
 
-  // 跨 3 维度搜索: 同时匹配 name + 拼音(全拼/缩写) + outputs.label
+  // 跨 3 维度搜索: 同时匹配 name + 拼音(全拼) + outputs.label
   //   - name 匹配: 直接命中地标名 (例 "猪人塔")
-  //   - 拼音匹配: 打入 "yzz" / "yongzongzhen" → 命中 "雍宗镇"
-  //   - output 匹配: 用户搜产出找到对应机器 (例 "铁" → 铁匠铺)
+  //   - 拼音匹配 (label.name): 打入 "yongzongzhen" → 命中 "雍宗镇"
+  //     - 缩写匹配已删 (体验差, 太多误命中)
+  //   - output 匹配: 中文直接 match OR 拼音 match — 用户搜 "tie" 也命中产出 "铁"
   //   - inputs 故意不参与: 搜"泥土"不该匹配到一堆只用泥土当建材的机器, 产出更精准
-  // 排序: 当前维度优先, 其它维度按 name 字母顺序; 同一维度内 name > pinyin > abbr > output
+  // 排序: 当前维度优先, 其它维度按 name 字母顺序; 同一维度内 name > pinyin > output
   const searchResults = useMemo(() => {
-    const q = searchQuery.trim();
+    // 剔除中文输入法自动插入的拼音分隔号 (单引号家族: ASCII ' + 弯引号 ' ')
+    //   例: 用户打 "ni'hao" 实际想搜 "nihao" → 飞键 IME 会加 ' 分隔
+    const q = searchQuery.trim().replace(/['\u2018\u2019]/g, "");
     if (!q) return [] as SearchResult[];
     const qLower = q.toLowerCase();
     const out: SearchResult[] = [];
@@ -970,19 +963,19 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       (lb[wid] ?? []).forEach((label) => {
         const matched: SearchMatchKind[] = [];
         if (label.name.includes(q)) matched.push("name");
-        // 拼音匹配: 用户的英文 query 可能是全拼 (yongzongzhen) 或缩写 (yzz)
-        //  - 全拼用 includes 允许搜中间片段 (例 "luzu" 匹配 "rongluzu")
-        //  - 缩写用 startsWith (用户搜缩写更倾向从头开始, 而不是中间片段)
-        if (matched.length === 0 || !matched.includes("name")) {
+        // 拼音匹配 (label.name): 全拼 includes 允许搜中间片段 (例 "luzu" 匹配 "rongluzu")
+        //   仅在 name 没匹配时检查 (name 直命中优先级最高, 加 pinyin 反而冗余)
+        if (!matched.includes("name")) {
           const fullPinyin = toPinyin(label.name);
-          const abbrPinyin = toPinyinAbbr(label.name);
           if (fullPinyin.includes(qLower)) matched.push("pinyin");
-          else if (abbrPinyin.startsWith(qLower)) matched.push("pinyin-abbr");
         }
+        // output 匹配: 中文直接 match OR 拼音 match — 后者覆盖用户英文输入找产出的场景
+        //   例: 用户搜 "tie" → 命中产出 "铁" (toPinyin("铁") = "tie")
         if (
-          (label.outputs ?? []).some((o) =>
-            (o.label ?? "").includes(q),
-          )
+          (label.outputs ?? []).some((o) => {
+            const lbl = o.label ?? "";
+            return lbl.includes(q) || toPinyin(lbl).includes(qLower);
+          })
         )
           matched.push("output");
         if (matched.length > 0) out.push({ label, worldId: wid, matched });
@@ -993,11 +986,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       const aCur = a.worldId === worldId;
       const bCur = b.worldId === worldId;
       if (aCur !== bCur) return aCur ? -1 : 1;
-      // 同维度内按匹配强度 (name > pinyin > pinyin-abbr > output) 再按字母序
+      // 同维度内按匹配强度 (name > pinyin > output) 再按字母序
       const rank = (m: SearchMatchKind[]) =>
         m.includes("name") ? 0 :
-        m.includes("pinyin") ? 1 :
-        m.includes("pinyin-abbr") ? 2 : 3;
+        m.includes("pinyin") ? 1 : 2;
       const ra = rank(a.matched);
       const rb = rank(b.matched);
       if (ra !== rb) return ra - rb;
