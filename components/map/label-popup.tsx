@@ -14,12 +14,13 @@
  */
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { IconArrowRight } from "@tabler/icons-react";
 import type {
   NewLabel,
   NewLabelProduct,
 } from "@/lib/map/labels";
+import { ImageLightbox } from "./image-lightbox";
 
 export interface LabelPopupProps {
   label: NewLabel;
@@ -53,6 +54,11 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
   // 任一有内容就显示内容区 (有图 / 有描述 / 有产物)
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
 
+  // lightbox 状态 — null = 关, 数字 = 当前显示的图片索引 (在 allImages 中)
+  //   注意: lightbox 显示 all images (hero + 细节), 而 detail thumbnails 只显示 detailImages
+  //   所以点击细节图 0 → lightbox 显示第 1 张 (detailImages[0] = images[1])
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
   return (
     <div
       role="dialog"
@@ -75,7 +81,11 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
       {/* hero 图 — 容器用图片原始 aspect (2560/1361 ≈ 1.88) 适配,
           这样不管 popup 宽度 (288/320px), 图片都以原比例显示, 不会上下裁切 */}
       {hasHero && (
-        <div className="w-full aspect-[2560/1361] overflow-hidden bg-slate-100">
+        <button
+          type="button"
+          onClick={() => setLightboxIndex(0)}
+          className="group relative w-full aspect-[2560/1361] overflow-hidden bg-slate-100 cursor-zoom-in block"
+        >
           <img
             src={heroImage}
             alt=""
@@ -84,7 +94,18 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
               e.currentTarget.style.display = "none";
             }}
           />
-        </div>
+          {/* hover 遮罩 + "查看大图"图标 + 文字 (跟 detail 缩略图同款) */}
+          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/55 transition-colors flex items-center justify-center gap-1.5">
+            <img
+              src="/icons/map/tabs/查看图片图标.svg"
+              alt=""
+              className="w-5 h-5 invert opacity-0 group-hover:opacity-90 transition-opacity"
+            />
+            <span className="text-[12px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+              查看大图
+            </span>
+          </div>
+        </button>
       )}
 
       {/* 名称 + 坐标 + 简介 */}
@@ -142,13 +163,29 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
 
       {/* 细节图缩略图 (images[1..]) — 有就显示 */}
       {hasDetails && (
-        <div className="px-4.5 pb-5.5 mt-1">
-          <ImageThumbnails images={detailImages} />
+        <div className="px-4.5 pb-4 mt-1">
+          <ImageThumbnails
+            images={detailImages}
+            onOpenLightbox={(detailIdx) => {
+              // detailIdx 是 detailImages 中的索引, 在 images 中偏移 1 (hero 占位)
+              setLightboxIndex(detailIdx + 1);
+            }}
+          />
         </div>
       )}
 
       {/* 没任何内容时, 卡片只显示名称, 给点空白 (不至于太瘪) */}
       {!hasAnyContent && <div className="h-2" />}
+
+      {/* 图片查看器 (lightbox) — 全屏 modal, ESC / 点遮罩关闭 */}
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          initialIndex={lightboxIndex}
+          title={label.name}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
     </div>
   );
 }
@@ -172,16 +209,25 @@ function parseCaption(src: string): string | null {
   return stem.slice(dashIdx + 1);
 }
 
-function ImageThumbnails({ images }: { images: string[] }) {
+function ImageThumbnails({
+  images,
+  onOpenLightbox,
+}: {
+  images: string[];
+  /** 点击缩略图 → 打开 lightbox, 传回点击的索引 */
+  onOpenLightbox: (index: number) => void;
+}) {
   const show = images.slice(0, 3);
   const more = images.length - show.length;
   return (
     <div>
       <div className="flex gap-1">
         {show.map((src, i) => (
-          <div
+          <button
             key={i}
-            className="relative flex-1 aspect-video rounded overflow-hidden bg-slate-100 ring-1 ring-slate-200"
+            type="button"
+            onClick={() => onOpenLightbox(i)}
+            className="group relative flex-1 aspect-video rounded overflow-hidden bg-slate-100 ring-1 ring-slate-200 cursor-zoom-in"
           >
             <img
               src={src}
@@ -189,12 +235,23 @@ function ImageThumbnails({ images }: { images: string[] }) {
               className="w-full h-full object-cover"
               loading="lazy"
             />
+            {/* hover 遮罩 + "查看大图"图标 + 文字 */}
+            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/55 transition-colors flex items-center justify-center gap-1.5">
+              <img
+                src="/icons/map/tabs/查看图片图标.svg"
+                alt=""
+                className="w-4 h-4 invert opacity-0 group-hover:opacity-90 transition-opacity"
+              />
+              <span className="text-[11px] font-semibold text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                查看大图
+              </span>
+            </div>
             {i === show.length - 1 && more > 0 && (
-              <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[10px] font-semibold text-white">
+              <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[10px] font-semibold text-white pointer-events-none">
                 +{more}
               </div>
             )}
-          </div>
+          </button>
         ))}
       </div>
       {/* 标注 (文件名 - 横杠后面) — "八角塔-材料展示馆.png" → "材料展示馆"
