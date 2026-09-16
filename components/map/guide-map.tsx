@@ -70,10 +70,13 @@ function SearchResults({
   results,
   worlds,
   onSelect,
+  listDraggingRef,
 }: {
   results: SearchResult[];
   worlds: NewWorldMeta[];
   onSelect: (label: NewLabel, worldId: NewWorldId) => void;
+  /** 当前 mousedown→mouseup 算不算拖动 (>3px=true); true 时跳过 onSelect (让纯点击 vs 拖动区分生效) */
+  listDraggingRef: React.MutableRefObject<boolean>;
 }) {
   const worldName = (id: NewWorldId) =>
     worlds.find((w) => w.id === id)?.name ?? id;
@@ -101,7 +104,22 @@ function SearchResults({
           key={`${r.worldId}:${r.label.id}`}
           type="button"
           role="option"
-          onClick={() => onSelect(r.label, r.worldId)}
+          onClick={(e) => {
+            // 拖动时跳过 onSelect (用户拖动是来 scroll list, 不是选结果)
+            //   - mousedown 后 mousemove 距离 > 3px → listDraggingRef=true
+            //   - pure click (距离 ≤ 3px): listDraggingRef=false → 正常跳转
+            //   - 之前用 preventDefault on mousedown 完全阻止 click, 但用户希望纯点击仍跳转
+            //   - 注意: 取快照后立刻 reset, 否则 programmatic click (无 mousedown)
+            //     会读到上次拖动遗留的 true 值, 误判 skip onSelect
+            const dragged = listDraggingRef.current;
+            listDraggingRef.current = false;
+            if (dragged) {
+              e.preventDefault();
+              e.stopPropagation();
+              return;
+            }
+            onSelect(r.label, r.worldId);
+          }}
           className={cn(
             "w-full flex items-center gap-2.5 px-3 py-2.5 text-left",
             "border-b border-slate-100 last:border-b-0",
@@ -682,6 +700,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // (React 合成事件的 stopPropagation 在某些 path 下没真阻止 native 冒泡,
   //  导致 list 内的 wheel 触发地图缩放, list 内的 click 触发地图 onClick 收起)
   const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  // 搜索结果 option 是否正在被"拖动" (mousedown 后 mousemove 距离 > 3px)
+  //   - 区分"纯点击"(跳转) vs "拖动"(不跳转, 触发 list scroll)
+  //   - 共享给 SearchResults 的 onClick — 拖动时不调 onSelect
+  //   - 只在 mousedown 时 reset 到 false (mouseup 后 click 仍能看到 flag)
+  const listDraggingRef = useRef(false);
 
   // 正在过渡动画中 (click region 跳视角) — 用这个 flag 控制 SVG g 的 transition class
   // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
@@ -786,10 +809,24 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     // list drag-scroll 状态: 上次 pointer Y + 上次 scrollTop, 累加避免大延迟
     let listDragLastY = 0;
     let listDragLastScrollTop = 0;
+    // list-drag 模式 mousedown 起点 — 用来在 mousemove 时算拖动距离,
+    //   距离 > 3px 时设 listDraggingRef=true, 后续 option onClick 跳过 onSelect
+    //   (区分"纯点击"vs"拖动", 纯点击仍触发跳转)
+    let listDragOriginX = 0;
+    let listDragOriginY = 0;
     const onMouseDown = (e: MouseEvent) => {
       const wrapper = document.querySelector('[role="search"]');
       if (!wrapper || !wrapper.contains(e.target as Node)) return;
-      const hit = document.elementFromPoint(e.clientX, e.clientY);
+      // 优先用 e.target (真实派发事件的元素), 兜底用 elementFromPoint
+      //   - 真鼠标点击 e.target 可靠 (浏览器派发)
+      //   - dispatchEvent 模拟 mousedown 时 e.target 也是 dispatch 的元素, 同样可靠
+      //   - elementFromPoint 偶尔拿到遮挡元素 (e.g. 上层 z-index 高的 WorldTabs dim 按钮),
+      //     list 滚后 option 视口位置变化, (rect.x+10, rect.y+10) 命中错位元素
+      //   - 修法: e.target 是权威源, elementFromPoint 仅在 e.target 不在 wrapper 时兜底
+      let hit: HTMLElement | null = e.target as HTMLElement;
+      if (!hit || !wrapper.contains(hit)) {
+        hit = document.elementFromPoint(e.clientX, e.clientY) as HTMLElement | null;
+      }
       if (!hit) return;
       // input 内 — 让用户选文字 + 不触发地图拖动, 不启动自定义 drag
       //   - 不 preventDefault: 浏览器默认 selection 行为 (允许拖动选文字)
@@ -802,26 +839,36 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         setSearchListOpen(true);
         return;
       }
-      // option button (搜索结果) 内 — drag 转 wheel + 阻止 button 默认 click 派发
-      //   - bug 3 修: button mousedown 默认会触发 click (mousedown + mouseup 在同一 button)
-      //   - 用户拖动 option 时不希望误触发 onSelect 跳转
-      //   - preventDefault on mousedown 阻止 button 的默认 click 序列开始
+      // option button (搜索结果) 内 — 区分"纯点击" vs "拖动":
+      //   - 纯点击 (mousedown → mouseup 距离 ≤ 3px): 走默认 click 序列, onSelect 触发跳转 ✓
+      //   - 拖动 (mousemove 距离 > 3px): 设 listDraggingRef=true, 后续 onClick 检查到就跳过 onSelect
+      //   - 之前用 preventDefault on mousedown 阻止所有 click, 但用户希望纯点击仍跳转
+      //   - 现在改用 drag 检测: 不 preventDefault, 让默认 click 通过; 由 onClick 决定是否响应
+      //   - 副作用: button 在 mousedown 时会被 focus (默认行为, 之前 preventDefault 已阻止)
       const option = hit.closest('[role="option"]');
       if (option) {
         mode = "list-drag";
-        e.preventDefault();
+        listDraggingRef.current = false;  // 重置: 新一次 mousedown 不继承上次的 drag 标记
         setSearchListOpen(true);
         listDragLastY = e.clientY;
         listDragLastScrollTop = option.parentElement?.scrollTop ?? 0;
+        // 记录 mousedown 起点, 用来在 mousemove 时算拖动距离
+        listDragOriginX = e.clientX;
+        listDragOriginY = e.clientY;
         return;
       }
       // list padding 内 — drag 转 wheel 翻页 (跟 option 一样, 只是不进 option button)
       const list = hit.closest('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
       if (list) {
         mode = "list-drag";
+        // 也重置 listDraggingRef + 记起点 — list padding 起步拖动也算 drag,
+        //   防止 mouseup 在 option 上时误触发 onSelect (拖动中掠过 option)
+        listDraggingRef.current = false;
         setSearchListOpen(true);
         listDragLastY = e.clientY;
         listDragLastScrollTop = list.scrollTop;
+        listDragOriginX = e.clientX;
+        listDragOriginY = e.clientY;
         return;
       }
       // 其他 wrapper 区域 (放大镜 icon / X 按钮附近 / padding) — 原"drag 收起 list"模式
@@ -836,6 +883,14 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     const onMouseMove = (e: MouseEvent) => {
       // list drag-scroll: pointermove 直接写 scrollTop, 跟 wheel 翻页一样
       if (mode === "list-drag") {
+        // 距离 mousedown 起点 > 3px → 标记 drag, 后续 option onClick 会跳过 onSelect
+        if (!listDraggingRef.current) {
+          const dx = e.clientX - listDragOriginX;
+          const dy = e.clientY - listDragOriginY;
+          if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+            listDraggingRef.current = true;
+          }
+        }
         const wrapper = document.querySelector('[role="search"]');
         const list = wrapper?.querySelector('[role="listbox"][aria-label="搜索结果"]') as HTMLElement | null;
         if (!list) return;
@@ -1536,6 +1591,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, [schedule, writeHoverCoordFromScreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    // 在搜索 wrapper 子树内 (input / list / icon / padding) pointerdown 不触发地图 drag
+    //   - bug 4 修: 用户在 input 内 pointerdown 想选文字/复制, 之前会拖动地图
+    //   - 不调用 setPointerCapture → 浏览器默认 input 文字 selection 正常工作
+    //   - 不调 dragRef.current = {...} → onPointerMove 检测 dragRef=null 提前 return
+    //   - 列表 option button / X 按钮 是 <button>, closest("button") 也能拦住, 但 input 不是 button
+    //     必须用 searchWrapperRef.contains 兜底
+    if (searchWrapperRef.current?.contains(e.target as Node)) return;
     if ((e.target as HTMLElement).closest("button")) return;
     // 搜索框有内容时, 在地图上按下鼠标拖动也收起搜索列表
     if (searchQueryRef.current.trim().length > 0) {
@@ -1887,7 +1949,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
-            topClassName={searchVisible ? "absolute top-[65px] left-4" : undefined}
+            topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
           />
         )}
 
@@ -1916,7 +1978,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           >
             {/* input 行 — X 按钮只在有内容时出现, 用于清空文字 (不是关闭搜索)
                 关闭搜索走 ESC 键 (input 上 onKeyDown) 或顶部"搜索"开关按钮 */}
-            <div className="flex items-center pl-3 pr-1.5 h-9.5">
+            <div className="flex items-center pl-3 pr-1.5 py-2.5">
               <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4 shrink-0" />
               <input
                 ref={searchInputRef}
@@ -1940,7 +2002,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                   }
                 }}
                 placeholder="搜索建筑名称或机器产物"
-                className="flex-1 min-w-0 px-2 text-[14px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/90"
+                className="flex-1 min-w-0 px-2 text-[15px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/90"
               />
               {searchQuery.length > 0 && (
                 <button
@@ -1969,6 +2031,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
               <SearchResults
                 results={searchResults}
                 worlds={worlds}
+                listDraggingRef={listDraggingRef}
                 onSelect={(label, wid) => {
                   // 点结果: 跳过去 + 弹 popup
                   // 搜索栏文字保持不变 (user 选择, 不清空 query, 让搜索栏干净)

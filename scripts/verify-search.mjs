@@ -342,6 +342,155 @@ async function main() {
   }
   console.log("PASS: list drag scrolls list (bug 3b)");
 
+  // ---- 5e. 拖动 option (>3px) 不应触发 onSelect (bug 3b 区分纯点击 vs 拖动)
+  // 之前 test 5d 留下了 listDraggingRef=true; 现在测 option drag 不触发 onSelect
+  //   - mousedown on option → listDraggingRef=false (reset)
+  //   - mousemove > 3px → listDraggingRef=true
+  //   - click on option → 看到 dragged=true → 不调 onSelect → list 不收, popup 不开
+  await sleep(200);
+  const optionDragStateBefore = await page.evaluate(() => ({
+    listOpen: document.querySelector('[role="search"]')?.dataset.listOpen,
+    popupVisible: !!document.querySelector('[data-label-popup], .label-popup, [aria-label="地标详情"]')
+      || !!Array.from(document.querySelectorAll('div')).find(d => d.textContent?.includes('产出') && d.className?.includes('rounded')),
+    dim: document.querySelector('button[data-active="true"]')?.dataset.worldid,
+  }));
+  await page.evaluate(() => {
+    const opt = document.querySelector('[role="option"]');
+    if (!opt) return;
+    const rect = opt.getBoundingClientRect();
+    opt.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 10,
+    }));
+    window.dispatchEvent(new MouseEvent("mousemove", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10 + 80, clientY: rect.y + 10,  // 拖动 80px
+    }));
+    window.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10 + 80, clientY: rect.y + 10,
+    }));
+    // click 模拟 (mousedown→mouseup 同 button 时浏览器会派发 click)
+    opt.dispatchEvent(new MouseEvent("click", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10 + 80, clientY: rect.y + 10,
+    }));
+  });
+  await sleep(300);
+  const optionDragStateAfter = await page.evaluate(() => ({
+    listOpen: document.querySelector('[role="search"]')?.dataset.listOpen,
+    // 简单探测: onSelect 不调 → list 不收 → listbox 仍存在
+    hasList: !!document.querySelector('[role="listbox"][aria-label="搜索结果"]'),
+    query: document.querySelector('[role="search"]')?.dataset.query,
+  }));
+  console.log("after option drag:", { before: optionDragStateBefore, after: optionDragStateAfter });
+  if (!optionDragStateAfter.hasList) {
+    console.log("FAIL: option drag should NOT trigger onSelect (list stays open)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: option drag doesn't trigger onSelect (bug 3b user refactor)");
+
+  // ---- 5f. 纯点击 option (距离 < 3px) 仍应触发 onSelect
+  // 跟 5e 对照: 距离 ≤ 3px → 视为 click → listDraggingRef 始终 false → onSelect 调
+  //   - mousedown → listDraggingRef=false
+  //   - (no move, 或 move < 3px) → listDraggingRef 仍是 false
+  //   - click → dragged=false → onSelect
+  await page.evaluate(() => {
+    const opt = document.querySelector('[role="option"]');
+    if (!opt) return;
+    const rect = opt.getBoundingClientRect();
+    opt.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 10,
+    }));
+    // 微小移动 2px (在阈值内, 不算拖动)
+    window.dispatchEvent(new MouseEvent("mousemove", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 11, clientY: rect.y + 11,
+    }));
+    window.dispatchEvent(new MouseEvent("mouseup", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 11, clientY: rect.y + 11,
+    }));
+    opt.dispatchEvent(new MouseEvent("click", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 11, clientY: rect.y + 11,
+    }));
+  });
+  await sleep(500);
+  const optionClickResult = await page.evaluate(() => ({
+    // onSelect 调 → setSearchListOpen(false) + searchInputRef.blur()
+    // list 应收起
+    hasList: !!document.querySelector('[role="listbox"][aria-label="搜索结果"]'),
+    inputFocused: document.activeElement?.tagName === "INPUT",
+  }));
+  console.log("after option pure click:", optionClickResult);
+  if (optionClickResult.hasList) {
+    console.log("FAIL: option pure click should trigger onSelect (list collapses)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: option pure click triggers onSelect");
+
+  // 重新触发搜索 (上面 onSelect 把 query 清空 + list 收, 准备下一轮测试)
+  await page.focus('input[placeholder*="搜索建筑"]');
+  await page.evaluate(() => {
+    const i = document.querySelector('input[placeholder*="搜索建筑"]');
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(i, 't');
+    i.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  await sleep(300);
+
+  // ---- 5g. input 内 pointerdown 不应触发地图 drag (bug 4 修复)
+  // 之前 input 内的 pointerdown 会冒泡到 map container, 触发 React onPointerDown
+  //   → setPointerCapture + dragRef.current = {...} → onPointerMove 改 tx/ty
+  // 现在 searchWrapperRef.contains 检查 → pointerdown on input 时返回 early
+  //   → dragRef.current 不设 → onPointerMove 检测 dragRef=null 提前 return
+  // 验证: pointerdown on input + pointermove 在地图上 + pointerup, map <g> transform 不变
+  const mapTransformBefore = await page.evaluate(() => {
+    const g = document.querySelector('[data-tour-svg] g');
+    return g?.getAttribute('transform');
+  });
+  await page.evaluate(() => {
+    const input = document.querySelector('input[placeholder*="搜索建筑"]');
+    const svg = document.querySelector('[data-tour-svg]');
+    if (!input || !svg) return;
+    const inputRect = input.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    input.dispatchEvent(new PointerEvent("pointerdown", {
+      bubbles: true, cancelable: true, view: window,
+      pointerId: 1, pointerType: "mouse",
+      clientX: inputRect.x + 20, clientY: inputRect.y + 10,
+    }));
+    // pointermove 在地图中心 (svg 内某处)
+    svg.dispatchEvent(new PointerEvent("pointermove", {
+      bubbles: true, cancelable: true, view: window,
+      pointerId: 1, pointerType: "mouse",
+      clientX: svgRect.x + svgRect.width / 2,
+      clientY: svgRect.y + svgRect.height / 2,
+    }));
+    window.dispatchEvent(new PointerEvent("pointerup", {
+      bubbles: true, cancelable: true, view: window,
+      pointerId: 1, pointerType: "mouse",
+      clientX: svgRect.x + svgRect.width / 2,
+      clientY: svgRect.y + svgRect.height / 2,
+    }));
+  });
+  await sleep(300);
+  const mapTransformAfter = await page.evaluate(() => {
+    const g = document.querySelector('[data-tour-svg] g');
+    return g?.getAttribute('transform');
+  });
+  console.log(`map transform: ${mapTransformBefore} → ${mapTransformAfter}`);
+  if (mapTransformBefore !== mapTransformAfter) {
+    console.log("FAIL: input pointerdown should NOT drag map (bug 4)");
+    await browser.close();
+    process.exit(1);
+  }
+  console.log("PASS: input pointerdown doesn't drag map (bug 4)");
+
   // 重新验证 list 收起时 wrapper wheel 不阻止
   // 把 k 重置回 1 通过 wheel
   for (let i = 0; i < 10; i++) await page.mouse.wheel({ deltaY: 200 });
@@ -720,9 +869,19 @@ async function main() {
     () => document.querySelector('input[placeholder*="搜索建筑"]')?.value,
   );
   // 点搜索结果第一个
+  //   - bug 3b 后续: 之前 test 5d 触发过 list drag → listDraggingRef 可能遗留 true
+  //   - programmatic .click() 不走 mousedown, 不会自动 reset listDraggingRef
+  //   - 先 dispatch mousedown 模拟真实点击 (mousedown 会 reset listDraggingRef=false)
+  //   - 然后 click 读到 false → onSelect 正常触发
   await page.evaluate(() => {
     const result = document.querySelector('[role="option"]');
-    if (result) result.click();
+    if (!result) return;
+    const rect = result.getBoundingClientRect();
+    result.dispatchEvent(new MouseEvent("mousedown", {
+      bubbles: true, cancelable: true, view: window,
+      clientX: rect.x + 10, clientY: rect.y + 10,
+    }));
+    result.click();
   });
   await sleep(800);
   const queryAfterSelect = await page.evaluate(
