@@ -1000,12 +1000,25 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
   // ---- 4. 拖拽 / 滚轮 ref ----
   const containerRef = useRef<HTMLDivElement>(null);
-  // container DOM 已 mount 标记 — render 阶段 inline 调用 worldToScreenFactory 时
+  // container DOM 已 mount / 尺寸变化标记 — render 阶段 inline 调用 worldToScreenFactory 时
   //   containerRef.current 还是 null (ref 在 commit 阶段才 attach), labels 会渲染 0 个
-  //  用 useState + callback ref 在 commit 后 setState(true) 触发重 render, 此时 ref 已有值
-  //  用户体验: 刷新后立刻拖动一下地图 label 才出现 — 加这个让 label 第一次 render 就显示
-  const [, setContainerMounted] = useState(false);
-  useEffect(() => { setContainerMounted(true); }, []);
+  //  - 用 useState + useEffect 在 commit 后 setState(true) 触发重 render, 此时 ref 已有值
+  //  - 进一步加 ResizeObserver 监听容器尺寸变化 — 退出全屏时 container 从 fullscreen 缩到正常
+  //    浏览器 layout 还没完全 settled, React 同步 re-render 算 label 位置时 rect 错位
+  //    ResizeObserver 在 layout 完成后异步 fire, 此时再 setState 触发 render, labels 位置正确
+  //    不再需要"拖一下地图才刷新"
+  //  用户体验: 刷新 / 退出全屏 / 窗口 resize — label 都立刻正确显示
+  const [, setContainerTick] = useState(0);
+  useEffect(() => {
+    setContainerTick((t) => t + 1);  // 首次 mount: ref 已 attach 后 setState
+    const target = containerRef.current;
+    if (!target) return;
+    const observer = new ResizeObserver(() => {
+      setContainerTick((t) => t + 1);  // 尺寸变化: layout settled 后再 setState
+    });
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, []);
   /**
    * 整个 GuideMap 根容器 (包含 WorldTabs + 地图)
    *  scrollMapIntoView 用这个 ref, 这样切维度 / 缩放 / 退出全屏时
