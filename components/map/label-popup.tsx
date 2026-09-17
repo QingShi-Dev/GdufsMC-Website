@@ -100,7 +100,11 @@ export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopup
       {hasHero && (
         <button
           type="button"
-          onClick={() => setLightboxIndex(0)}
+          onClick={(e) => {
+            // 不让 click 冒泡到 map.onClick 关掉 popup (用户要求: 点 popup 内图片区打开 lightbox)
+            e.stopPropagation();
+            setLightboxIndex(0);
+          }}
           className="group relative w-full aspect-[2560/1361] overflow-hidden bg-slate-100 cursor-zoom-in block"
         >
           <img
@@ -266,7 +270,9 @@ function ImageThumbnails({
             <button
               key={i}
               type="button"
-              onClick={() => {
+              onClick={(e) => {
+                // 不让 click 冒泡到 map.onClick 关掉 popup (用户要求: 点 popup 内图片区打开 lightbox)
+                e.stopPropagation();
                 // src 在 slots 里的索引 = 在原 images 里的索引 (因为 slots = images 截取+占位)
                 onOpenLightbox(i);
               }}
