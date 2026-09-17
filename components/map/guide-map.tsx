@@ -782,6 +782,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // (React 合成事件的 stopPropagation 在某些 path 下没真阻止 native 冒泡,
   //  导致 list 内的 wheel 触发地图缩放, list 内的 click 触发地图 onClick 收起)
   const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  // popup 根 ref — 让 map.onPointerDown 拦截 popup 子树内的 pointerdown
+  //   - 用户要求: popup 内拖动 = 选中文字, 不能拖地图 (跟搜索框 input 同款)
+  //   - parent 检查 popupRef.current?.contains(e.target), 命中就 return
+  //   - popup 内 onMouseDown stopPropagation 是兜底 (防御 React 18 batched + stopPropagation 偶发不生效)
+  const popupRef = useRef<HTMLDivElement | null>(null);
   // 搜索结果 option 是否正在被"拖动" (mousedown 后 mousemove 距离 > 3px)
   //   - 区分"纯点击"(跳转) vs "拖动"(不跳转, 触发 list scroll)
   //   - 共享给 SearchResults 的 onClick — 拖动时不调 onSelect
@@ -1713,6 +1718,12 @@ useEffect(() => {
     //   - 列表 option button / X 按钮 是 <button>, closest("button") 也能拦住, 但 input 不是 button
     //     必须用 searchWrapperRef.contains 兜底
     if (searchWrapperRef.current?.contains(e.target as Node)) return;
+    // 在 popup 子树内 pointerdown 不触发地图 drag — 用户在 popup 内拖动应该选中文字
+    //   - 跟搜索 wrapper 同套思路: 不调 setPointerCapture → 浏览器默认 text selection 工作
+    //   - 不调 dragRef.current = {...} → onPointerMove 检测 dragRef=null 提前 return
+    //   - popup 内 onMouseDown stopPropagation 是 React 18 合成事件兜底, 但 pointerdown 是 native
+    //     event 会冒泡到 map, 必须靠 ref.contains 检查显式拦截
+    if (popupRef.current?.contains(e.target as Node)) return;
     if ((e.target as HTMLElement).closest("button")) return;
     // lightbox 打开时, map 内的 pointerdown 不响应 (lightbox 接管拖动)
     //   - 阻止用户拖动 lightbox 图片时, 地图同时跟着拖 (双触发)
@@ -2115,6 +2126,7 @@ const toggleFullscreen = () => {
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
             topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
+            rootRef={popupRef}
           />
         )}
 

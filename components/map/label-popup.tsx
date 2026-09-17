@@ -30,9 +30,16 @@ export interface LabelPopupProps {
    * 例: 搜索开启时父组件传 `top-[60px]` 让 popup 落到搜索框下方
    */
   topClassName?: string;
+  /**
+   * popup 根 div ref — 暴露给 parent (GuideMap) 让 map.onPointerDown 拦截
+   *   - 用户要求: popup 内拖动 = 选中文字, 不能拖地图 (跟搜索框 input 同款)
+   *   - parent 检查 popupRef.current?.contains(e.target), 命中就 return (不启动 drag)
+   *   - 不传 ref 时 parent 用 document.querySelector fallback (跟 searchWrapper 同款双保险)
+   */
+  rootRef?: React.RefObject<HTMLDivElement | null>;
 }
 
-export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
+export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopupProps) {
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -61,6 +68,7 @@ export function LabelPopup({ label, onClose, topClassName }: LabelPopupProps) {
 
   return (
     <div
+      ref={rootRef}
       role="dialog"
       aria-modal="false"
       aria-labelledby="lm-popup-name"
