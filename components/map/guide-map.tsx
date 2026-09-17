@@ -693,18 +693,30 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //   - PNG 在后台 fetch 完成后 → 切到 src, 加入 set 标记
   //   - 切到 src 后永远不再切回 (不管 zoom 多少、切维度、刷新、走 SW)
   // 持久化: localStorage 存已加载 tile key 列表, 刷新后已加载的直接 PNG
-  //  - 用 useState 初始化函数 + typeof window 守卫 SSR
+  //  - **初始永远空 Set**: 必须让 SSR + 客户端首帧完全一致 (都用 srcThumb),
+  //    否则 hydration mismatch (server 没 localStorage 渲染 webp, client 有 localStorage 渲染 PNG)
+  //  - mount 后 useEffect 才读 localStorage: client re-render 切到 PNG
+  //    (webp→PNG 切换有微小 flash, 但 webp 已缓存所以瞬时, 避免 hydration 警告)
   //  - useEffect 在 set 变化时持久化
   const HIRES_LOADED_KEY = "map.overworld.hiresTilesLoaded.v1";
-  const [loadedHires, setLoadedHires] = useState<Set<string>>(() => {
-    if (typeof window === "undefined") return new Set();
+  const [loadedHires, setLoadedHires] = useState<Set<string>>(new Set());
+  // mount 后才读 localStorage → 避免 SSR/client 首帧分歧
+  useEffect(() => {
     try {
       const raw = window.localStorage.getItem(HIRES_LOADED_KEY);
-      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+      if (raw) {
+        const parsed = JSON.parse(raw) as string[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // 这里必须同步 setState (mount 时读 localStorage 一次性同步, 没有合适的"懒"时机)
+          // 触发 cascading render = re-render with PNG (一次性, 用户几乎无感)
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setLoadedHires(new Set(parsed));
+        }
+      }
     } catch {
-      return new Set();
+      // 忽略 quota / JSON parse 错误
     }
-  });
+  }, []);
   useEffect(() => {
     if (loadedHires.size === 0) return;
     try {
