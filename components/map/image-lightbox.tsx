@@ -503,7 +503,7 @@ export function ImageLightbox({
         onClick={onClose}
         data-lightbox-control
         aria-label="关闭"
-        className="absolute top-8 right-8 z-10 w-10 h-10 rounded-full border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+        className="absolute top-8 right-4 sm:right-8 z-10 w-10 h-10 rounded-full border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
       >
         <img src="/icons/map/tabs/关闭图标.svg" alt="" className="w-5.5 h-5.5" />
       </button>
@@ -516,7 +516,7 @@ export function ImageLightbox({
             onClick={goPrev}
             data-lightbox-control
             aria-label="上一张"
-            className="absolute top-1/2 left-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 left-3 sm:left-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <img
               src="/icons/map/tabs/右侧箭头图标.svg"
@@ -529,7 +529,7 @@ export function ImageLightbox({
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 right-3 sm:right-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <img
               src="/icons/map/tabs/右侧箭头图标.svg"
@@ -544,7 +544,7 @@ export function ImageLightbox({
           用户要求: 删全屏按钮, 只留 放大 + 缩小; 操作一次就放大到图片能填满窗口 */}
       <div
         data-lightbox-control
-        className="absolute bottom-8 right-10 z-10 flex flex-col gap-1.5"
+        className="absolute bottom-8 right-5 sm:right-10 z-10 flex flex-col gap-1.5"
       >
         <button
           type="button"
@@ -572,11 +572,15 @@ export function ImageLightbox({
         </button>
       </div>
 
-      {/* 左下缩略图列表 (其他图片) */}
+      {/* 左下缩略图列表 (其他图片)
+              - 用户要求"如果显示不下, 也加没有滚动条的滚动栏"
+              - max-w-[60vw] + shrink-0 缩略图 (w-16 h-16) 超过时溢出
+              - overflow-x-auto 让溢出横向滚动
+              - 隐藏滚动条 (复用 lightbox 同样的三件套) — 触屏滑动自然滚动, 不显示 scrollbar */}
       {images.length > 1 && (
         <div
           data-lightbox-control
-          className="absolute bottom-6 left-10 z-10 max-w-[60vw] flex gap-2 bg-slate-800/60 rounded-lg p-2 backdrop-blur-md"
+          className="absolute bottom-6 left-5 sm:left-10 z-10 max-w-[60vw] flex gap-2 bg-slate-800/60 rounded-lg p-2 backdrop-blur-md overflow-x-auto [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
         >
           {images.map((src, i) => {
             const active = i === currentIndex;
