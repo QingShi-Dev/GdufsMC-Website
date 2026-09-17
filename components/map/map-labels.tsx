@@ -23,6 +23,7 @@ import type {
   NewLabelFontSize,
   NewLabelWithLabelsOverride,
 } from "@/lib/map/labels";
+import { cn } from "@/lib/utils";
 
 export interface MapLabelsProps {
   /** 当前维度的标签 (父组件按 worldId 过滤后传入) */
@@ -227,8 +228,4 @@ export function MapLabels({
       })}
     </div>
   );
-}
-
-function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
 }

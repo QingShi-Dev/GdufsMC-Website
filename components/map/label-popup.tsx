@@ -30,6 +30,7 @@ import type {
   NewLabelProduct,
 } from "@/lib/map/labels";
 import { ImageLightbox } from "./image-lightbox";
+import { cn } from "@/lib/utils";
 
 export interface LabelPopupProps {
   label: NewLabel;
@@ -809,8 +810,4 @@ function ProductPill({
       <span>{product.label}</span>
     </span>
   );
-}
-
-function cn(...classes: Array<string | false | null | undefined>): string {
-  return classes.filter(Boolean).join(" ");
 }
