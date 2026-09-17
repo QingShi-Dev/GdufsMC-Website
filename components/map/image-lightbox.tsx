@@ -53,6 +53,47 @@ export function ImageLightbox({
       document.body.style.overflow = prev;
     };
   }, []);
+  // lightbox 自己进 fullscreen — 解决"主地图已 fullscreen 时 lightbox 被遮挡"问题
+  //   - 之前: lightbox portal 到 body, 被 fullscreen 地图元素遮挡 (浏览器级最顶层)
+  //   - 现在: lightbox dialog 也 requestFullscreen, 浏览器把当前 fullscreen element
+  //     (地图) 退出, 把 lightbox 设为最顶层
+  //   - 用户体验: 点 hero 图 → 大图全屏覆盖, 看完 ESC/点 X 退出 → 回到 normal 模式
+  //   - 注意: 地图原本的 fullscreen 状态会丢失, 用户需要重新点全屏按钮 (可接受)
+  //   - 容错: fullscreen API 在某些环境 (cross-origin iframe 等) 可能被拒, try-catch
+  const dialogRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = dialogRef.current;
+    if (!el) return;
+    // 异步调用避免 React render 期间同步触发副作用
+    const requestFs = () => {
+      try {
+        const p = el.requestFullscreen?.();
+        if (p && typeof p.catch === "function") {
+          p.catch(() => {
+            // 容错: fullscreen 失败 (permission denied / cross-origin) 时, lightbox
+            // 仍然正常显示, 只是没法最顶层覆盖原地图
+          });
+        }
+      } catch {
+        // 同步抛错同上 — 静默
+      }
+    };
+    // 微任务延后, 让 React commit 完成再触发副作用
+    const t = setTimeout(requestFs, 0);
+    return () => {
+      clearTimeout(t);
+      // unmount 时如果 lightbox 还是 fullscreen element, 主动退出
+      //   - 用户按 ESC 时浏览器已经退出, 这次调用是 no-op
+      //   - 用户点 X 关时, 还没退出, 这里兜底
+      if (document.fullscreenElement === el) {
+        try {
+          document.exitFullscreen?.();
+        } catch {
+          // 静默
+        }
+      }
+    };
+  }, []);
   // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k)
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
@@ -361,6 +402,7 @@ export function ImageLightbox({
   //     z-index 跟 header 平级比较, 高者胜
   return createPortal(
     <div
+      ref={dialogRef}
       role="dialog"
       aria-modal="true"
       aria-label={
