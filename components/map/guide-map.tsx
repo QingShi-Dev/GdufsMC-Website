@@ -2154,6 +2154,7 @@ const toggleFullscreen = () => {
             topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
             rootRef={popupRef}
             isFullscreen={isFullscreen}
+            isMobile={isMobile}
           />
         )}
 
@@ -2174,9 +2175,10 @@ const toggleFullscreen = () => {
               // 宽度策略:
               //   - 非全屏: w-72 sm:w-80 (288/320px 固定), max-w-父容器-24px
               //   - 全屏: 按 viewport 25% (跟非全屏 320px / ~1280px viewport 视觉占比 25% 一致)
-              //     + min(25vw, 420px) 保证大屏不超 420px (桌面全屏后不会显得过大)
+              //     + max(min-w, min(25vw, 420px)) 保证不小于 min-w (用户要求: 全屏宽度不能比
+              //       全屏前还小), 不超过 420px (桌面全屏后不会显得过大)
               isFullscreen
-                ? "w-[min(25vw,420px)] max-w-[calc(100vw-24px)]"
+                ? "w-[max(320px,min(25vw,420px))] max-w-[calc(100vw-24px)]"
                 : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
@@ -2267,14 +2269,20 @@ const toggleFullscreen = () => {
           </div>
         </div>
 
-        {/* 右下: 放大 / 缩小 / 全屏 */}
+        {/* 右下: 放大 / 缩小 / 全屏
+            打开搜索时 (searchVisible=true) 隐藏放大/缩小 — 搜索框展开后地图被挤压, 缩放按钮
+            没意义且占右下空间 (手机上更明显). 全屏按钮保留 (用户想沉浸式看地图时仍有用) */}
         <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-          <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
-            <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
-          </ZoomBtn>
-          <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
-            <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
-          </ZoomBtn>
+          {!searchVisible && (
+            <>
+              <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
+                <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
+              </ZoomBtn>
+              <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
+                <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
+              </ZoomBtn>
+            </>
+          )}
           <ZoomBtn
             onClick={(e) => {
               // 不让 click 冒泡到 map.onClick 关 popup (用户要求: 全屏前后 popup 保留)

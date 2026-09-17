@@ -1,18 +1,28 @@
 /**
- * 地标详情卡片 — 固定在地图左上角
+ * 地标详情卡片
  *
- * 激进改动 (2026-09-11):
- *  - 去掉 kind 分支 (region/building/machine), 改成"有什么字段显示什么"
- *  - images[0] 是 hero 图 (顶部大图), images[1..] 是细节图 (底部缩略图)
- *  - description / inputs / outputs 各自独立段, 没填就不显示
- *  - 一切都从数据决定, 没有硬编码的"建筑 vs 机器"分支
+ * 桌面端 (isMobile=false):
+ *  - 固定在地图左上角 (absolute left-3 top-3), w-72 sm:w-80 (320px)
+ *  - 顶部 hero 图 + 名称/坐标/建设者 + 投入/产出 + 细节图缩略图 (1-3 张)
+ *  - 细节图 caption 在缩略图下方
  *
- * 设计:
- *  - 不是 modal: 没有 backdrop, 不锁滚动, 跟地图共存
- *  - 位置: 地图容器内 absolute top-3 left-3
- *  - 关闭: 右上角 X / ESC / 点地图
+ * 移动端 (isMobile=true):
+ *  - 出现在地图下面 (fixed bottom-0), 全屏宽
+ *  - 没有头图 (hero), 全部图都当细节图显示 (无 caption)
+ *  - 展开前: name + description + 最多 3 张细节图 + "展开" 按钮
+ *  - 展开后: 全部内容 (builder / inputs / outputs) + 全部细节图 (>3 张变横向滚动)
+ *
+ * 设计要点:
+ *  - select-text 覆盖 map 容器 select-none 继承, 让 popup 内文字可选
+ *  - popup.onMouseDown stopPropagation 兜底防止 React 18 合成事件偶发不生效
+ *  - popup 不 onClick stopPropagation — 用户要求点 popup 内任意位置都关 popup
+ *  - popup 内的图片 button + stopPropagation (commit 87b94b7) — 点图片打开 lightbox 不关 popup
+ *
+ * lightbox: 打开时不显示当前 popup 的 hero/详情标签, 只显示图片 (commit 9b09732)
+ *  - title 从 hiResImages[currentIndex] URL 提取文件名 stem
  */
 "use client";
+/* eslint-disable @next/next/no-img-element -- 项目图标/PNG 缩略图用 /public 下资源, next/image 只优化位图不优化 SVG/动画 gif, 这里直接 <img> 更合适 */
 
 import { useEffect, useState } from "react";
 import { IconArrowRight } from "@tabler/icons-react";
@@ -27,7 +37,9 @@ export interface LabelPopupProps {
   onClose: () => void;
   /**
    * 覆盖默认 `top-3` — 用于外部挂载了其他元素 (e.g. 搜索框) 时下移避开
-   * 例: 搜索开启时父组件传 `top-[60px]` 让 popup 落到搜索框下方
+   * 例: 搜索开启时父组件传 `top-[70px]` 让 popup 落到搜索框下方
+   *  - 桌面端用 (popup 在地图左上)
+   *  - 移动端忽略 (popup 在底部)
    */
   topClassName?: string;
   /**
@@ -40,13 +52,62 @@ export interface LabelPopupProps {
   /**
    * 全屏状态 — 控制 popup 宽度
    *   - false (非全屏): w-72 sm:w-80 (320px 固定)
-   *   - true (全屏): w-[min(25vw,420px)] 按 viewport 25% 但不超 420px
-   *     跟非全屏 320px / ~1280px viewport 视觉占比 25% 保持一致
+   *   - true (全屏): w-[max(320px,min(25vw,420px))] viewport 25% 不超 420px 不低于 320px
    */
   isFullscreen?: boolean;
+  /**
+   * 移动端 — popup 走完全不同的 UI (bottom sheet 模式)
+   *   - 桌面 (false): 左侧固定卡片, 有 hero 图, 详细字段全展开
+   *   - 移动 (true): 底部 sheet, 没有 hero, 全部图当细节图, 展开前/后切换
+   */
+  isMobile?: boolean;
 }
 
-export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen }: LabelPopupProps) {
+export function LabelPopup({
+  label,
+  onClose,
+  topClassName,
+  rootRef,
+  isFullscreen,
+  isMobile,
+}: LabelPopupProps) {
+  // 移动端走专属渲染分支 (bottom sheet 模式), 桌面端走原逻辑
+  if (isMobile) {
+    return (
+      <MobilePopup
+        label={label}
+        onClose={onClose}
+        rootRef={rootRef}
+      />
+    );
+  }
+
+  return (
+    <DesktopPopup
+      label={label}
+      onClose={onClose}
+      topClassName={topClassName}
+      rootRef={rootRef}
+      isFullscreen={isFullscreen}
+    />
+  );
+}
+
+/* ============================== Desktop ============================== */
+
+function DesktopPopup({
+  label,
+  onClose,
+  topClassName,
+  rootRef,
+  isFullscreen,
+}: {
+  label: NewLabel;
+  onClose: () => void;
+  topClassName?: string;
+  rootRef?: React.RefObject<HTMLDivElement | null>;
+  isFullscreen?: boolean;
+}) {
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -65,12 +126,8 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
   const hasDescription = !!label.description;
   const hasInputs = !!label.inputs && label.inputs.length > 0;
   const hasOutputs = !!label.outputs && label.outputs.length > 0;
-  // 任一有内容就显示内容区 (有图 / 有描述 / 有产物)
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
 
-  // lightbox 状态 — null = 关, 数字 = 当前显示的图片索引 (在 allImages 中)
-  //   注意: lightbox 显示 all images (hero + 细节), 而 detail thumbnails 只显示 detailImages
-  //   所以点击细节图 0 → lightbox 显示第 1 张 (detailImages[0] = images[1])
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   return (
@@ -82,36 +139,21 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
       className={cn(
         "absolute left-4 z-20",
         topClassName ?? "top-4",
-        // 宽度策略: 非全屏固定 320px, 全屏按 viewport 25% 但不超 420px (跟搜索栏一致)
         isFullscreen
-          ? "w-[min(25vw,420px)] max-w-[calc(100vw-24px)]"
+          ? "w-[max(320px,min(25vw,420px))] max-w-[calc(100vw-24px)]"
           : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
         "overflow-hidden",
         "animate-in fade-in slide-in-from-top-2 duration-200",
-        // map container 有 select-none 防止拖动地图时误选文字
-        //   - 继承到 popup 内导致文字也选不了, 用户在 popup 内选文字描述/坐标/建设者
-        //   - 用 select-text 覆盖, 让 popup 内 drag = text selection
         "select-text",
       )}
-      // 不 onClick stopPropagation — 用户要求: 点击 popup 内任位置都关 popup
-      //   - click 事件冒泡到 map → map.onClick 触发 → setSelectedLabel(null)
-      //   - 是 hero 按钮/细节图 button 也照样关 (打开 lightbox 时关 popup, 自然清理)
-      // 保留 onMouseDown stopPropagation 作为 React 18 合成事件兜底 (map 用 pointerdown,
-      // 实际上 popup 内 pointerdown 已被 popupRef.current?.contains 检查拦截, 但合成事件
-      // 兜底防止 React 18 偶发不生效)
       onMouseDown={(e) => e.stopPropagation()}
     >
-      {/* (关闭按钮已删除 — 用户要求) */}
-
-      {/* hero 图 — 容器用图片原始 aspect (2560/1361 ≈ 1.88) 适配,
-          这样不管 popup 宽度 (288/320px), 图片都以原比例显示, 不会上下裁切 */}
       {hasHero && (
         <button
           type="button"
           onClick={(e) => {
-            // 不让 click 冒泡到 map.onClick 关掉 popup (用户要求: 点 popup 内图片区打开 lightbox)
             e.stopPropagation();
             setLightboxIndex(0);
           }}
@@ -125,7 +167,6 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
               e.currentTarget.style.display = "none";
             }}
           />
-          {/* hover 遮罩 + "查看大图"图标 + 文字 (跟 detail 缩略图同款) */}
           <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center gap-1.5">
             <img
               src="/icons/map/tabs/查看图片图标.svg"
@@ -139,7 +180,6 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
         </button>
       )}
 
-      {/* 名称 + 坐标 + 简介 */}
       <div className="px-4.5 pt-5.5 pb-5 space-y-1.5">
         <span
           id="lm-popup-name"
@@ -166,7 +206,6 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
                 <span className="text-[13px] uppercase w-11 shrink-0 text-slate-600">
                   建设者
                 </span>
-                {/* builder 名字按空格分成多个 span — 用户能控制 gap, 名字多时 flex-wrap 换行 */}
                 <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-1.5">
                   {label.builder
                     .split(/\s+/)
@@ -180,7 +219,6 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
         </div>
       </div>
 
-      {/* 产物区 — inputs / outputs 都各自一段, 有就显示 */}
       {(hasInputs || hasOutputs) && (
         <div className="flex flex-col px-4.5 pb-5.5 gap-1 space-y-1">
           {hasInputs && (
@@ -192,30 +230,22 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
         </div>
       )}
 
-      {/* 细节图缩略图 (images[1..]) — 有就显示 */}
       {hasDetails && (
         <div className="px-4.5 pb-4 mt-1">
           <ImageThumbnails
             images={detailImages}
             onOpenLightbox={(detailIdx) => {
-              // detailIdx 是 detailImages 中的索引, 在 images 中偏移 1 (hero 占位)
               setLightboxIndex(detailIdx + 1);
             }}
           />
         </div>
       )}
 
-      {/* 没任何内容时, 卡片只显示名称, 给点空白 (不至于太瘪) */}
       {!hasAnyContent && <div className="h-2" />}
 
-      {/* 图片查看器 (lightbox) — 全屏 modal, ESC / 点遮罩关闭 */}
       {lightboxIndex !== null && (
         <ImageLightbox
-          // 缩略图条用 thumbs (省流量, 本来 popup 也用同一份)
           images={images}
-          // 主图用 full 高清版 (data 里存的是 thumbs/, 这里把 thumbs/ → full/ 派生大图)
-          //   - 大图 q=95 webp, lightbox 放大 8× 也不糊
-          //   - popup 仍然显示低分辨率的 thumbs
           imagesFull={images.map(toFullImagePath)}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
@@ -225,7 +255,318 @@ export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen
   );
 }
 
-/* ============================== Sub-views ============================== */
+/* ============================== Mobile ============================== */
+
+/**
+ * 移动端 popup — bottom sheet 风格
+ *
+ * 结构:
+ *  - 顶部 sticky bar: name + 关闭按钮
+ *  - collapsed body: description + 最多 3 张细节图 (grid) + "展开" 按钮
+ *  - expanded body (展开后追加): builder + inputs + outputs + 全部细节图
+ *    - 细节图 > 3 张: 横向滚动栏 (隐藏滚动条)
+ *
+ * 高度策略:
+ *  - collapsed: 屏幕高度的 50% (max-h-[50vh])
+ *  - expanded: 屏幕高度的 90% (max-h-[90vh])
+ *  - 两个状态都用 bottom 0 定位, 滑入动画
+ *
+ * 注意点:
+ *  - 没有 hero 图: 用户要求"全部显示为细节图" (没有"头图"概念)
+ *  - 不显示 caption: 移动端空间宝贵, 隐藏细节图下方的 - 横杠标注
+ *  - popup 内容点击不关 popup (跟桌面端一致): 用户要在 popup 内操作
+ *  - 关闭按钮只在 top bar, 不依赖点击 popup 其它位置关闭
+ *    (用户要求: 移动端点击 label 出现在地图下面, 关闭走 X 按钮)
+ */
+function MobilePopup({
+  label,
+  onClose,
+  rootRef,
+}: {
+  label: NewLabel;
+  onClose: () => void;
+  rootRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const images = label.images ?? [];
+  // 移动端没有 hero — 全部图当 detail 处理
+  const hasDescription = !!label.description;
+  const hasBuilder = !!label.builder;
+  const hasInputs = !!label.inputs && label.inputs.length > 0;
+  const hasOutputs = !!label.outputs && label.outputs.length > 0;
+  const hasAnyExpandable = hasBuilder || hasInputs || hasOutputs;
+  const hasAnyImage = images.length > 0;
+
+  // 展开状态
+  const [expanded, setExpanded] = useState(false);
+  // 细节图 lightbox (跟桌面端共用 ImageLightbox)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // 展开前: 只显示最多 3 张
+  // 展开后: 显示全部
+  const collapsedImages = images.slice(0, 3);
+  const expandedImages = images;
+  const overflowImages = expanded && images.length > 3;
+  const showImages = expanded ? expandedImages : collapsedImages;
+
+  return (
+    <div
+      ref={rootRef}
+      role="dialog"
+      aria-modal="false"
+      aria-labelledby="lm-popup-name"
+      // 移动端: fixed bottom-0 全屏宽 (覆盖地图但地图还在 popup 上面仍可见)
+      //  - max-h 控制 sheet 高度 (collapsed 50vh / expanded 90vh)
+      //  - overflow-y-auto 让超长内容可滚动
+      //  - 不显示完整字段时不强制高度, 让内容自然撑开 (但仍底部对齐)
+      //  - 关闭按钮在 top bar (右上), 用户要求: 不依赖点击 popup 其它位置关
+      className={cn(
+        "fixed bottom-0 left-0 right-0 z-30",
+        "bg-white border-t border-slate-200 rounded-t-2xl",
+        "shadow-[0_-10px_30px_-5px_rgb(0,0,0,0.15)]",
+        "animate-in slide-in-from-bottom duration-300",
+        expanded ? "max-h-[90vh]" : "max-h-[50vh]",
+        "overflow-y-auto",
+        "select-text",
+      )}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
+      {/* 顶部 sticky bar — name + 关闭按钮 */}
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3">
+        <span
+          id="lm-popup-name"
+          className="flex-1 min-w-0 text-[18px] font-semibold text-slate-800 truncate"
+        >
+          {label.name}
+        </span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          aria-label="关闭"
+          className="shrink-0 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 14 14"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
+          >
+            <path
+              d="M1 1L13 13M1 13L13 1"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            />
+          </svg>
+        </button>
+      </div>
+
+      <div className="px-4 py-4 space-y-4">
+        {hasDescription && (
+          <p className="text-[14px] leading-relaxed text-slate-600">
+            {label.description}
+          </p>
+        )}
+
+        {hasAnyImage && (
+          <MobileImagesGrid
+            images={showImages}
+            overflowScroll={overflowImages}
+            onOpen={(idx) => {
+              // idx 是 showImages 里的索引, 跟原始 images 同序
+              setLightboxIndex(idx);
+            }}
+          />
+        )}
+
+        {/* 展开后追加: 建设者 + 投入 + 产出 */}
+        {expanded && (
+          <div className="space-y-3 pt-2 border-t border-slate-100">
+            <div className="space-y-2">
+              <div className="flex items-center gap-1.5 text-[13px] text-slate-500">
+                <span className="uppercase w-11 shrink-0">坐标</span>
+                <span className="font-mono text-slate-700">
+                  x={label.x} z={label.z}
+                </span>
+              </div>
+              {hasBuilder && (
+                <div className="flex items-center gap-1.5 text-[13px]">
+                  <span className="uppercase w-11 shrink-0 text-slate-500">
+                    建设者
+                  </span>
+                  <span className="font-medium text-slate-700 flex-1 min-w-0 flex flex-wrap gap-x-1.5">
+                    {label.builder!
+                      .split(/\s+/)
+                      .filter((name) => name.length > 0)
+                      .map((name, i) => (
+                        <span key={i}>{name}</span>
+                      ))}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {hasInputs && (
+              <ProductRow label="投入" products={label.inputs!} tone="sky" />
+            )}
+            {hasOutputs && (
+              <ProductRow label="产出" products={label.outputs!} tone="emerald" />
+            )}
+          </div>
+        )}
+
+        {/* 展开/收起按钮 — 有可展开内容才显示 */}
+        {hasAnyExpandable && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setExpanded((v) => !v);
+            }}
+            className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[13px] font-medium text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
+          >
+            <IconArrowRight
+              size={14}
+              className={cn(
+                "transition-transform",
+                expanded ? "-rotate-90" : "rotate-90",
+              )}
+            />
+            {expanded ? "收起" : "展开"}
+          </button>
+        )}
+      </div>
+
+      {lightboxIndex !== null && (
+        <ImageLightbox
+          images={images}
+          imagesFull={images.map(toFullImagePath)}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * 移动端细节图 grid:
+ *  - 1 张: 单独占满 (full width, 限高 aspect-video)
+ *  - 2-3 张: 横向 grid (每张 1/n 宽)
+ *  - > 3 张 (展开模式): 横向滚动栏, 隐藏滚动条, 每张固定宽
+ */
+function MobileImagesGrid({
+  images,
+  overflowScroll,
+  onOpen,
+}: {
+  images: string[];
+  overflowScroll: boolean;
+  onOpen: (idx: number) => void;
+}) {
+  if (images.length === 0) return null;
+
+  // overflow 模式: 横向滚动, 每张固定 70% 宽 (一次看一张多一点)
+  if (overflowScroll) {
+    return (
+      <div className="-mx-5">
+        <div
+          className="flex gap-2 overflow-x-auto px-5 pb-2 snap-x snap-mandatory"
+          style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+        >
+          {images.map((src, i) => (
+            <button
+              key={i}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onOpen(i);
+              }}
+              className="shrink-0 w-[70%] aspect-video rounded-lg overflow-hidden bg-slate-100 snap-center cursor-zoom-in"
+            >
+              <img
+                src={src}
+                alt=""
+                loading="lazy"
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // 标准 grid: 1 张大图 / 2-3 张 grid
+  if (images.length === 1) {
+    return (
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onOpen(0);
+        }}
+        className="group relative block w-full aspect-video rounded-lg overflow-hidden bg-slate-100 cursor-zoom-in"
+      >
+        <img
+          src={images[0]}
+          alt=""
+          loading="lazy"
+          className="w-full h-full object-cover"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+        <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
+          <span className="text-[12px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+            查看大图
+          </span>
+        </div>
+      </button>
+    );
+  }
+
+  // 2-3 张: 等宽 flex
+  return (
+    <div className="flex gap-1.5">
+      {images.map((src, i) => (
+        <button
+          key={i}
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            onOpen(i);
+          }}
+          className="group relative flex-1 aspect-video rounded-lg overflow-hidden bg-slate-100 cursor-zoom-in"
+        >
+          <img
+            src={src}
+            alt=""
+            loading="lazy"
+            className="w-full h-full object-cover"
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
+            <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+              查看大图
+            </span>
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ============================== Shared utils ============================== */
 
 /**
  * 把 thumbs 路径派生 full 路径 (用于 lightbox 高清大图)
@@ -246,9 +587,7 @@ function toFullImagePath(thumbPath: string): string {
  */
 function parseCaption(src: string): string | null {
   const filename = src.split("/").pop() ?? "";
-  // 剥 query / hash
   const base = filename.split(/[?#]/)[0] ?? "";
-  // 剥扩展名 (.png / .webp / .jpg 等)
   const stem = base.replace(/\.[^.]+$/, "");
   const dashIdx = stem.indexOf("-");
   if (dashIdx < 0 || dashIdx === stem.length - 1) return null;
@@ -260,7 +599,6 @@ function ImageThumbnails({
   onOpenLightbox,
 }: {
   images: string[];
-  /** 点击缩略图 → 打开 lightbox, 传回点击的索引 */
   onOpenLightbox: (index: number) => void;
 }) {
   // slot 数量: 最少 2 (1 张图也占 2 个 slot, 旁边加占位), 最多 3
@@ -280,9 +618,7 @@ function ImageThumbnails({
               key={i}
               type="button"
               onClick={(e) => {
-                // 不让 click 冒泡到 map.onClick 关掉 popup (用户要求: 点 popup 内图片区打开 lightbox)
                 e.stopPropagation();
-                // src 在 slots 里的索引 = 在原 images 里的索引 (因为 slots = images 截取+占位)
                 onOpenLightbox(i);
               }}
               className="group relative flex-1 aspect-video rounded overflow-hidden bg-slate-100 ring-1 ring-slate-200 cursor-zoom-in"
@@ -293,7 +629,6 @@ function ImageThumbnails({
                 className="w-full h-full object-cover"
                 loading="lazy"
               />
-              {/* hover 遮罩 + "查看大图"图标 + 文字 */}
               <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center gap-1.5">
                 <img
                   src="/icons/map/tabs/查看图片图标.svg"
@@ -311,7 +646,6 @@ function ImageThumbnails({
               )}
             </button>
           ) : (
-            // 占位 slot — 没图时空 slot, 保持排版一致 (跟 2 张图一样的宽)
             <div
               key={i}
               className="flex-1 aspect-video rounded border border-dashed border-slate-200 bg-slate-50/30"
@@ -320,9 +654,6 @@ function ImageThumbnails({
           ),
         )}
       </div>
-      {/* 标注 (文件名 - 横杠后面) — "八角塔-材料展示馆.png" → "材料展示馆"
-          没横杠的文件名 (e.g. "八角塔.png") 不显示标注
-          占位 slot 的 caption 是空 (保持对齐) */}
       <div className="flex gap-1 mt-1">
         {slots.map((src, i) => {
           const caption = src ? parseCaption(src) : null;
@@ -381,7 +712,6 @@ function ProductPill({
     tone === "sky"
       ? "bg-sky-50 text-sky-700 ring-sky-200/90"
       : "bg-emerald-50 text-emerald-700 ring-emerald-200/90";
-  // icon 为空 / "null" 字符串 / undefined 时不渲染 img, 也不留 gap 占位
   const rawIcon = product.icon?.trim();
   const showIcon = !!rawIcon && rawIcon !== "null";
   return (
