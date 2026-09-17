@@ -1118,6 +1118,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
    */
   const rootRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  // 标记"刚才这次 pointerdown → up 之间有没有真正拖动"
+  //  - pointerup 后浏览器可能仍 fire click (小幅移动也算 click)
+  //  - 用 wasDraggedRef 让 click handler 区分"纯点击" vs "拖动结束", 决定是否关 popup
+  //  - 阈值 3px 跟 label/option drag-vs-click 一致, 避免手抖误判
+  const wasDraggedRef = useRef(false);
   const rafRef = useRef<number | null>(null);
   const pendingRef = useRef<{ tx: number; ty: number; k: number } | null>(null);
 
@@ -1699,6 +1704,8 @@ useEffect(() => {
   }, [schedule, writeHoverCoordFromScreen, isFullscreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    // 新一轮 pointer down — 重置 drag 标记 (上轮 drag 状态不能影响这轮 click)
+    wasDraggedRef.current = false;
     // 在搜索 wrapper 子树内 (input / list / icon / padding) pointerdown 不触发地图 drag
     //   - bug 4 修: 用户在 input 内 pointerdown 想选文字/复制, 之前会拖动地图
     //   - 不调用 setPointerCapture → 浏览器默认 input 文字 selection 正常工作
@@ -1727,6 +1734,18 @@ useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     if (!dragRef.current) return;
+    // 检测本次 pointer 是否真的"拖动"了 (移动距离 > 3px) — 标记给 click handler 用
+    //   - 用户要求: 拖动结束后不关闭 popup, 但 click 仍会 fire (浏览器对小幅移动也派 click)
+    //   - 没有这个标记, 用户稍微拖动一下也会触发 click → 关 popup
+    if (
+      !wasDraggedRef.current &&
+      Math.hypot(
+        e.clientX - dragRef.current.x,
+        e.clientY - dragRef.current.y,
+      ) > 3
+    ) {
+      wasDraggedRef.current = true;
+    }
     const rect = el.getBoundingClientRect();
     const w = worldRef.current;
     if (!w) return;
@@ -1970,6 +1989,15 @@ const toggleFullscreen = () => {
           const hitTestEl = document.elementFromPoint(e.clientX, e.clientY);
           if (wrapperEl?.contains(hitTestEl)) return;
           const isLabel = !!target.closest("button[data-label-id]");
+          // 拖动结束后不关闭 popup — 用户在拖动时点选了某个 label, 想继续看详情同时平移地图探索周边
+          //   - 浏览器对小幅移动 (< 3px) 也会派发 click event, 不能简单靠 click 区分
+          //   - 用 wasDraggedRef 在 pointermove > 3px 时标记, click handler 检查后跳过关 popup
+          //   - list 还是收, 因为拖地图明显不是搜索模式了
+          if (wasDraggedRef.current) {
+            wasDraggedRef.current = false;
+            setSearchListOpen(false);
+            return;
+          }
           // 点 label 时 label.onClick 已 setSelectedLabel, 这里不要清掉 (React 18 batched)
           if (!isLabel) setSelectedLabel(null);
           // 任何点击地图都收起搜索列表
