@@ -17,7 +17,7 @@ export default function RootLayout({
       <html lang="zh-CN">
         <body className="min-h-screen flex flex-col antialiased">
           <HeaderNav />
-          <main className="flex-1">{children}</main>
+          <main className="flex-1 bg-white">{children}</main>
           <Footer />
         </body>
       </html>

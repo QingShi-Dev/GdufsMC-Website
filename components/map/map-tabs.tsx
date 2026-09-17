@@ -134,22 +134,24 @@ function MapViewTabsContent() {
                 </span>
                 <div className="w-full">
                   <div className="flex items-center gap-2.5 min-w-0">
-                <span
-                    className={cn(
-                        "text-[17px] font-bold tracking-tight flex-shrink-0",
-                        active ? "text-slate-900" : "text-slate-700 group-hover:text-blue-500",
-                    )}
-                >
-                  {t.label}
-                </span>
-                    {/* 群系地图 tab: 标题右边放网址文字 (短版, 完整 URL 走 title tooltip) */}
-                    {t.id === "block" && (
-                        <span
-                            className="hidden sm:inline text-[14px] text-slate-500/80 font-mono truncate min-w-0 flex-1 ml-1"
-                        >
+                    <div className="flex flex-col sm:flex-row gap-x-1.5">
+                      <span
+                          className={cn(
+                              "text-[17px] font-bold tracking-tight flex-shrink-0",
+                              active ? "text-slate-900" : "text-slate-700 group-hover:text-blue-500",
+                          )}
+                      >
+                      {t.label}
+                    </span>
+                      {/* 群系地图 tab: 标题右边放网址文字 (短版, 完整 URL 走 title tooltip) */}
+                      {t.id === "block" && (
+                          <span
+                              className="inline text-[11px] sm:text-[14px] text-slate-500/80 font-mono truncate min-w-0 flex-1 sm:ml-1"
+                          >
                           {BIOME_MAP_SHORT_URL}
                         </span>
-                    )}
+                      )}
+                    </div>
                     {active && (
                         <span className="ml-auto flex-shrink-0 text-[14px] font-semibold uppercase tracking-wider text-blue-600/90 bg-blue-50 border border-blue-100 px-3 py-0.5 rounded-full">
                           当前

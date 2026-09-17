@@ -2150,10 +2150,14 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         )}
 
         {/* 缩放百分比 — 右上角
-            - 默认: search 关闭时显示, 打开时隐藏 (搜索框展开后右上空间被压缩)
-            - 全屏 (isFullscreen): 永远显示 — 用户要求"开全屏缩放比例和搜索可以同时显示",
+            - sm 以上 (!isMobile): 永远显示 — 用户要求"sm断点以上就显示"
+              sm 以上右侧空间足够 (>= 640px), 跟搜索栏 (左上) 不重叠
+            - sm 以下 + 搜索关闭 (!searchVisible): 显示 (sm 以下靠的是右侧空间够)
+            - sm 以下 + 搜索开启 (searchVisible): 不显示 — 用户要求"开启搜索就不显示",
+              sm 以下右侧空间被搜索框挤压, 百分比跟搜索结果重叠
+            - 全屏 (isFullscreen): 永远显示 (覆盖以上所有条件, 优先级最高)
               全屏下右上空间足够, 跟搜索栏 (左上) 不重叠 */}
-        {(!searchVisible || isFullscreen) && (
+        {(!isMobile || !searchVisible || isFullscreen) && (
           <div className="absolute top-3 right-3 z-10 pointer-events-none">
             <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
               {Math.round(k * 100)}%

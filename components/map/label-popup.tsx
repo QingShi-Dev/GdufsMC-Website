@@ -170,6 +170,17 @@ function DesktopPopup({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
+  // 切换不同 label 时: 滚到顶端
+  //   - popup 容器 overflow-y-auto, 内容超出 max-h 时可滚动
+  //   - 不同 label 内容高度不同 (hero 图/缩略图/builder/inputs/outputs),
+  //     切 label 后保留旧 scrollTop 会让用户看到错位置
+  //   - 用户要求: "当popup需要滚动的时候, 切换不同的label, 就把滚动拉回顶端"
+  useEffect(() => {
+    if (rootRef?.current) {
+      rootRef.current.scrollTop = 0;
+    }
+  }, [label, rootRef]);
+
   // 从共享 state 解构
   const { images, imagesFull, heroImage, detailImages, hasHero, hasDetails, lightboxIndex, setLightboxIndex } = popup;
   const hasDescription = !!label.description;
@@ -364,6 +375,16 @@ function MobilePopup({
   const [expanded, setExpanded] = useState(false);
   // swipe 手势 ref — 用于 onTouchStart / onTouchMove
   const touchStartYRef = useRef<number | null>(null);
+
+  // 切换不同 label 时: 滚到顶端
+  //   - 跟 DesktopPopup 同款 — 用户要求"切 label 把滚动拉回顶端"
+  //   - 移动端 bottom sheet 也 overflow-y-auto, 切 label 后保留 scrollTop 看到错位置
+  //   - 放在 expanded state 声明后, label 变就重置 (不依赖 expanded)
+  useEffect(() => {
+    if (rootRef?.current) {
+      rootRef.current.scrollTop = 0;
+    }
+  }, [label, rootRef]);
 
   // 锁定 body 滚动 — popup 打开期间页面不能滑
   //   - 跟 desktop 上关掉 lightbox 滚动穿透同款 (commit 986a6c4 用了相同模式)
