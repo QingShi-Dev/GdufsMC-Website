@@ -24,7 +24,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- 项目图标/PNG 缩略图用 /public 下资源, next/image 只优化位图不优化 SVG/动画 gif, 这里直接 <img> 更合适 */
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   NewLabel,
   NewLabelProduct,
@@ -81,6 +81,16 @@ export function LabelPopup({
   isFullscreen,
   isMobile,
 }: LabelPopupProps) {
+  // 共享 popup 状态 (DesktopPopup / MobilePopup 都用):
+  //   - images: 原图数组 (用于 lightbox)
+  //   - imagesFull: 派生的高清版数组 (lightbox 用, thumbs → fulls 路径替换)
+  //   - lightboxIndex: 当前打开的 lightbox 图片 index, null 表示关闭
+  //   - heroImage / detailImages: 切分 (DesktopPopup 渲染 hero + thumbnails, MobilePopup 渲染全图)
+  //   - hasHero / hasDetails: 是否有 hero / 细节图
+  // 之前 Desktop 和 Mobile 各持一份 lightboxIndex state, 现在提到 LabelPopup 共享
+  // 之前两处都计算 images / imagesFull, 现在 useMemo 在 hook 里避免重复算
+  const popup = usePopupImages(label);
+
   // 移动端走专属渲染分支 (bottom sheet 模式), 桌面端走原逻辑
   if (isMobile) {
     return (
@@ -88,6 +98,7 @@ export function LabelPopup({
         label={label}
         onClose={onClose}
         rootRef={rootRef}
+        popup={popup}
       />
     );
   }
@@ -100,8 +111,35 @@ export function LabelPopup({
       topOffset={topOffset}
       rootRef={rootRef}
       isFullscreen={isFullscreen}
+      popup={popup}
     />
   );
+}
+
+/* ============================== Shared hook ============================== */
+
+/**
+ * 共享的 popup 图片 + lightbox state hook
+ * - DesktopPopup / MobilePopup 都用同一个 lightbox (同时只开一个)
+ * - images 是只读的缩略图路径 (popup 显示), imagesFull 是派生的高清路径 (lightbox 显示)
+ * - heroImage / detailImages / hasHero / hasDetails 让渲染分支不用重复 slice + check
+ */
+function usePopupImages(label: NewLabel) {
+  const images = useMemo(() => label.images ?? [], [label.images]);
+  const imagesFull = useMemo(() => images.map(toFullImagePath), [images]);
+  const heroImage = images[0];
+  const detailImages = useMemo(() => images.slice(1), [images]);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  return {
+    images,
+    imagesFull,
+    heroImage,
+    detailImages,
+    hasHero: !!heroImage,
+    hasDetails: detailImages.length > 0,
+    lightboxIndex,
+    setLightboxIndex,
+  };
 }
 
 /* ============================== Desktop ============================== */
@@ -113,6 +151,7 @@ function DesktopPopup({
   topOffset,
   rootRef,
   isFullscreen,
+  popup,
 }: {
   label: NewLabel;
   onClose: () => void;
@@ -120,6 +159,7 @@ function DesktopPopup({
   topOffset?: number;
   rootRef?: React.RefObject<HTMLDivElement | null>;
   isFullscreen?: boolean;
+  popup: ReturnType<typeof usePopupImages>;
 }) {
   // ESC 关闭
   useEffect(() => {
@@ -130,18 +170,12 @@ function DesktopPopup({
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // 切分图片: 第一张是 hero, 剩下是细节
-  const images = label.images ?? [];
-  const heroImage = images[0];
-  const detailImages = images.slice(1);
-  const hasHero = !!heroImage;
-  const hasDetails = detailImages.length > 0;
+  // 从共享 state 解构
+  const { images, imagesFull, heroImage, detailImages, hasHero, hasDetails, lightboxIndex, setLightboxIndex } = popup;
   const hasDescription = !!label.description;
   const hasInputs = !!label.inputs && label.inputs.length > 0;
   const hasOutputs = !!label.outputs && label.outputs.length > 0;
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
-
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   // max-h 计算: 视口高度 - popup top offset - 16px 安全边距
   //   - 搜索关闭 (topOffset=16): max-h = 100vh - 32px
@@ -273,7 +307,7 @@ function DesktopPopup({
       {lightboxIndex !== null && (
         <ImageLightbox
           images={images}
-          imagesFull={images.map(toFullImagePath)}
+          imagesFull={imagesFull}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
@@ -309,12 +343,15 @@ function MobilePopup({
   label,
   onClose,
   rootRef,
+  popup,
 }: {
   label: NewLabel;
   onClose: () => void;
   rootRef?: React.RefObject<HTMLDivElement | null>;
+  popup: ReturnType<typeof usePopupImages>;
 }) {
-  const images = label.images ?? [];
+  // 从共享 state 解构 — images / imagesFull / lightboxIndex / setLightboxIndex
+  const { images, imagesFull, lightboxIndex, setLightboxIndex } = popup;
   // 移动端没有 hero — 全部图当 detail 处理
   const hasDescription = !!label.description;
   const hasBuilder = !!label.builder;
@@ -323,10 +360,8 @@ function MobilePopup({
   const hasAnyExpandable = hasBuilder || hasInputs || hasOutputs;
   const hasAnyImage = images.length > 0;
 
-  // 展开状态
+  // 展开状态 — MobilePopup 专属 (DesktopPopup 不需要)
   const [expanded, setExpanded] = useState(false);
-  // 细节图 lightbox (跟桌面端共用 ImageLightbox)
-  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   // swipe 手势 ref — 用于 onTouchStart / onTouchMove
   const touchStartYRef = useRef<number | null>(null);
 
@@ -525,7 +560,7 @@ function MobilePopup({
       {lightboxIndex !== null && (
         <ImageLightbox
           images={images}
-          imagesFull={images.map(toFullImagePath)}
+          imagesFull={imagesFull}
           initialIndex={lightboxIndex}
           onClose={() => setLightboxIndex(null)}
         />
