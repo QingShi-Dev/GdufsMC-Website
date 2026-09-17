@@ -9,7 +9,7 @@
  *  - 离开页面 (依赖变化) 自动关
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-// (之前 createPortal 已不用, 直接渲染在 React tree)
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 
 /** 缩放范围 — 跟地图保持同款手感: 1× 默认, 最多 8× */
@@ -103,6 +103,31 @@ export function ImageLightbox({
     w: number;
     h: number;
   } | null>(null);
+  // portal target — 决定 lightbox 挂在 DOM 哪里
+  //   - 地图 fullscreen 时: document.fullscreenElement (地图 div) — 跟地图同一 stacking context
+  //     - lightbox z-[300] 在 fullscreen element 内最高, 压住 search wrapper z-[60] / popup z-20
+  //     - 零切换闪烁 (fullscreen API 不需要重新进出)
+  //   - 地图非 fullscreen 时: document.body — 脱离 map container 的 containing block
+  //     - map 有 transition: transform 让 fixed 被 contained (commit 98404e9 解释)
+  //     - portal 到 body 让 fixed 直接相对 viewport, z-[300] 跟 header (z-100) 比, 高者胜
+  //     - 用户要求: "没全屏的情况下大图要在 header 上面" — portal 到 body 直接满足
+  //   - 监听 fullscreenchange 让 portal target 跟随 (用户进/出全屏时 lightbox 跟着)
+  //     - 接受 lightbox state 在 fullscreen 切换瞬间丢失 (tx/ty/k 重置) — 边缘场景, 妥协
+  //   - SSR / first render: portalTarget = null, return null (避免 SSR 引用 document)
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    const update = () => {
+      const fs = document.fullscreenElement;
+      // document.fullscreenElement 类型是 Element | null, portal 要 HTMLElement
+      // - fullscreen 时实际是 HTMLElement (浏览器规范保证)
+      // - fallback 到 document.body (HTMLBodyElement 是 HTMLElement)
+      setPortalTarget((fs as HTMLElement | null) ?? document.body);
+    };
+    update();
+    document.addEventListener("fullscreenchange", update);
+    return () =>
+      document.removeEventListener("fullscreenchange", update);
+  }, []);
 
   // 主图优先用 imagesFull (高清), 没有就 fallback 到 images
   const hiResImages = imagesFull ?? images;
@@ -378,19 +403,19 @@ export function ImageLightbox({
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  // 不 portal — 直接渲染在 React tree (LabelPopup → GuideMap → map container)
-  //   - 之前 portal 到 body (commit 98404e9) 解决 map container transition: transform
-  //     让 fixed 被 contained 的问题 (z-index 跟 map container 比较而非 header)
-  //   - 现在不 portal: lightbox 直接是 LabelPopup 子元素, 跟着 LabelPopup 渲染
-  //   - fullscreen 状态下: 地图 div 是 fullscreenElement, LabelPopup + Lightbox 都在地图 div 内
-  //     - 同一 OS-level stacking context, fixed + z-[300] 直接覆盖地图内容
-  //     - 零切换闪烁
-  //   - 非 fullscreen 状态下: 走 commit 98404e9 解决的 containing block 问题
-  //     - map 有 transition: transform, fixed 被限制在 map container 内
-  //     - z-index 300 跟 map container 的 z-index 比, 高者胜 — lightbox 仍在最上层
-  //   - SSR 时 map container 没 transform (server 渲染), 直接 return null 避免 hydration mismatch
-  //     - client mount 后再渲染 (此时 map 有 transition 属性, 也 OK)
-  return (
+  // portal target 没就绪 (SSR / first render) → 不渲染 (避免 hydration mismatch)
+  //   - portalTarget 在 useEffect 内设置, 第一帧 render 完 useEffect 跑 → setPortalTarget
+  //   - 第二帧 portalTarget 有值, createPortal 渲染 lightbox
+  //   - 1 frame (16ms) 延迟用户感知不到, 比 SSR hydration mismatch 强
+  if (!portalTarget) return null;
+
+  // lightbox 主体
+  //   - portal target: fullscreenElement (有) || document.body (无)
+  //   - z-[300] 在 portal target 的 stacking context 内最高:
+  //     - 非 fullscreen (portal 到 body): z-300 > header z-100, 盖过 header ✓
+  //     - fullscreen (portal 到 fullscreen element): z-300 > search wrapper z-[60], 盖过搜索栏 ✓
+  //   - 没有 animate-in fade-in (用户反馈 fade-in 透明度过渡会让搜索栏短暂可见, 闪一下)
+  const lightboxContent = (
     <div
       role="dialog"
       aria-modal="true"
@@ -400,7 +425,7 @@ export function ImageLightbox({
           : "图片查看"
       }
       // z-[300] 远超 header (z-100) 和 search wrapper (z-[60]), 确保在最上层
-      className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm"
       // 注意: 不再有 onClick 关闭 (用户要求: 只有右上角关闭按钮能关)
       //   - 之前点 backdrop (target === currentTarget) 也关, 用户觉得太容易误关
       //   - 现在只能点右上角关闭按钮关
@@ -577,4 +602,6 @@ export function ImageLightbox({
       )}
     </div>
   );
+
+  return createPortal(lightboxContent, portalTarget);
 }

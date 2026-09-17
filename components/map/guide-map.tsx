@@ -88,9 +88,9 @@ function SearchResults({
       <div
         role="listbox"
         aria-label="搜索结果"
-        className="border-t border-slate-200 px-3 py-3 text-[11px] text-slate-400"
+        className="border-t border-slate-200 px-3 py-3 text-[13px] text-slate-400"
       >
-        没有匹配的地标
+        暂无搜索结果
       </div>
     );
   }
@@ -788,13 +788,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
   // popup 位置固定在地图左上角, 不需要 anchor
   const [selectedLabel, setSelectedLabel] = useState<NewLabel | null>(null);
-  // lightbox 是否打开 — LabelPopup 通过 onLightboxChange 回调更新
-  //   - 用途: lightbox 打开时把 search wrapper z-index 降到 popup 之下
-  //   - 用户反馈: 全屏看大图时搜索栏应该在大图下面 (被大图覆盖)
-  //   - popup z-20 + search wrapper z-[60] 是 sibling, 默认 search wrapper 在上
-  //   - 不 portal 的 lightbox 在 popup stacking context 内, 必须调低 search wrapper z-index 才能浮出
-  //   - 这里只降 search wrapper z, popup z 不动 (保持原设计: 搜索时 list z-30 高于 popup z-20)
-  const [lightboxOpen, setLightboxOpen] = useState(false);
   // 搜索 input ref — 开启时自动 focus
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   // 搜索 wrapper ref — 用于挂 native event listener 阻止事件冒泡到地图
@@ -2162,7 +2155,6 @@ const toggleFullscreen = () => {
             rootRef={popupRef}
             isFullscreen={isFullscreen}
             isMobile={isMobile}
-            onLightboxChange={setLightboxOpen}
           />
         )}
 
@@ -2179,13 +2171,7 @@ const toggleFullscreen = () => {
             role="search"
             aria-label="搜索地标"
             className={cn(
-              // lightbox 打开时降 z 到 0, 让 lightbox (在 popup 内, popup z-20) 覆盖搜索栏
-              //   - 默认 z-[60] > popup z-20: 搜索栏设计意图 = 浮在地图 + popup 之上
-              //   - lightbox 打开时反过来: z-0 < popup z-20, lightbox (z-300 in popup) 浮出来
-              //   - popup 关闭后 lightbox 也关闭, 回到 z-[60]
-              //   - 用户要求: "搜索栏应该在大图下面" — 全屏看大图时被大图覆盖
-              "absolute top-4 left-4",
-              lightboxOpen ? "z-0" : "z-[60]",
+              "absolute top-4 left-4 z-[60]",
               // 宽度策略:
               //   - 非全屏: w-72 sm:w-80 (288/320px 固定), max-w-父容器-24px
               //   - 全屏: 按 viewport 25% (跟非全屏 320px / ~1280px viewport 视觉占比 25% 一致)

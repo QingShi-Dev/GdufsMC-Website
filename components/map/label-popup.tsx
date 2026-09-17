@@ -60,16 +60,6 @@ export interface LabelPopupProps {
    *   - 移动 (true): 底部 sheet, 没有 hero, 全部图当细节图, 展开前/后切换
    */
   isMobile?: boolean;
-  /**
-   * lightbox 状态变化回调 — 通知 parent (GuideMap) 当前 lightbox 是否打开
-   *   - parent 用这个 state 调低 search wrapper z-index, 让 lightbox 浮在搜索栏之上
-   *   - 用户反馈: 全屏看大图时搜索栏应该在大图下面 (被大图覆盖)
-   *   - popup z-20 在 lightbox 打开时不够, 因为 search wrapper z-[60] 是 sibling
-   *   - 不 portal 的话, lightbox 在 popup 的 stacking context 内, popup z 必须 > 60
-   *     或 search wrapper z 必须降到 popup 之下 — 这里选降 search wrapper
-   *   - 桌面端 + 移动端都触发 (parent 通用)
-   */
-  onLightboxChange?: (open: boolean) => void;
 }
 
 export function LabelPopup({
@@ -79,7 +69,6 @@ export function LabelPopup({
   rootRef,
   isFullscreen,
   isMobile,
-  onLightboxChange,
 }: LabelPopupProps) {
   // 移动端走专属渲染分支 (bottom sheet 模式), 桌面端走原逻辑
   if (isMobile) {
@@ -88,7 +77,6 @@ export function LabelPopup({
         label={label}
         onClose={onClose}
         rootRef={rootRef}
-        onLightboxChange={onLightboxChange}
       />
     );
   }
@@ -100,7 +88,6 @@ export function LabelPopup({
       topClassName={topClassName}
       rootRef={rootRef}
       isFullscreen={isFullscreen}
-      onLightboxChange={onLightboxChange}
     />
   );
 }
@@ -113,14 +100,12 @@ function DesktopPopup({
   topClassName,
   rootRef,
   isFullscreen,
-  onLightboxChange,
 }: {
   label: NewLabel;
   onClose: () => void;
   topClassName?: string;
   rootRef?: React.RefObject<HTMLDivElement | null>;
   isFullscreen?: boolean;
-  onLightboxChange?: (open: boolean) => void;
 }) {
   // ESC 关闭
   useEffect(() => {
@@ -143,18 +128,6 @@ function DesktopPopup({
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  // 通知 parent (GuideMap) lightbox 状态变化 — 让 parent 调低 search wrapper z-index
-  //   - 转换时 (open ↔ close) 触发回调, parent re-render 后把 search wrapper 推到 popup 之下
-  //   - 用 cleanup 保证 unmount 时也触发 false (popup 被关掉时 lightboxIndex 仍是某个值,
-  //     useEffect 不再 fire, 需要 cleanup 兜底)
-  useEffect(() => {
-    const isOpen = lightboxIndex !== null;
-    onLightboxChange?.(isOpen);
-    return () => {
-      if (isOpen) onLightboxChange?.(false);
-    };
-  }, [lightboxIndex, onLightboxChange]);
 
   return (
     <div
@@ -308,12 +281,10 @@ function MobilePopup({
   label,
   onClose,
   rootRef,
-  onLightboxChange,
 }: {
   label: NewLabel;
   onClose: () => void;
   rootRef?: React.RefObject<HTMLDivElement | null>;
-  onLightboxChange?: (open: boolean) => void;
 }) {
   const images = label.images ?? [];
   // 移动端没有 hero — 全部图当 detail 处理
@@ -328,16 +299,6 @@ function MobilePopup({
   const [expanded, setExpanded] = useState(false);
   // 细节图 lightbox (跟桌面端共用 ImageLightbox)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
-
-  // 通知 parent lightbox 状态变化 — 跟 DesktopPopup 同款 (z-index 联动逻辑)
-  //   - 移动端 popup 在底部, search wrapper 也在顶部, 视觉冲突小但仍走相同逻辑保持一致
-  useEffect(() => {
-    const isOpen = lightboxIndex !== null;
-    onLightboxChange?.(isOpen);
-    return () => {
-      if (isOpen) onLightboxChange?.(false);
-    };
-  }, [lightboxIndex, onLightboxChange]);
   // swipe 手势 ref — 用于 onTouchStart / onTouchMove
   const touchStartYRef = useRef<number | null>(null);
 
