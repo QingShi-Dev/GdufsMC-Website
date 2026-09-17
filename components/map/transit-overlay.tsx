@@ -21,6 +21,7 @@ import type {
   NewTransitStation,
   NewTransitStyleDefaults,
   NewTransitLabelFields,
+  NewTransitLabelConfig,
   NewPearlLine,
 } from "@/lib/map/transit";
 import {
@@ -454,6 +455,33 @@ function offsetByDirection(
   };
 }
 
+/**
+ * 解析线路端 label 样式 — 一次性 pick 6 个字段, 替代 LineEndLabel 内部连 6 次 pick
+ * - 之前代码 6 次 pick 散在函数体里, 可读性差 (每个 pick 都 4 个参数)
+ * - 合并后: LineEndLabel 只关心如何用 style, 不重复 lookup 逻辑
+ * - 字段语义: cfg.withLabels.X (withLabels 时优先) → cfg.X (主配置) → wlm/defaults.X (withLabels 时 wlm, 否则 defaults) → 内置 fallback
+ */
+function resolveLineEndLabelStyle(
+  cfg: NewTransitLabelConfig,
+  defaults: NewTransitStyleDefaults | undefined,
+  withLabels: boolean,
+  k: number,
+): { fontSize: number; distance: number; offsetX: number; offsetY: number } {
+  const wlm = withLabels ? defaults?.lineEndWithLandmarks : undefined;
+  const fontSizeRaw = pick(cfg.withLabels?.fontSize, cfg.fontSize, wlm?.fontSize ?? defaults?.fontSize ?? 12, withLabels);
+  const fontSizeScale = pick(cfg.withLabels?.fontSizeScale, cfg.fontSizeScale, wlm?.fontSizeScale ?? defaults?.fontSizeScale ?? 0.3, withLabels);
+  const distanceRaw = pick(cfg.withLabels?.distance, cfg.distance, wlm?.distance ?? defaults?.distance ?? 12, withLabels);
+  const distanceScale = pick(cfg.withLabels?.distanceScale, cfg.distanceScale, wlm?.distanceScale ?? defaults?.distanceScale ?? 0.3, withLabels);
+  const offsetX = pick(cfg.withLabels?.offsetX, cfg.offsetX, wlm?.offsetX ?? defaults?.offsetX ?? 0, withLabels);
+  const offsetY = pick(cfg.withLabels?.offsetY, cfg.offsetY, wlm?.offsetY ?? defaults?.offsetY ?? 0, withLabels);
+  return {
+    fontSize: cssScaled(fontSizeRaw, fontSizeScale, k),
+    distance: cssScaled(distanceRaw, distanceScale, k),
+    offsetX,
+    offsetY,
+  };
+}
+
 function LineEndLabel({
   line,
   waypoint,
@@ -477,23 +505,11 @@ function LineEndLabel({
   const minZoom = cfg.minZoom ?? 100;
   if (currentZoom < minZoom) return null;
 
-  const wlm = withLabels ? defaults?.lineEndWithLandmarks : undefined;
+  const style = resolveLineEndLabelStyle(cfg, defaults, withLabels, k);
+  if (style.fontSize < 4) return null;
 
-  const fontSize = cssScaled(
-    pick(cfg.withLabels?.fontSize, cfg.fontSize, wlm?.fontSize ?? defaults?.fontSize ?? 12, withLabels),
-    pick(cfg.withLabels?.fontSizeScale, cfg.fontSizeScale, wlm?.fontSizeScale ?? defaults?.fontSizeScale ?? 0.3, withLabels),
-    k,
-  );
-  if (fontSize < 4) return null;
-  const distancePx = cssScaled(
-    pick(cfg.withLabels?.distance, cfg.distance, wlm?.distance ?? defaults?.distance ?? 12, withLabels),
-    pick(cfg.withLabels?.distanceScale, cfg.distanceScale, wlm?.distanceScale ?? defaults?.distanceScale ?? 0.3, withLabels),
-    k,
-  );
-  const offsetX = pick(cfg.withLabels?.offsetX, cfg.offsetX, wlm?.offsetX ?? defaults?.offsetX ?? 0, withLabels);
-  const offsetY = pick(cfg.withLabels?.offsetY, cfg.offsetY, wlm?.offsetY ?? defaults?.offsetY ?? 0, withLabels);
-  const pos = offsetByDirection(waypoint, cfg.direction, distancePx);
-  const finalPos = { left: pos.left + offsetX, top: pos.top + offsetY };
+  const pos = offsetByDirection(waypoint, cfg.direction, style.distance);
+  const finalPos = { left: pos.left + style.offsetX, top: pos.top + style.offsetY };
   return (
     <div
       data-transit-line-label
@@ -507,11 +523,11 @@ function LineEndLabel({
         background: line.color,
         color: "white",
         borderRadius: 3,
-        padding: `${fontSize * 0.4}px ${fontSize * 0.6}px`,
+        padding: `${style.fontSize * 0.4}px ${style.fontSize * 0.6}px`,
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        fontSize: `${fontSize}px`,
+        fontSize: `${style.fontSize}px`,
         fontWeight: 800,
         lineHeight: 1.0,
         whiteSpace: "nowrap",
