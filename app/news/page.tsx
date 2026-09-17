@@ -1,14 +1,18 @@
 import { getLatestNews, getNewsList } from "@/lib/news";
+import { LEADERBOARD } from "@/data/leaderboard";
 import { HeroCarousel } from "@/components/news/hero-carousel";
 import { NewsList } from "@/components/news/list";
+import { Leaderboard } from "@/components/news/leaderboard";
 
 /**
- * News 主页 — 顶部轮播图 + 下面列表
+ * News 主页 — 顶部轮播图 + 下面 (列表 + 右侧榜单)
  * 布局:
  *   - hero: 5 张精选 news 大图轮播 (1 大 + 4 dot)
- *   - list: 全部 news 卡片, 最新在前
+ *   - 下方: flex/grid 二栏
+ *     - 主栏 (flex-1): NewsList — 最新 1 条 featured + 后续 3 列 grid
+ *     - 侧栏 (lg:w-72): 小游戏积分榜 (sticky 跟随滚动)
  *
- * 数据走 lib/news 抽象层, 后期接后台 0 改动
+ * 数据走 lib/news 抽象层, 后期换后台 0 改动
  */
 export default async function NewsPage() {
   // server component 调抽象层, 后期换 fetch 不动这里
@@ -24,14 +28,22 @@ export default async function NewsPage() {
           <HeroCarousel items={carousel} />
         </div>
 
-        {/* 全部 news 列表 */}
-        <div className="mt-16">
-          <div className="flex items-center gap-2 text-sm text-slate-600 mb-5">
-            <span className="font-semibold text-slate-800">全部动态</span>
-            <span className="text-slate-300">·</span>
-            <span className="text-slate-500 text-xs">共 {list.length} 条</span>
+        {/* 下半部分: 主栏 (动态列表) + 侧栏 (积分榜) */}
+        <div className="mt-16 flex flex-col lg:flex-row gap-8">
+          {/* 主栏: 全部动态 */}
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2 text-sm text-slate-600 mb-5">
+              <span className="font-semibold text-slate-800">全部动态</span>
+              <span className="text-slate-300">·</span>
+              <span className="text-slate-500 text-xs">共 {list.length} 条</span>
+            </div>
+            <NewsList items={list} />
           </div>
-          <NewsList items={list} />
+
+          {/* 侧栏: 小游戏积分榜 (lg 以上显示, sticky 跟随滚动) */}
+          <div className="lg:w-72 lg:shrink-0">
+            <Leaderboard data={LEADERBOARD} />
+          </div>
         </div>
       </div>
     </div>

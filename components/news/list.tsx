@@ -9,8 +9,8 @@
 import Link from "next/link";
 import { IconArrowRight } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-import { CATEGORY_BADGE_CLASS } from "@/lib/news";
-import type { NewsItem } from "@/lib/news";
+import { CATEGORY_BADGE_CLASS } from "@/lib/news/types";
+import type { NewsItem } from "@/lib/news/types";
 
 const DECO_GRADIENTS = [
   "from-amber-400/20 to-orange-400/0",

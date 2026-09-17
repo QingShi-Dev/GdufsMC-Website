@@ -14,8 +14,8 @@ import { AnimatePresence, motion } from "framer-motion";
 import { IconChevronLeft, IconChevronRight } from "@tabler/icons-react";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { CATEGORY_BADGE_CLASS } from "@/lib/news";
-import type { NewsItem } from "@/lib/news";
+import { CATEGORY_BADGE_CLASS } from "@/lib/news/types";
+import type { NewsItem } from "@/lib/news/types";
 
 const AUTO_PLAY_MS = 6000;
 

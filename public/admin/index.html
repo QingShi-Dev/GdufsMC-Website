@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>内容管理 — GdufsMC</title>
+    <style>
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        background: #f8fafc;
+      }
+      /* 加载中提示, Sveltia 接管后会被替换 */
+      .sveltia-loader {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 12px;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        color: #64748b;
+        font-size: 14px;
+      }
+      .sveltia-loader .spinner {
+        width: 32px;
+        height: 32px;
+        border: 3px solid #e2e8f0;
+        border-top-color: #6366f1;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+      }
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="sveltia-loader" id="loader">
+      <div class="spinner"></div>
+      <div>正在加载内容管理后台…</div>
+    </div>
+
+    <!--
+      Sveltia CMS — Decap CMS 的现代化继任者
+      - 从 unpkg CDN 加载, 不需要 npm 包, 不进 Next.js bundle
+      - 配置在 ./config.yml, 支持 GitHub / GitLab / 本地等多种 backend
+      - 首次使用需要在 GitHub 后台配 OAuth (或填入 PAT)
+      - 文档: https://github.com/sveltia/sveltia-cms
+    -->
+    <script src="https://unpkg.com/sveltia-cms@%5E0.16.0/dist/sveltia-cms.js"></script>
+  </body>
+</html>

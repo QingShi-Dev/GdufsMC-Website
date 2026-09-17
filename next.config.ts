@@ -33,11 +33,16 @@ const SECURITY_HEADERS: { key: string; value: string }[] = [
     value: [
       "default-src 'self'",
       // Next.js 16 + framer-motion + Tailwind v4 需要 unsafe-inline
-      "script-src 'self' 'unsafe-inline'",
+      // unpkg.com: Sveltia CMS 从 CDN 加载脚本 (/admin 路由)
+      "script-src 'self' 'unsafe-inline' https://unpkg.com",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      // raw.githubusercontent.com: Sveltia 预览媒体 (上传/已上传图片)
+      // avatars.githubusercontent.com: Sveltia 显示 GitHub 用户头像
+      "img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com",
       "font-src 'self' data:",
-      "connect-src 'self'",
+      // api.github.com: Sveltia GitHub backend 读写
+      // raw.githubusercontent.com: 媒体 fetch
+      "connect-src 'self' https://api.github.com https://raw.githubusercontent.com",
       "worker-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",

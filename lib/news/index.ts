@@ -1,45 +1,103 @@
 /**
- * News 抽象层 — 隔离数据来源, 后期接后台只改这一个文件
+ * News 数据访问层 — server-only, 不要在 client component 里 import 这里
  *
- * 本期: 同步读 data/news.ts (build 时打包, 0 网络请求)
- * 后期: 改 getNewsList() 内部从 fetch('/api/news') 拿数据, 所有调用方 0 改动
+ * 抽象层 (来自 data/news/items.ts 注释里的承诺):
+ * - getNewsList() / getNewsBySlug() / getLatestNews() 接口稳定
+ * - 内部实现: 当前是 content/news/*.md (Markdown + frontmatter)
+ * - 后期换后台 (DB / API) 只改这个文件, page.tsx 0 改动
  *
- * 设计原则:
- * - 函数签名稳定 (sortBy 顺序固定: 最新在前)
- * - cache() 包裹: 同一请求内多次调用只跑 1 次 (后期接 CMS 立省 2/3 请求)
- * - 类型化: NewsItem 从 data/news.ts re-export
- * - 共享样式: CATEGORY_BADGE_CLASS 给 3 个组件复用, 改一个不漏
+ * 当前实现:
+ * - 内容物理位置: content/news/*.md
+ * - frontmatter: title / date / category / summary / cover / badge / pinned
+ * - slug: 从 frontmatter.title 自动派生 (pinyin, lib/slugify.ts)
+ *
+ * 客户端可见的类型/常量:
+ * - 见 ./types.ts (NewsItem / NewsCategory / CATEGORY_BADGE_CLASS)
+ * - 客户端组件直接从那里 import, 不要再从本文件 import 任何东西
  */
 
+import "server-only";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
+import matter from "gray-matter";
 import { cache } from "react";
-import { NEWS, type NewsItem, type NewsCategory } from "@/data/news/items";
+import { slugify } from "@/lib/slugify";
+import type { NewsFrontmatter, NewsItem } from "./types";
 
-export type { NewsItem, NewsCategory } from "@/data/news/items";
+// 重新导出类型, 让 `@/lib/news` 仍然是完整入口 (服务端使用)
+export type { NewsItem, NewsCategory, NewsFrontmatter } from "./types";
+export { CATEGORY_BADGE_CLASS } from "./types";
 
-/** 分类色 badge class — 3 个组件 (carousel/list/detail) 共用, 单一来源 */
-export const CATEGORY_BADGE_CLASS: Record<NewsCategory, string> = {
-  公告: "bg-sky-100 text-sky-700 border-sky-200",
-  更新: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  活动: "bg-amber-100 text-amber-700 border-amber-200",
-  "公告-维护": "bg-slate-100 text-slate-700 border-slate-200",
-};
+const CONTENT_DIR = join(process.cwd(), "content", "news");
 
-/** 拿全部 news 列表, 已按 date 倒序 (最新在前) — 同请求内 cache */
+/**
+ * 读取所有 news 文件, 解析 frontmatter + body, 按 date 倒序排列
+ *
+ * 错误处理:
+ * - 单个文件解析失败 → 跳过 + log, 不让整个列表挂掉
+ * - 目录不存在 (开发期/没内容时) → 返回空数组, 不抛
+ *
+ * @returns Promise<NewsItem[]>  按 date 倒序 (新 → 旧)
+ */
 export const getNewsList = cache(async (): Promise<NewsItem[]> => {
-  // 后期接 CMS / 飞书 / Strapi 时, 改这一个函数内部即可:
-  //   const res = await fetch(`${API_BASE}/news`);
-  //   if (res.ok) return (await res.json()).sort(byDateDesc);
-  return [...NEWS].sort((a, b) => (a.date < b.date ? 1 : -1));
+  let files: string[];
+  try {
+    files = await readdir(CONTENT_DIR);
+  } catch {
+    return [];
+  }
+  const mdFiles = files.filter((f) => f.endsWith(".md"));
+
+  const items = (
+    await Promise.all(
+      mdFiles.map(async (file) => {
+        const filePath = join(CONTENT_DIR, file);
+        try {
+          const raw = await readFile(filePath, "utf-8");
+          const { data, content } = matter(raw);
+          const fm = data as NewsFrontmatter;
+          // 校验必填字段
+          if (!fm.title || !fm.date || !fm.category || !fm.cover) {
+            console.warn(`[news] ${file} 缺少必填 frontmatter, 跳过`);
+            return null;
+          }
+          return {
+            ...fm,
+            slug: slugify(fm.title),
+            content: content.trim(),
+          } satisfies NewsItem;
+        } catch (err) {
+          console.warn(`[news] 解析 ${file} 失败:`, err);
+          return null;
+        }
+      }),
+    )
+  ).filter((x): x is NewsItem => x !== null);
+
+  items.sort((a, b) => (a.date < b.date ? 1 : a.date > b.date ? -1 : 0));
+  return items;
 });
 
-/** 按 slug 拿单条 news, 没找到返回 null — 同请求内 cache */
+/**
+ * 按 slug 查单条 news
+ *
+ * @param slug URL 里的 id 部分 (例如 /news/welcome-to-alpha-test 的 slug)
+ * @returns NewsItem | null  找不到返回 null (调用方负责 notFound())
+ */
 export const getNewsBySlug = cache(async (slug: string): Promise<NewsItem | null> => {
   const list = await getNewsList();
   return list.find((n) => n.slug === slug) ?? null;
 });
 
-/** 拿最新 N 条 (顶部轮播图用) */
-export async function getLatestNews(limit: number = 3): Promise<NewsItem[]> {
+/**
+ * 顶部轮播图专用: 拿最新的 N 条
+ * 优先 pinned=true 的, 再按 date 倒序补足
+ *
+ * @param limit 默认 5 (顶部轮播图固定 5 张)
+ */
+export const getLatestNews = cache(async (limit = 5): Promise<NewsItem[]> => {
   const list = await getNewsList();
-  return list.slice(0, limit);
-}
+  const pinned = list.filter((n) => n.pinned);
+  const rest = list.filter((n) => !n.pinned);
+  return [...pinned, ...rest].slice(0, limit);
+});

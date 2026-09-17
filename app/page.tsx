@@ -5,13 +5,23 @@ import Link from "next/link";
 const FEATURES = [
     {
         icon: "/icons/home/生存服图标.svg",
-        title: "纯净生存 镜像创造 小游戏 · 群组服",
-        desc: "群组服间可通过 /server 指令快捷切换。 \n三个服务器均采用 Fabric 服务端，保留原版游戏体验的同时优化性能，兼容大多数生电辅组模组。\n目前，生存服已具备较为完整的生电体系，更多生电、建筑玩法等你解锁。\n小游戏服还会定期举行派对，欢迎参加。",
+        title: "群组服 · 纯净生存",
+        desc: "采用 Fabric 服务端，支持主流生电辅组模组。\n目前，生存服已具备较为完整的生电体系，更多生电、建筑玩法等你解锁。",
+    },
+    {
+        icon: "/icons/home/创造服图标.svg",
+        title: "群组服 · 镜像创造",
+        desc: "使用和生存服相同的配置、地图，主要服务于建筑设计和机器测试，在这里请尽情发挥自己的创造天赋。",
+    },
+    {
+        icon: "/icons/home/小游戏服图标.svg",
+        title: "群组服 · 小游戏",
+        desc: "包含纯指令实现的40+小游戏，每周六晚8点举办小游戏派对，欢迎游玩。\n（具体时间会根据情况调整，详情请关注微信群）",
     },
     {
         icon: "/icons/home/粤高联图标.svg",
         title: "粤高联联合服",
-        desc: "广东高校 MC 联盟联合服务器，打通多校节点，畅享跨校联机体验。\n（需按实际情况切换游戏版本，详情请关注对应社群）",
+        desc: "广东高校 MC 联盟联合服务器，打通多校节点，畅享跨校体验。\n（需按实际情况切换游戏版本，详情请关注对应社群）",
     },
 ];
 
@@ -113,10 +123,12 @@ export default function Home() {
                     <div className="md:text-[19px] px-3 sm:px-0 prose prose-slate max-w-none text-slate-600 leading-relaxed text-center">
                         <p>
                             云城像素社是广外学生自发建设的 MC 同好交流会（非学校官方社团），成立于2024年12月。
+                            目前聊天群内已添加超过二百人，包含数十名活跃玩家。
                             我们的宗旨是为广外 MC 玩家打造一个创意交流的平台，无论是建筑、红石电路还是模组玩法，都能在这里自由探索和分享。
                         </p>
                         <p className="mt-4">
-                            作为粤港澳地区首个拥有独立皮肤站的 MC 学生组织，我们不仅实现了个性化皮肤管理，还成功接入MUA Union生态，是带头成立了粤港澳大湾区官方皮肤站的成员之一。
+                            作为粤港澳地区首个拥有独立皮肤站的 MC 学生组织，我们不仅实现了个性化皮肤管理，还成功接入MUA Union生态，是带头成立粤港澳大湾区官方皮肤站的成员之一。
+                            欢迎所有热爱方块的广外人加入我们，一起创造无限可能！
                         </p>
                     </div>
 
@@ -134,17 +146,17 @@ export default function Home() {
 
             {/* ============== 特性区 ============== */}
             <section className="relative py-12 sm:pt-20 sm:pb-24 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-8 md:mb-12">
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
                             服务器简介
                         </h2>
                         <p className="text-sm md:text-[16px] text-slate-500">
-                            多元选择，校盟集结
+                            群组服间可通过 /server 指令快捷切换
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-4 md:pb-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:pb-5">
                         {FEATURES.map((f) => (
                             <div
                                 key={f.title}

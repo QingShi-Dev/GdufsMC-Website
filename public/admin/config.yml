@@ -1,0 +1,106 @@
+# =============================================================================
+# Sveltia CMS 配置 — GdufsMC 站点新闻 / 内容后台
+# =============================================================================
+#
+# ⚠️  首次使用前必读:
+#
+# 1. 后端 (backend):
+#    当前使用 GitHub, 需要在 GitHub 后台创建 OAuth App:
+#      - Settings → Developer settings → OAuth apps → New OAuth App
+#      - Homepage URL: https://<your-domain>
+#      - Authorization callback URL: https://<your-domain>/admin/
+#    然后把 client_id / client_secret 填到下面 backend 节
+#
+#    或者用 Personal Access Token (PAT):
+#      - GitHub → Settings → Developer settings → Personal access tokens
+#      - 勾选 `repo` scope
+#      - 在 Sveltia 登录界面选 "Use a personal access token", 粘贴进去
+#    (PAT 方式配置简单, 适合单管理员; OAuth 适合多人协作)
+#
+# 2. CSP 兼容性:
+#    next.config.ts 已经把 unpkg.com / api.github.com / avatars.githubusercontent.com
+#    加进了白名单, 否则浏览器会拦截 Sveltia 的脚本和 API 调用
+#
+# 3. 内容物理位置:
+#    新闻 → content/news/*.md (frontmatter + Markdown 正文)
+#    列表/详情页通过 @/lib/news 读取, slug 由 title 经 pinyin-pro 派生
+#
+# =============================================================================
+
+backend:
+  name: github
+  repo: gdufsmc/gdufsmc-site-dev # TODO: 改成实际仓库 (owner/repo)
+  branch: main # TODO: 改成实际发布分支
+  base_url: http://localhost:3000/admin # 本地开发填 http://localhost:3000/admin
+  auth_endpoint: api.github.com
+  open_authoring: false
+  squash_merges: true
+
+# 编辑界面本地化 (中文)
+locale: zh-Hans
+
+# 媒体 (图片) 上传
+media_folder: public/images/news
+public_folder: /images/news
+
+# -----------------------------------------------------------------------------
+# 内容集合
+# -----------------------------------------------------------------------------
+collections:
+  # 新闻动态
+  - name: news
+    label: 新闻动态
+    label_singular: 一条新闻
+    description: 网站首页 / /news 页展示的新闻文章, Markdown 格式
+    folder: content/news
+    create: true
+    delete: true
+    slug: "{{title}}" # 文件名用标题生成, 实际 URL slug 由代码层 pinyin 派生
+    extension: md
+    format: yaml-frontmatter
+    media_folder: "/images/news/{{filename}}" # 每条新闻独立图片目录
+    public_folder: "/images/news/{{filename}}"
+    fields: # 对应 lib/news.ts 的 NewsFrontmatter
+      - name: title
+        label: 标题
+        widget: string
+        hint: 文章标题, 用于显示 + 派生 URL slug
+      - name: date
+        label: 发布日期
+        widget: datetime
+        date_format: YYYY-MM-DD
+        time_format: false
+        picker_utc: false
+        format: YYYY-MM-DD
+      - name: category
+        label: 分类
+        widget: select
+        options:
+          - { label: 公告, value: 公告 }
+          - { label: 更新, value: 更新 }
+          - { label: 活动, value: 活动 }
+          - { label: 公告-维护, value: 公告-维护 }
+        default: 公告
+      - name: summary
+        label: 一句话简介
+        widget: text
+        hint: 列表 + 轮播图副文字都用, 控制在 1-2 行
+      - name: cover
+        label: 封面图
+        widget: image
+        allow_multiple: false
+        hint: 推荐 16:10 或更宽, 会用作列表缩略图 + 顶部轮播图
+      - name: badge
+        label: 轮播图标签 (可选)
+        widget: string
+        required: false
+        hint: 例如 "最新" / "限时", 显示在轮播图右上角红色徽章
+      - name: pinned
+        label: 精选 (顶部轮播)
+        widget: boolean
+        default: false
+        hint: 开启后会在首页 / 新闻页顶部轮播图优先展示
+      - name: body
+        label: 正文
+        widget: markdown
+        hint: 支持 GFM (表格/任务列表/删除线), 可插入图片
