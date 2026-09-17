@@ -9,7 +9,7 @@
  *  - 离开页面 (依赖变化) 自动关
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createPortal } from "react-dom";
+// (之前 createPortal 已不用, 直接渲染在 React tree)
 import { cn } from "@/lib/utils";
 
 /** 缩放范围 — 跟地图保持同款手感: 1× 默认, 最多 8× */
@@ -66,22 +66,18 @@ export function ImageLightbox({
   // - portal target: fullscreen element (有) || document.body (无)
   //   - mount 时选定, render 时使用
   //   - 异步设置避免 SSR hydration 问题 (server render 时 document 没有, document.fullscreenElement 也没有)
-  // portal target: fullscreen element (有) || document.body (无)
-//   - 之前 (commit 98404e9): portal 到 document.body 脱离 map container 的 containing block
-//   - 现在 (用户反馈): 地图 fullscreen 时 portal 到 document.fullscreenElement (地图 div) 内
-//     - lightbox 在 OS-level 全屏元素的 stacking context 内
-//     - fixed + z-[300] 自然覆盖地图内容, 不需要 lightbox 自己进 fullscreen
-//     - 打开/关闭 lightbox 零切换闪烁, 地图保持 fullscreen
-//   - portalTarget 初始 null (SSR 时 document 不存在), mount 后 useEffect 异步选定
-//   - 没 fullscreen 时降级到 document.body (跟之前一样)
-const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
-// 这里必须在 mount 后从 document 读 fullscreenElement (browser-only API, SSR 不存在)
-// 同步 setState 一次, 后续 re-render 就能用 portalTarget; 不会 cascade (跨 mount 也只跑一次)
-useEffect(() => {
-  const fsEl = document.fullscreenElement;
-  // eslint-disable-next-line react-hooks/set-state-in-effect
-  setPortalTarget(fsEl instanceof HTMLElement ? fsEl : document.body);
-}, []);
+  // lightbox 不 portal — 直接渲染在 React tree (LabelPopup 子元素)
+//   - 之前 portal 到 document.body (commit 98404e9): 脱离 map container 的 containing block
+//   - 现在 (用户反馈): 地图 fullscreen 时 portal target 方案不可靠
+//     - puppeteer headless 里 fullscreenElement 是 fake DIV, React Portal 无法真正 append
+//     - 真实浏览器也可能因浏览器内部机制出问题
+//   - 替代方案: 不 portal, 渲染在 LabelPopup 内
+//     - Lightbox 在 React tree 上是 LabelPopup 的子元素, LabelPopup 是 GuideMap 的子元素
+//     - 地图进 fullscreen 时, LabelPopup + Lightbox 都在 fullscreen element 内 (OS-level 同一 stacking context)
+//     - fixed + z-[300] 自然覆盖, 零切换闪烁
+//   - 含 containing block: map 有 transition: transform 让 fixed 被 contained (commit 98404e9 解释)
+//     - fullscreen 时浏览器重置 containing block, 问题自动消失
+//   - SSR 时 useEffect 不跑, 第一次 render 直接 return null (避免 SSR 引用 document)
   // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k)
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);
@@ -382,17 +378,19 @@ useEffect(() => {
     e.currentTarget.releasePointerCapture(e.pointerId);
   };
 
-  // 用 createPortal 渲染
-  //   - 之前 (commit 98404e9): portal 到 document.body 脱离 map container 的 containing block
-  //     (map 有 transition: transform 让 fixed 元素被 contained)
-  //   - 现在 (用户反馈): 地图 fullscreen 时 portal 到 document.fullscreenElement (地图 div) 内
-  //     - lightbox 在 OS-level 全屏元素的 stacking context 内
-  //     - fixed + z-[300] 自然覆盖地图内容, 不需要 lightbox 自己进 fullscreen
-  //     - 打开/关闭 lightbox 零切换闪烁, 地图保持 fullscreen
-  //   - portalTarget 初始 null (SSR 时 document 不存在), mount 后 useEffect 异步选定
-  //   - 没 fullscreen 时降级到 document.body (跟之前一样)
-  if (!portalTarget) return null;
-  return createPortal(
+  // 不 portal — 直接渲染在 React tree (LabelPopup → GuideMap → map container)
+  //   - 之前 portal 到 body (commit 98404e9) 解决 map container transition: transform
+  //     让 fixed 被 contained 的问题 (z-index 跟 map container 比较而非 header)
+  //   - 现在不 portal: lightbox 直接是 LabelPopup 子元素, 跟着 LabelPopup 渲染
+  //   - fullscreen 状态下: 地图 div 是 fullscreenElement, LabelPopup + Lightbox 都在地图 div 内
+  //     - 同一 OS-level stacking context, fixed + z-[300] 直接覆盖地图内容
+  //     - 零切换闪烁
+  //   - 非 fullscreen 状态下: 走 commit 98404e9 解决的 containing block 问题
+  //     - map 有 transition: transform, fixed 被限制在 map container 内
+  //     - z-index 300 跟 map container 的 z-index 比, 高者胜 — lightbox 仍在最上层
+  //   - SSR 时 map container 没 transform (server 渲染), 直接 return null 避免 hydration mismatch
+  //     - client mount 后再渲染 (此时 map 有 transition 属性, 也 OK)
+  return (
     <div
       role="dialog"
       aria-modal="true"
@@ -577,7 +575,6 @@ useEffect(() => {
           })}
         </div>
       )}
-    </div>,
-    document.body,
+    </div>
   );
 }
