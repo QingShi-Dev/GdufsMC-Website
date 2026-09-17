@@ -2172,14 +2172,16 @@ const toggleFullscreen = () => {
             aria-label="搜索地标"
             className={cn(
               "absolute top-4 left-4 z-[60]",
-              // 宽度策略:
-              //   - 非全屏: w-72 sm:w-80 (288/320px 固定), max-w-父容器-24px
-              //   - 全屏: 按 viewport 25% (跟非全屏 320px / ~1280px viewport 视觉占比 25% 一致)
-              //     + max(min-w, min(25vw, 420px)) 保证不小于 min-w (用户要求: 全屏宽度不能比
-              //       全屏前还小), 不超过 420px (桌面全屏后不会显得过大)
+              // 宽度策略 (3 个断点: 手机 / 平板 / 桌面):
+              //   - 默认 (<640): clamp(200, viewport-32, 260) — 手机端 200-260px
+              //   - sm (≥640): clamp(240, viewport-32, 280) — 平板 / 手机横屏 240-280px
+              //   - lg (≥1024): w-80 = 320 — 桌面 320px (保持原设计)
+              //   - 用户要求: "popup 和搜索栏的宽度最小值要调小一些, 在手机端还是太宽了"
+              //   - 全屏: max(280, min(25vw, 360)) — 桌面全屏后 280-360px
+              //     之前是 320-420, 手机横屏全屏仍然太宽 (800px → 420px)
               isFullscreen
-                ? "w-[max(320px,min(25vw,420px))] max-w-[calc(100vw-24px)]"
-                : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
+                ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
+                : "w-[clamp(200px,calc(100vw-32px),260px)] sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",

@@ -139,11 +139,15 @@ function DesktopPopup({
         "absolute left-4 z-20",
         topClassName ?? "top-4",
         isFullscreen
-          ? "w-[max(320px,min(25vw,420px))] max-w-[calc(100vw-24px)]"
-          : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
+          ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
+          : "w-[clamp(200px,calc(100vw-32px),260px)] sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
-        "overflow-hidden",
+        // max-h 按屏幕高度限制 — 手机横屏 (300px 高度) 时不会溢出
+        // 溢出时 overflow-y-auto + 隐藏滚动条,用户触屏滑动看全部内容
+        "max-h-[calc(100vh-32px)]",
+        "overflow-y-auto",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         "animate-in fade-in slide-in-from-top-2 duration-200",
         "select-text",
       )}
@@ -355,7 +359,9 @@ function MobilePopup({
       aria-labelledby="lm-popup-name"
       // 移动端: fixed bottom-0 全屏宽 (覆盖地图但地图还在 popup 上面仍可见)
       //  - max-h 控制 sheet 高度 (collapsed 50vh / expanded 90vh)
-      //  - overflow-y-auto 让超长内容可滚动
+      //    - min(...): 横屏短屏 (300px) 时不被 90vh 撑到 270px, 限制为 calc(100vh-32px)
+      //    - 90vh 在竖屏 800px 高度 = 720px OK; 横屏 300px 高度 → 270px, 但 capped at 268px
+      //  - overflow-y-auto 让超长内容可滚动, 隐藏滚动条 (触屏不占视觉空间)
       //  - touchAction="pan-y" 让 popup 内部可滚 (overflow-y-auto), 但页面其他部分不滚
       //    (body.overflow=hidden 锁住页面滚动, touch 事件在 popup 内被消费)
       //  - 关闭按钮在 top bar (右上), 用户要求: 不依赖点击 popup 其它位置关
@@ -364,8 +370,11 @@ function MobilePopup({
         "bg-white border-t border-slate-200 rounded-t-xl",
         "shadow-[0_-10px_30px_-5px_rgb(0,0,0,0.15)]",
         "animate-in slide-in-from-bottom duration-300",
-        expanded ? "max-h-[90vh]" : "max-h-[50vh]",
+        expanded
+          ? "max-h-[min(90vh,calc(100vh-32px))]"
+          : "max-h-[min(50vh,calc(100vh-80px))]",
         "overflow-y-auto",
+        "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         "touch-pan-y select-text",
       )}
       onMouseDown={(e) => e.stopPropagation()}
