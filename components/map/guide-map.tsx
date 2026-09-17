@@ -2000,9 +2000,23 @@ const toggleFullscreen = () => {
           const hitTestEl = document.elementFromPoint(e.clientX, e.clientY);
           if (wrapperEl?.contains(hitTestEl)) return;
           const isLabel = !!target.closest("button[data-label-id]");
+          // 用户在 popup 内拖动选文字 — 不要被 click 误关 popup
+          //   - popup.onClick 已被去掉 stopPropagation (用户要求点击 popup 关 popup)
+          //   - 但拖动选文字时, 浏览器派发 click, 也冒泡到 map.onClick
+          //   - 跟地图拖动共用 wasDraggedRef 不够: popupRef 拦截了 onPointerDown,
+          //     onPointerMove 没运行, wasDraggedRef 一直是 false
+          //   - 改用 selection API 判断: 用户真的选了文字 (selection.toString 非空) → 跳关 popup
+          //   - 只检查 popup 内点击 (有 popupRef.contains); 地图拖动仍走 wasDraggedRef
+          const inPopup = popupRef.current?.contains(target) ?? false;
+          const hasTextSelection =
+            inPopup && (window.getSelection()?.toString().length ?? 0) > 0;
+          if (hasTextSelection) {
+            setSearchListOpen(false);
+            return;
+          }
           // 拖动结束后不关闭 popup — 用户在拖动时点选了某个 label, 想继续看详情同时平移地图探索周边
           //   - 浏览器对小幅移动 (< 3px) 也会派发 click event, 不能简单靠 click 区分
-          //   - 用 wasDraggedRef 在 pointermove > 3px 时标记, click handler 检查后跳过关 popup
+          //   - 用 wasDraggedRef 在 pointermove > 3px 时标记, click handler 检查后跳关 popup
           //   - list 还是收, 因为拖地图明显不是搜索模式了
           if (wasDraggedRef.current) {
             wasDraggedRef.current = false;

@@ -80,8 +80,17 @@ export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopup
         "shadow-2xl shadow-slate-900/20",
         "overflow-hidden",
         "animate-in fade-in slide-in-from-top-2 duration-200",
+        // map container 有 select-none 防止拖动地图时误选文字
+        //   - 继承到 popup 内导致文字也选不了, 用户在 popup 内选文字描述/坐标/建设者
+        //   - 用 select-text 覆盖, 让 popup 内 drag = text selection
+        "select-text",
       )}
-      onClick={(e) => e.stopPropagation()}
+      // 不 onClick stopPropagation — 用户要求: 点击 popup 内任位置都关 popup
+      //   - click 事件冒泡到 map → map.onClick 触发 → setSelectedLabel(null)
+      //   - 是 hero 按钮/细节图 button 也照样关 (打开 lightbox 时关 popup, 自然清理)
+      // 保留 onMouseDown stopPropagation 作为 React 18 合成事件兜底 (map 用 pointerdown,
+      // 实际上 popup 内 pointerdown 已被 popupRef.current?.contains 检查拦截, 但合成事件
+      // 兜底防止 React 18 偶发不生效)
       onMouseDown={(e) => e.stopPropagation()}
     >
       {/* (关闭按钮已删除 — 用户要求) */}
