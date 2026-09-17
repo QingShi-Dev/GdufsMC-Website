@@ -32,8 +32,6 @@ interface ImageLightboxProps {
   imagesFull?: string[];
   /** 打开时显示第几张 */
   initialIndex: number;
-  /** 顶部标题 (一般是建筑名), 可选 */
-  title?: string;
   onClose: () => void;
 }
 
@@ -41,7 +39,6 @@ export function ImageLightbox({
   images,
   imagesFull,
   initialIndex,
-  title,
   onClose,
 }: ImageLightboxProps) {
   // 当前显示的图片索引
@@ -356,7 +353,11 @@ export function ImageLightbox({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label={title ?? "图片查看"}
+      aria-label={
+        hiResImages[currentIndex]
+          ? `${hiResImages[currentIndex].split("/").pop()?.split(/[?#]/)[0]?.replace(/\.[^.]+$/, "") ?? "图片"} - 图片查看`
+          : "图片查看"
+      }
       // z-[300] 远超 header (z-100) 和 search wrapper (z-[60]), 确保在最上层
       className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm animate-in fade-in duration-200"
       // 注意: 不再有 onClick 关闭 (用户要求: 只有右上角关闭按钮能关)
@@ -408,13 +409,23 @@ export function ImageLightbox({
         </div>
       </div>
 
-      {/* 顶部标题 — 显示图片完整名称 (label.name), 用户要求
-          max-w-[80vw] 防止超长, 不用 truncate 让完整名字显示出来 */}
-      {title && (
-        <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-5 py-2 rounded-full bg-slate-900/60 text-white text-[15px] font-medium backdrop-blur-md pointer-events-none whitespace-nowrap">
-          {title}
-        </div>
-      )}
+      {/* 顶部标题 — 显示当前图片文件名 (含 - 横杠后面的细节说明)
+          从 hiResImages[currentIndex] URL 提取 stem:
+            "/images/maps/full/buildings/overworld/基地-仓库.webp" → "基地-仓库"
+          用户要求: 大图标题显示图片名, 不是 label.name
+            - "基地" → "基地-仓库" / "基地-内饰" (翻图时跟着切换)
+            - 跨 label 也通用 (不耦合 label.name)
+            - 翻图 (左/右) currentIndex 变化 → 自动重新提取 */}
+      {hiResImages[currentIndex] && (() => {
+        const filename =
+          hiResImages[currentIndex].split("/").pop()?.split(/[?#]/)[0] ?? "";
+        const stem = filename.replace(/\.[^.]+$/, "");
+        return stem ? (
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-6 py-2 rounded-full bg-white/90 text-slate-700 text-[16px] font-medium backdrop-blur-md pointer-events-none whitespace-nowrap">
+            {stem}
+          </div>
+        ) : null;
+      })()}
 
       {/* 右上关闭 — 用户新加的图标, 无背景 */}
       <button
@@ -422,9 +433,9 @@ export function ImageLightbox({
         onClick={onClose}
         data-lightbox-control
         aria-label="关闭"
-        className="absolute top-6 right-6 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
+        className="absolute top-8 right-8 z-10 w-10 h-10 rounded-full border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
       >
-        <img src="/icons/map/tabs/关闭按钮.svg" alt="" className="w-7 h-7" />
+        <img src="/icons/map/tabs/关闭图标.svg" alt="" className="w-5.5 h-5.5" />
       </button>
 
       {/* 左右翻图 (只 >1 张时) — 用户新加的右侧箭头按钮, 无背景, 左箭头镜像 rotate */}
@@ -435,12 +446,12 @@ export function ImageLightbox({
             onClick={goPrev}
             data-lightbox-control
             aria-label="上一张"
-            className="absolute top-1/2 left-6 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 left-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <img
-              src="/icons/map/tabs/右侧箭头按钮.svg"
+              src="/icons/map/tabs/右侧箭头图标.svg"
               alt=""
-              className="w-10 h-10 rotate-180"
+              className="w-7 h-7 rotate-180"
             />
           </button>
           <button
@@ -448,12 +459,12 @@ export function ImageLightbox({
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-6 -translate-y-1/2 z-10 w-10 h-10 text-white hover:text-slate-200 items-center justify-center transition-colors"
+            className="absolute top-1/2 right-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
           >
             <img
-              src="/icons/map/tabs/右侧箭头按钮.svg"
+              src="/icons/map/tabs/右侧箭头图标.svg"
               alt=""
-              className="w-10 h-10"
+              className="w-7 h-7"
             />
           </button>
         </>
@@ -463,7 +474,7 @@ export function ImageLightbox({
           用户要求: 删全屏按钮, 只留 放大 + 缩小; 操作一次就放大到图片能填满窗口 */}
       <div
         data-lightbox-control
-        className="absolute bottom-6 right-6 z-10 flex flex-col gap-1.5"
+        className="absolute bottom-8 right-10 z-10 flex flex-col gap-1.5"
       >
         <button
           type="button"
@@ -472,10 +483,10 @@ export function ImageLightbox({
             schedule(tx, ty, newK);
           }}
           aria-label="放大"
-          className="w-9 h-9 rounded-lg border border-slate-200/80 bg-white/60 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
           disabled={k >= MAX_K}
         >
-          <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
+          <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-5 h-5" />
         </button>
         <button
           type="button"
@@ -484,10 +495,10 @@ export function ImageLightbox({
             schedule(tx, ty, newK);
           }}
           aria-label="缩小"
-          className="w-9 h-9 rounded-lg border border-slate-200/80 bg-white/60 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
           disabled={k <= MIN_K}
         >
-          <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
+          <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-5 h-5" />
         </button>
       </div>
 
@@ -495,7 +506,7 @@ export function ImageLightbox({
       {images.length > 1 && (
         <div
           data-lightbox-control
-          className="absolute bottom-6 left-6 z-10 max-w-[60vw] flex gap-2 bg-slate-900/60 rounded-lg p-2 backdrop-blur-md"
+          className="absolute bottom-6 left-10 z-10 max-w-[60vw] flex gap-2 bg-slate-800/60 rounded-lg p-2 backdrop-blur-md"
         >
           {images.map((src, i) => {
             const active = i === currentIndex;

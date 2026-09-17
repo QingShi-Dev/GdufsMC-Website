@@ -208,7 +208,6 @@ export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopup
           //   - popup 仍然显示低分辨率的 thumbs
           imagesFull={images.map(toFullImagePath)}
           initialIndex={lightboxIndex}
-          title={label.name}
           onClose={() => setLightboxIndex(null)}
         />
       )}
