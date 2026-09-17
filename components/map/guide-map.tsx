@@ -322,6 +322,9 @@ function MapCanvas({
   isMobile,
   isPanning,
   transitInWorld,
+  loadedHires,
+  onTileThumbLoaded,
+  markHiresLoaded,
 }: {
   layer: NewMapLayer;
   tx: number;
@@ -339,6 +342,14 @@ function MapCanvas({
    *  - 不传就不渲染 (默认空)
    */
   transitInWorld?: () => ReactNode;
+  /** 已加载完 PNG 的 overworld tile key set — 这些 tile 永远用 src (不再切回 srcThumb)
+   *  - 跨 zoom 切换、切维度、刷新页面、走 SW 缓存命中都保留 (持久化在 parent 的 localStorage)
+   *  - nether/end 没 srcThumb, 此 prop 对它们无效 */
+  loadedHires: Set<string>;
+  /** 当前显示的是 srcThumb 时, onLoad 后调用 — 后台 fetch src, 加载完 markHiresLoaded */
+  onTileThumbLoaded: (tileKey: string, srcUrl: string) => void;
+  /** 当前显示的就是 src 时, onLoad 后调用 — 直接 mark (无需后台 fetch) */
+  markHiresLoaded: (tileKey: string) => void;
 }) {
   // 移动端 (< sm, 640px): slice 模式 — 容器因 minHeight 比 viewBox 矮胖,
   //   meet 会留上下大量 slate-900 背景; slice 让 viewBox 填满容器
@@ -358,18 +369,25 @@ function MapCanvas({
         className={isPanning ? "transition-transform duration-500 ease-in-out" : ""}
         style={{ pointerEvents: "none" }}
       >
-        {/* 瓦片 src 按 k 阈值切换:
-            - k < 2.5 (默认缩略图阶段): 用 srcThumb (overworld = q=90 webp, 省流量)
-            - k >= 2.5 (放大阶段): 用 src (原 PNG, 高清无压缩)
-            用户实测 overworld 瓦片全用 webp 视觉损失明显 (细节密集, 压缩 artifact),
-            改成两阶段加载 — 缩略图阶段 webp 够用, 放大阶段切 PNG 保留细节
-            nether/end 没 srcThumb, 永远用 src */}
+        {/* 瓦片 src 按 loadedHires 锁定 (sticky):
+            - 未在 loadedHires: 用 srcThumb (q=75 webp, 秒显示)
+              → onLoad 后 onTileThumbLoaded 后台 fetch src, 加载完 mark
+            - 已在 loadedHires: 用 src (原 PNG, 高清)
+              → onLoad 后 markHiresLoaded (其实此时已在 set 里, 幂等)
+            用户设计:
+              1. 缩略图只在首次加载出现
+              2. PNG 加载后永远不再切回 (zoom 阈值取消)
+              3. 跨刷新/切维度/SW 命中走 localStorage 的 loadedHires, 直接 PNG
+            key 包含 "h"/"t" 后缀, src 切换时强制 remount <image>
+            nether/end 没 srcThumb, 永远走 "h" 分支
+            SVG <image> 元素 onLoad 在 URL 完全解码后才 fire (webp/png 都支持) */}
         {layer.tiles.map((t) => {
-          const useHires = k >= 2.5 || !t.srcThumb;
-          const href = useHires ? t.src : t.srcThumb!;
+          const tileKey = `${t.col}-${t.row}`;
+          const showHires = loadedHires.has(tileKey) || !t.srcThumb;
+          const href = showHires ? t.src : t.srcThumb!;
           return (
             <image
-              key={`${t.col}-${t.row}`}
+              key={`${tileKey}-${showHires ? "h" : "t"}`}
               href={href}
               // 修接缝: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026
               //   → 相邻瓦片重叠 2px, 盖住 SVG sub-pixel 渲染的 1px 白缝
@@ -379,6 +397,15 @@ function MapCanvas({
               width={1026}
               height={1026}
               preserveAspectRatio="xMidYMid meet"
+              onLoad={() => {
+                if (showHires) {
+                  // 直接是 PNG (nether/end, 或刷新后已加载的 overworld tile) — 无需操作
+                  markHiresLoaded(tileKey);
+                } else {
+                  // 缩略图加载完, 后台 fetch PNG, 加载完 mark → 下次渲染切 src
+                  onTileThumbLoaded(tileKey, t.src);
+                }
+              }}
             />
           );
         })}
@@ -659,6 +686,61 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const txRef = useRef(0);
   const tyRef = useRef(0);
   const worldRef = useRef<NewWorldMeta | null>(null);
+
+  // ---- 2b. overworld 高清 tile 加载状态 ----
+  // 思路 (用户要求):
+  //   - 首次加载: 显示 q=75 webp 缩略图 (srcThumb) → 秒显示
+  //   - PNG 在后台 fetch 完成后 → 切到 src, 加入 set 标记
+  //   - 切到 src 后永远不再切回 (不管 zoom 多少、切维度、刷新、走 SW)
+  // 持久化: localStorage 存已加载 tile key 列表, 刷新后已加载的直接 PNG
+  //  - 用 useState 初始化函数 + typeof window 守卫 SSR
+  //  - useEffect 在 set 变化时持久化
+  const HIRES_LOADED_KEY = "map.overworld.hiresTilesLoaded.v1";
+  const [loadedHires, setLoadedHires] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const raw = window.localStorage.getItem(HIRES_LOADED_KEY);
+      return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+  useEffect(() => {
+    if (loadedHires.size === 0) return;
+    try {
+      window.localStorage.setItem(
+        HIRES_LOADED_KEY,
+        JSON.stringify([...loadedHires]),
+      );
+    } catch {
+      // quota / privacy mode — 忽略, 接受本次会话不持久化
+    }
+  }, [loadedHires]);
+  /**
+   * tile 的 src (PNG) 加载完后调用 → 加入 loadedHires, 下次渲染切到 src
+   * 用 callback ref 而非 state setter, 避免闭包 stale
+   */
+  const markHiresLoaded = useCallback((tileKey: string) => {
+    setLoadedHires((prev) => {
+      if (prev.has(tileKey)) return prev;
+      const next = new Set(prev);
+      next.add(tileKey);
+      return next;
+    });
+  }, []);
+  /**
+   * srcThumb 加载完后调用 → 后台 fetch src (PNG), 加载完 markHiresLoaded
+   * - 浏览器自己 rate-limit 并发 (HTTP/1.1 ~6/host, HTTP/2 更多)
+   * - 不在 onLoad 直接 mark, 因为 onLoad 触发的是 srcThumb 加载完成, 不是 PNG
+   */
+  const onTileThumbLoaded = useCallback(
+    (tileKey: string, srcUrl: string) => {
+      const img = new Image();
+      img.onload = () => markHiresLoaded(tileKey);
+      img.src = srcUrl;
+    },
+    [markHiresLoaded],
+  );
 
   // ---- 3. 全屏 + 竖屏提示 + 视口宽度 (是否移动端) ----
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1752,19 +1834,16 @@ const toggleFullscreen = () => {
   /**
    * 预加载整个维度的瓦片 (跟 guide-map 思路一致: 切维度时已经 cache 好, 0 滞留)
    * - 这里不只预加载"主图", 整个维度的所有瓦片都拉 (反正切过去就要全部显示)
-   * - 跟 MapCanvas 同款按 k 阈值选 src:
-   *   - k < 2.5 (切维度时默认): 用 srcThumb (webp 缩略图, 省内存)
-   *   - k >= 2.5: 用 src (原 PNG, 高清)
-   * - 不同时预加载 PNG — 用户放大跨过 2.5× 阈值时按需 fetch, 接受这一次小延迟
-   *   (vs 一次性全预加载 78 张 PNG 多花 60MB 内存)
-   * - nether/end 没 srcThumb, 永远用 src
+   * - overworld 预加载 srcThumb (q=75 webp, 切过去秒显示); PNG 由 image onLoad 后台 fetch
+   * - nether/end 没 srcThumb, 永远预加载 src
+   * - 注意: 这个函数只用于"切维度前预热另一维度", 当前维度 MapCanvas 渲染时 SVG <image>
+   *   会自动 fetch, 不依赖这里
    */
   const preloadWorld = useCallback((id: NewWorldId) => {
     const w = worlds.find((x) => x.id === id);
     if (!w) return;
-    const useHires = kRef.current >= 2.5;
     for (const t of w.map.tiles) {
-      const href = useHires || !t.srcThumb ? t.src : t.srcThumb;
+      const href = t.srcThumb ?? t.src;
       preloadImage(href);
     }
   }, [worlds]);
@@ -1939,6 +2018,9 @@ const toggleFullscreen = () => {
           isMobile={isMobile}
           isPanning={isPanning}
           transitInWorld={transitInWorldCb}
+          loadedHires={loadedHires}
+          onTileThumbLoaded={onTileThumbLoaded}
+          markHiresLoaded={markHiresLoaded}
         />
 
         {/* 标签层 — 永远渲染, 内部按 visibleWhen 过滤

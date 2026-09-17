@@ -6,10 +6,17 @@
  *   - 默认所有 PNG: node scripts/gen-overworld-thumbs.cjs
  *   - 质量可调 (q=90 是甜点, 体积/视觉平衡)
  *
- * 背景: 用户实测 overworld 瓦片全用 webp q=95 视觉损失明显 (瓦片细节密集,
- * 压缩 artifact 在 zoom 2.5×+ 看得很清楚). 改成两阶段:
- *   - 缩略图阶段 (k < 2.5): 用 q=90 webp (体积小, 视觉够用)
- *   - 高清阶段 (k >= 2.5): 用原 PNG (无压缩, 放大清晰)
+ * 背景: 缩略图仅用于"首次加载占位"——让用户视觉上秒加载, 然后 PNG 在后台慢慢
+ * fetch 替换. q=75 是甜点: 体积小 (比 q=90 又省 ~30%), 视觉质量对缩略图场景够用.
+ * 真实数据 (1024×1024 overworld 瓦片):
+ *   - 原图 PNG ~846 KB
+ *   - q=90 webp ~466 KB (省 45%)
+ *   - q=75 webp ~280 KB (省 67%)
+ *
+ * 客户端逻辑 (MapCanvas):
+ *   - 首次渲染: 用 srcThumb (q=75 webp, 秒显示)
+ *   - PNG onLoad 后: 切到 src, 标记 hiresLoaded tile key, 持久化 localStorage
+ *   - 跨刷新/切维度/SW 命中: hiresLoaded set 还在 → 直接 PNG
  *
  * 输出: public/images/maps/20260907/overworld-thumbs/{col}_{row}_x{x}_z{z}.webp
  *   - 跟 overworld/ 同名结构, 客户端按 k 阈值切换 src
@@ -20,7 +27,7 @@ const path = require("path");
 
 const SRC_DIR = "public/images/maps/20260907/overworld";
 const DST_DIR = "public/images/maps/20260907/overworld-thumbs";
-const Q = Number(process.env.Q) || 90;
+const Q = Number(process.env.Q) || 75;
 
 async function main() {
   if (!fs.existsSync(SRC_DIR)) {
