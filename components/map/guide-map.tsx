@@ -186,7 +186,7 @@ function WorldTabs({
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
     // w-full: 跟下方地图同宽 (地图也是 100% 宽)
-    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-2.5 shadow-sm shadow-slate-900/10">
+    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-x-2.5 shadow-sm shadow-slate-900/10">
       {worlds.map((w) => {
         const active = value === w.id;
         return (
@@ -228,8 +228,8 @@ function WorldTabs({
         aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
         aria-pressed={searchVisible}
         className={cn(
-          "ml-2 sm:ml-3.5",
-          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "sm:ml-3.5",
+          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
           "transition-all flex items-center text-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -239,7 +239,7 @@ function WorldTabs({
         ) : (
           <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
         )}
-        <span className="hidden sm:inline">
+        <span className="inline">
           搜索
         </span>
       </button>
@@ -250,7 +250,7 @@ function WorldTabs({
         aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
         aria-pressed={labelsVisible}
         className={cn(
-          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
           "transition-all flex items-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -260,7 +260,7 @@ function WorldTabs({
         ) : (
           <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
         )}
-        <span className="hidden sm:inline">
+        <span className="inline">
           地名
         </span>
       </button>
@@ -273,7 +273,7 @@ function WorldTabs({
         aria-pressed={transitVisible}
         className={cn(
           "lg:mr-72",
-          "px-2.5 py-2 rounded-xl text-xs sm:text-[17px] font-semibold",
+          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
           "transition-all flex items-center gap-2",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
@@ -283,7 +283,7 @@ function WorldTabs({
         ) : (
           <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
         )}
-        <span className="hidden sm:inline">
+        <span className="inline">
           交通
         </span>
       </button>
@@ -2170,7 +2170,15 @@ const toggleFullscreen = () => {
             aria-label="搜索地标"
             className={cn(
               "absolute top-4 left-4 z-[60]",
-              "w-72 sm:w-80 max-w-[calc(100%-24px)]",
+              "w-72 sm:w-80",
+              // max-width 按容器宽度算
+              //   - 非全屏: 父容器宽度的 100% - 24px (左右各 12px 留白)
+              //   - 全屏: 父容器 = viewport, 100% - 24px = 100vw - 24px
+              //     但非全屏父容器宽 < viewport, 这里直接用 viewport 也能正确
+              // 用户要求: 全屏时按"宽度"算 max-width (视觉效果是搜索栏加宽), 非全屏保持现状
+              isFullscreen
+                ? "max-w-[calc(100vw-24px)]"
+                : "max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",
