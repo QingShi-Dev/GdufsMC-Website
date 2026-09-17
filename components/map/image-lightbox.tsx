@@ -43,6 +43,16 @@ export function ImageLightbox({
 }: ImageLightboxProps) {
   // 当前显示的图片索引
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
+  // 锁定 body 滚动 — 防止查看大图时鼠标滚轮穿透滚动到下面的地图
+  //   - 保存原 overflow, unmount 时设回 (避免污染父组件状态)
+  //   - lightbox 是 React Portal 渲染到 body 下, document.body 才是真正的滚动元素
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
   // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k)
   const [tx, setTx] = useState(0);
   const [ty, setTy] = useState(0);

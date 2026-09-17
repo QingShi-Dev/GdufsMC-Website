@@ -297,7 +297,7 @@ function ZoomBtn({
   ariaLabel,
   children,
 }: {
-  onClick: () => void;
+  onClick: React.MouseEventHandler<HTMLButtonElement>;
   ariaLabel: string;
   children: React.ReactNode;
 }) {
@@ -2276,7 +2276,11 @@ const toggleFullscreen = () => {
             <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
           <ZoomBtn
-            onClick={toggleFullscreen}
+            onClick={(e) => {
+              // 不让 click 冒泡到 map.onClick 关 popup (用户要求: 全屏前后 popup 保留)
+              e.stopPropagation();
+              toggleFullscreen();
+            }}
             ariaLabel={isFullscreen ? "退出全屏" : "进入全屏"}
           >
             {isFullscreen ? (
