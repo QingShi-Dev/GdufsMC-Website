@@ -755,7 +755,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   );
 
   // ---- 3. 全屏 + 竖屏提示 + 视口宽度 (是否移动端) ----
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  // isFullscreen + toggleFullscreen 在 useFullscreen hook (文件底部), 同文件内定义
   // 是否 < sm (640px): SSR 默认 false, 客户端 mount 后再读 window.innerWidth
   //  - 初始 false 保证 server render 跟 client 第一次 render 结果一致 (hydration 匹配)
   //  - mount 后 setIsMobile(true) 会触发 re-render, MapCanvas 切到 slice
@@ -1178,6 +1178,34 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     [commit],
   );
 
+  // ---- 全屏: state + 切换 + 退出滚地图位置 — 集中到 useFullscreen hook ----
+  //   - 这里必须在 schedule 后, writeHoverCoordFromScreen 前:
+  //     - schedule 后: hook 用 computeMapScrollTarget (hook 内部 useEffect 用, 不是同步读)
+  //     - writeHoverCoordFromScreen 前: 该 useCallback 的 deps 包含 isFullscreen
+  //   - hook 内部 useEffect 在 commit 后才跑, 此时 computeMapScrollTarget 已初始化
+  const computeMapScrollTarget = useCallback((): number => {
+    // 移动端不滚 — 用户手指控制滚动
+    if (window.innerWidth < 640) return window.scrollY;
+
+    const el = rootRef.current;
+    if (!el) return window.scrollY;
+    const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
+    const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
+    const TOP_GAP = window.innerWidth >= 640 ? 8 : 14;
+    // 累加 offsetTop 算地图到 page 顶部的 naturalTop, 减去 header + gap
+    let top = 0;
+    let node: HTMLElement | null = el;
+    while (node && node !== document.body) {
+      top += node.offsetTop;
+      node = node.offsetParent as HTMLElement | null;
+    }
+    return Math.max(0, top - headerHeight - TOP_GAP);
+  }, []);
+  const { isFullscreen, toggleFullscreen } = useFullscreen({
+    containerRef,
+    computeMapScrollTarget,
+  });
+
   const clampBounds = (
     tx: number,
     ty: number,
@@ -1352,29 +1380,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
    *  - 切维度 / 按钮缩放 / 退出全屏 / 滚轮缩放 (debounce) 都会触发
    *  - 移动端 (< 640px) 不滚, 用户自己控制页面滚动
    */
-  // 计算"地图贴 header 下沿"的目标 scrollY — 给 scrollMapIntoView (smooth 滚动) + 退出全屏 (instant 同步) 共用
-  const computeMapScrollTarget = useCallback((): number => {
-    // 移动端不滚 — 用户手指控制滚动
-    if (window.innerWidth < 640) return window.scrollY;
-
-    const el = rootRef.current;
-    if (!el) return window.scrollY;
-    const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
-    const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
-    const TOP_GAP = window.innerWidth >= 640 ? 8 : 14;
-
-    // 累加 offsetTop 拿到 natural 文档位置 (transform: scale 不影响 offsetTop)
-    let naturalTop = 0;
-    let node: HTMLElement | null = el;
-    while (node) {
-      naturalTop += node.offsetTop;
-      node = node.offsetParent as HTMLElement | null;
-    }
-
-    // 顶部贴 header 下沿 (跟 tutorial-steps 一致)
-    const targetVisualTop = headerHeight + TOP_GAP;
-    return Math.max(0, naturalTop - targetVisualTop);
-  }, []);
+  // 计算"地图贴 header 下沿"的目标 scrollY 已搬到 useFullscreen hook 调用前
+  // (见上面 schedule 后, writeHoverCoordFromScreen 前)
 
   const scrollMapIntoView = useCallback(() => {
     const reducedMotion =
@@ -1574,19 +1581,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     scrollMapIntoView();
   }, [worldId, scrollMapIntoView]);
 
-  // 退出全屏: 兜底同步滚到地图位置 (主路径在 fullscreenchange listener 里同步处理 — 见下面 useEffect)
-//   - listener 必然触发 (fullscreenchange 浏览器原生事件), 但保留 effect 兜底
-//   - 万一 listener 因为某些 race condition 没机会跑, 这里还能补救
-//   - 用 computeMapScrollTarget 同算法, 保证跟点击搜索框触发的滚动一致 (地图顶部贴 header 下沿)
-//   - prevFullscreenRef 守护: 只在 true → false 转移时跑, mount 时不滚 (isFullscreen 初始 false)
-const prevFullscreenRef = useRef(isFullscreen);
-useEffect(() => {
-  const wasFullscreen = prevFullscreenRef.current;
-  prevFullscreenRef.current = isFullscreen;
-  if (wasFullscreen && !isFullscreen) {
-    window.scrollTo(0, computeMapScrollTarget());
-  }
-}, [isFullscreen, computeMapScrollTarget]);
+  // 全屏 + 滚地图逻辑已搬到 useFullscreen hook (上面 scrollMapIntoView 之后调)
 
   // 滚轮缩放
   useEffect(() => {
@@ -1831,47 +1826,7 @@ useEffect(() => {
 //   - 之前版本保存用户的 scrollY 然后恢复 — 但如果用户原本不在地图位置, 恢复后就不贴 header
 //   - 用户期望: "和地图滚动一样" = 跟点击搜索框触发的一致, 地图顶部贴 header 下沿
 //   - 无论用户原本 scrollY 在哪, 退出都到目标位置 (用 computeMapScrollTarget 算)
-
-// 全屏切换
-const toggleFullscreen = () => {
-    const el = containerRef.current;
-    if (!document.fullscreenElement) {
-      const tryFullscreen = (target: Element) => {
-        const req = target.requestFullscreen?.();
-        if (req && typeof req.then === "function") {
-          return req.catch((err: unknown) => {
-            logger.warn("[fullscreen] failed", err);
-            return null;
-          });
-        }
-        return Promise.resolve(null);
-      };
-      if (el) {
-        tryFullscreen(el).then((err) => {
-          if (err !== null) tryFullscreen(document.documentElement);
-        });
-      } else {
-        tryFullscreen(document.documentElement);
-      }
-    } else {
-      document.exitFullscreen().catch(() => {});
-    }
-  };
-  useEffect(() => {
-    const onChange = () => {
-      const isNowFs = !!document.fullscreenElement;
-      setIsFullscreen(isNowFs);
-      // 退出全屏: 同步立即 scrollTo 到地图位置 (跟 scrollMapIntoView 同算法, 但 instant)
-      //   - fullscreenchange 是同步事件, 在它回调里直接 scrollTo, 浏览器还没 paint 中间帧
-      //   - 目标位置用 computeMapScrollTarget — 跟点击搜索框触发的滚动一致 (地图顶部贴 header 下沿)
-      //   - 用默认 instant 行为 (window.scrollTo(x, y)), 不要 smooth — smooth 期间浏览器会 paint scrollY=0
-      if (!isNowFs) {
-        window.scrollTo(0, computeMapScrollTarget());
-      }
-    };
-    document.addEventListener("fullscreenchange", onChange);
-    return () => document.removeEventListener("fullscreenchange", onChange);
-  }, [computeMapScrollTarget]);
+// 全屏 + 滚地图逻辑已搬到 useFullscreen hook (上面 scrollMapIntoView 之后调)
 
   /**
    * 预加载整个维度的瓦片 (跟 guide-map 思路一致: 切维度时已经 cache 好, 0 滞留)
@@ -2308,3 +2263,81 @@ const toggleFullscreen = () => {
 }
 
 export default GuideMap;
+
+/* ============================== Hooks ============================== */
+
+/**
+ * 全屏状态 + 切换 + 退出时滚动恢复
+ * - 集中管理 isFullscreen state + fullscreenchange listener + prevFullscreenRef 兜底
+ * - 退出全屏同步滚到地图位置 (跟 scrollMapIntoView 同算法), 用 instant 行为避免
+ *   smooth 动画期间浏览器 paint scrollY=0 中间帧 (用户报告的 "tab 闪一下")
+ * - prevFullscreenRef 兜底 useEffect: listener 必然触发但保留 effect 补救 race condition
+ *   真实浏览器中 listener 先跑 (synchronous), effect 后跑 (async) — 两个都触发
+ *   是无害的 (scrollTo 同位置 = noop)
+ * - toggleFullscreen: 优先尝试 containerRef.current, 失败 fallback 到 documentElement
+ *   (iOS Safari 某些情况只支持 document 全屏)
+ *
+ * 返回 { isFullscreen, toggleFullscreen }
+ */
+function useFullscreen(opts: {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  computeMapScrollTarget: () => number;
+}) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const { containerRef, computeMapScrollTarget } = opts;
+
+  const toggleFullscreen = useCallback(() => {
+    const el = containerRef.current;
+    if (!document.fullscreenElement) {
+      const tryFullscreen = (target: Element) => {
+        const req = target.requestFullscreen?.();
+        if (req && typeof req.then === "function") {
+          return req.catch((err: unknown) => {
+            logger.warn("[fullscreen] failed", err);
+            return null;
+          });
+        }
+        return Promise.resolve(null);
+      };
+      if (el) {
+        tryFullscreen(el).then((err) => {
+          if (err !== null) tryFullscreen(document.documentElement);
+        });
+      } else {
+        tryFullscreen(document.documentElement);
+      }
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
+  }, [containerRef]);
+
+  // 主路径: fullscreenchange listener — 退出时同步滚到地图位置
+  //   - fullscreenchange 是同步事件, 在 listener 回调里直接 scrollTo, 浏览器还没 paint 中间帧
+  //   - 用 computeMapScrollTarget 计算目标位置 (跟点击搜索框触发的滚动一致)
+  useEffect(() => {
+    const onChange = () => {
+      const isNowFs = !!document.fullscreenElement;
+      setIsFullscreen(isNowFs);
+      if (!isNowFs) {
+        window.scrollTo(0, computeMapScrollTarget());
+      }
+    };
+    document.addEventListener("fullscreenchange", onChange);
+    return () => document.removeEventListener("fullscreenchange", onChange);
+  }, [computeMapScrollTarget]);
+
+  // 兜底: prevFullscreenRef 守护, 只在 true → false 转移时跑
+  //   - 真实浏览器中 listener 必然 fire, 保留 effect 是为 race condition 兜底
+  //   - 两个 scrollTo 同位置 = noop, 无副作用
+  //   - 防止 mount 时 isFullscreen=false 触发 (prevFullscreenRef 初值 = current, 不转移)
+  const prevFullscreenRef = useRef(isFullscreen);
+  useEffect(() => {
+    const wasFullscreen = prevFullscreenRef.current;
+    prevFullscreenRef.current = isFullscreen;
+    if (wasFullscreen && !isFullscreen) {
+      window.scrollTo(0, computeMapScrollTarget());
+    }
+  }, [isFullscreen, computeMapScrollTarget]);
+
+  return { isFullscreen, toggleFullscreen };
+}
