@@ -42,6 +42,15 @@ export interface LabelPopupProps {
    */
   topClassName?: string;
   /**
+   * popup 顶部距离视口顶部的像素 — 跟 `topClassName` 配套, 用于算 max-h
+   *   - 搜索开启: 70 (popup 落到搜索栏下方)
+   *   - 搜索关闭: 16 (top-4 默认)
+   *   - 默认 16
+   *   - 用户要求: "popup 高度应该把开启搜索的情况计算进去"
+   *     搜索开启时 popup 下移 70px, max-h 必须减少 70-16=54px, 否则溢出
+   */
+  topOffset?: number;
+  /**
    * popup 根 div ref — 暴露给 parent (GuideMap) 让 map.onPointerDown 拦截
    *   - 用户要求: popup 内拖动 = 选中文字, 不能拖地图 (跟搜索框 input 同款)
    *   - parent 检查 popupRef.current?.contains(e.target), 命中就 return (不启动 drag)
@@ -66,6 +75,7 @@ export function LabelPopup({
   label,
   onClose,
   topClassName,
+  topOffset,
   rootRef,
   isFullscreen,
   isMobile,
@@ -86,6 +96,7 @@ export function LabelPopup({
       label={label}
       onClose={onClose}
       topClassName={topClassName}
+      topOffset={topOffset}
       rootRef={rootRef}
       isFullscreen={isFullscreen}
     />
@@ -98,12 +109,14 @@ function DesktopPopup({
   label,
   onClose,
   topClassName,
+  topOffset,
   rootRef,
   isFullscreen,
 }: {
   label: NewLabel;
   onClose: () => void;
   topClassName?: string;
+  topOffset?: number;
   rootRef?: React.RefObject<HTMLDivElement | null>;
   isFullscreen?: boolean;
 }) {
@@ -129,6 +142,16 @@ function DesktopPopup({
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
+  // max-h 计算: 视口高度 - popup top offset - 16px 安全边距
+  //   - 搜索关闭 (topOffset=16): max-h = 100vh - 32px
+  //   - 搜索开启 (topOffset=70): max-h = 100vh - 86px (用户要求"popup 高度应该把开启搜索的情况计算进去")
+  //   - 用显式 className 字面量 (不用 template literal), 让 Tailwind JIT 静态扫描到完整字符串
+  //   - 默认 topOffset=16 (没传 prop 时)
+  const maxHClass =
+    topOffset === 70
+      ? "max-h-[calc(100vh-86px)]"
+      : "max-h-[calc(100vh-32px)]";
+
   return (
     <div
       ref={rootRef}
@@ -140,12 +163,12 @@ function DesktopPopup({
         topClassName ?? "top-4",
         isFullscreen
           ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
-          : "w-[clamp(200px,calc(100vw-32px),260px)] sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
+          : "w-72 sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
         // max-h 按屏幕高度限制 — 手机横屏 (300px 高度) 时不会溢出
         // 溢出时 overflow-y-auto + 隐藏滚动条,用户触屏滑动看全部内容
-        "max-h-[calc(100vh-32px)]",
+        maxHClass,
         "overflow-y-auto",
         "[&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]",
         "animate-in fade-in slide-in-from-top-2 duration-200",

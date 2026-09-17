@@ -2152,6 +2152,7 @@ const toggleFullscreen = () => {
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
             topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
+            topOffset={searchVisible ? 70 : 16}
             rootRef={popupRef}
             isFullscreen={isFullscreen}
             isMobile={isMobile}
@@ -2172,16 +2173,16 @@ const toggleFullscreen = () => {
             aria-label="搜索地标"
             className={cn(
               "absolute top-4 left-4 z-[60]",
-              // 宽度策略 (3 个断点: 手机 / 平板 / 桌面):
-              //   - 默认 (<640): clamp(200, viewport-32, 260) — 手机端 200-260px
-              //   - sm (≥640): clamp(240, viewport-32, 280) — 平板 / 手机横屏 240-280px
-              //   - lg (≥1024): w-80 = 320 — 桌面 320px (保持原设计)
-              //   - 用户要求: "popup 和搜索栏的宽度最小值要调小一些, 在手机端还是太宽了"
+              // 宽度策略 (3 个断点: 手机竖屏 / 手机横屏+平板 / 桌面):
+              //   - 默认 (<640): w-72 = 288px — 手机竖屏保持原宽度
+              //     用户要求: "竖屏的搜索栏保持原来的宽度"
+              //     竖屏 popup 是 bottom sheet (full width) 跟搜索栏不重叠, 搜索栏 288px OK
+              //   - sm (≥640): clamp(240, viewport-32, 280) — 手机横屏 / 平板 240-280px
+              //   - lg (≥1024): w-80 = 320 — 桌面 320px
               //   - 全屏: max(280, min(25vw, 360)) — 桌面全屏后 280-360px
-              //     之前是 320-420, 手机横屏全屏仍然太宽 (800px → 420px)
               isFullscreen
                 ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
-                : "w-[clamp(200px,calc(100vw-32px),260px)] sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
+                : "w-72 sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",
@@ -2265,9 +2266,10 @@ const toggleFullscreen = () => {
         )}
 
         {/* 缩放百分比 — 右上角
-            打开搜索时 (searchVisible=true) 隐藏 — 搜索框展开后右上空间被压缩,
-            百分比 badge 跟搜索结果重叠, 用户焦点在搜索上时也不需要看缩放 */}
-        {!searchVisible && (
+            - 默认: search 关闭时显示, 打开时隐藏 (搜索框展开后右上空间被压缩)
+            - 全屏 (isFullscreen): 永远显示 — 用户要求"开全屏缩放比例和搜索可以同时显示",
+              全屏下右上空间足够, 跟搜索栏 (左上) 不重叠 */}
+        {(!searchVisible || isFullscreen) && (
           <div className="absolute top-3 right-3 z-10 pointer-events-none">
             <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
               {Math.round(k * 100)}%
