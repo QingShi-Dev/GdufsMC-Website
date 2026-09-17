@@ -54,35 +54,52 @@ export function ImageLightbox({
     };
   }, []);
   // lightbox 自己进 fullscreen — 解决"主地图已 fullscreen 时 lightbox 被遮挡"问题
-  //   - 之前: lightbox portal 到 body, 被 fullscreen 地图元素遮挡 (浏览器级最顶层)
-  //   - 现在: lightbox dialog 也 requestFullscreen, 浏览器把当前 fullscreen element
-  //     (地图) 退出, 把 lightbox 设为最顶层
-  //   - 用户体验: 点 hero 图 → 大图全屏覆盖, 看完 ESC/点 X 退出 → 回到 normal 模式
-  //   - 注意: 地图原本的 fullscreen 状态会丢失, 用户需要重新点全屏按钮 (可接受)
-  //   - 容错: fullscreen API 在某些环境 (cross-origin iframe 等) 可能被拒, try-catch
+  //   - 分情况处理:
+  //     ① 地图未 fullscreen: lightbox 不进 fullscreen (用 fixed + z-[300] 覆盖即可, 简单直接)
+  //     ② 地图已 fullscreen: lightbox 也进 fullscreen (浏览器把地图退出, lightbox 接管)
+  //        关闭 lightbox 时恢复地图 fullscreen (用户期望: 大图看完还在地图的全屏状态)
+  //   - 实现:
+  //     - mount 时记 prevFsElement (当前 fullscreen element, 应该是地图 div)
+  //     - 如果 prevFs 存在, lightbox 进 fullscreen (浏览器自动 swap)
+  //     - unmount 时: 如果 lightbox 自己还在 fullscreen, exitFullscreen
+  //       然后监听 fullscreenchange 等 lightbox 退出后, requestFullscreen(prevFs)
+  //   - 容错: fullscreen API 在某些环境 (headless / cross-origin iframe) 可能被拒
   const dialogRef = useRef<HTMLDivElement>(null);
+  // 保存 lightbox 打开前的 fullscreen element (地图 div), 用于关闭时恢复
+  const prevFsElementRef = useRef<Element | null>(null);
   useEffect(() => {
     const el = dialogRef.current;
     if (!el) return;
-    // 异步调用避免 React render 期间同步触发副作用
-    const requestFs = () => {
-      try {
-        const p = el.requestFullscreen?.();
-        if (p && typeof p.catch === "function") {
-          p.catch(() => {
-            // 容错: fullscreen 失败 (permission denied / cross-origin) 时, lightbox
-            // 仍然正常显示, 只是没法最顶层覆盖原地图
+    const prevFs = document.fullscreenElement;
+    // 只有 lightbox 自己以外的 fullscreen element 才需要恢复
+    // (排除 race 中 lightbox 自己已经 fullscreen 的情况)
+    const shouldEnterFs = !!prevFs && prevFs !== el;
+    if (shouldEnterFs) {
+      prevFsElementRef.current = prevFs;
+      // 微任务延后, 让 React commit 完成再触发副作用
+      setTimeout(() => {
+        try {
+          const p = el.requestFullscreen?.();
+          p?.catch(() => {
+            // 容错: fullscreen 失败时静默, lightbox 仍能用 fixed + z-[300] 显示
           });
+        } catch {
+          // 同步抛错同上
         }
-      } catch {
-        // 同步抛错同上 — 静默
-      }
-    };
-    // 微任务延后, 让 React commit 完成再触发副作用
-    const t = setTimeout(requestFs, 0);
+      }, 0);
+    }
+    // 不在 fullscreen: 不进 fullscreen, lightbox 用 fixed + z-[300] 覆盖即可
+    // (这种情况下 prevFsElementRef 保持 null, unmount 时不恢复)
+
+    let fsChangeListener: (() => void) | null = null;
+    let restoreTimer: ReturnType<typeof setTimeout> | null = null;
+
     return () => {
-      clearTimeout(t);
-      // unmount 时如果 lightbox 还是 fullscreen element, 主动退出
+      const prevFsEl = prevFsElementRef.current;
+      prevFsElementRef.current = null;
+      if (!prevFsEl) return; // 没保存过, 不需要恢复
+
+      // 如果 lightbox 自己还在 fullscreen, 主动退出
       //   - 用户按 ESC 时浏览器已经退出, 这次调用是 no-op
       //   - 用户点 X 关时, 还没退出, 这里兜底
       if (document.fullscreenElement === el) {
@@ -92,6 +109,33 @@ export function ImageLightbox({
           // 静默
         }
       }
+
+      // 监听 fullscreenchange: lightbox 退出 fullscreen 后, 恢复 prevFs (地图)
+      //   - 注意: lightbox 退出到 prevFs 重新 fullscreen 之间不能太长, 否则用户看到 normal 模式
+      //   - 浏览器异步处理 exitFullscreen, 用 listener 等待比 setTimeout 更准
+      fsChangeListener = () => {
+        if (document.fullscreenElement === el) return; // lightbox 还在, 等
+        document.removeEventListener("fullscreenchange", fsChangeListener!);
+        try {
+          prevFsEl.requestFullscreen?.().catch(() => {});
+        } catch {
+          // 静默
+        }
+      };
+      document.addEventListener("fullscreenchange", fsChangeListener);
+
+      // 兜底: 500ms 内如果浏览器没触发 fullscreenchange, 强行尝试恢复
+      //   - 防止某些环境 (lightbox 没进 fullscreen / 已被 ESC exit 等) 漏掉恢复
+      restoreTimer = setTimeout(() => {
+        if (fsChangeListener) {
+          document.removeEventListener("fullscreenchange", fsChangeListener);
+        }
+        try {
+          prevFsEl.requestFullscreen?.().catch(() => {});
+        } catch {
+          // 静默
+        }
+      }, 500);
     };
   }, []);
   // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k)
