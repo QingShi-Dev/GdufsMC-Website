@@ -767,33 +767,27 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [labelsVisible, setLabelsVisible] = useState(true);
   // 交通 (transit 网络) 同样默认 on, 跟地标独立
   const [transitVisible, setTransitVisible] = useState(true);
-  // 搜索: 开关 + 当前关键词 + 列表显隐
-  //   - searchVisible: 整个搜索 wrapper 显隐 (input 一直在)
-  //   - searchQuery: 用户输入的文字 (不清零, 让 X 按钮可恢复显示)
-  //   - searchListOpen: list 是否展开 — 跟 query 解耦
-  //       默认收起, 输入文字 / 点 input 展开, 点地图收起, X 按钮清空时也收起
-  // 关系: list 渲染 = searchVisible && searchListOpen && searchQuery.trim() !== ""
-  // 默认全开: 进入页面就看到搜索框, 用户可主动关 (按钮顺序排第一)
-  const [searchVisible, setSearchVisible] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchListOpen, setSearchListOpen] = useState(false);
-  // 让 wheel / pointerdown handler 在不重新挂载的情况下读到最新的 query/listOpen
-  // (closure 捕获, 但 wheel handler 在 useEffect [deps] 内, deps 不变就不重跑)
-  const searchQueryRef = useRef(searchQuery);
-  useEffect(() => { searchQueryRef.current = searchQuery; }, [searchQuery]);
-  const searchListOpenRef = useRef(searchListOpen);
-  useEffect(() => { searchListOpenRef.current = searchListOpen; }, [searchListOpen]);
+  // 搜索 state 集中到 useSearchState hook (文件底部) — 包含 searchVisible/searchQuery/
+  //   searchListOpen 三个 state + searchQueryRef/searchListOpenRef 同步 ref +
+  //   searchInputRef/searchWrapperRef DOM refs + 切换 searchVisible 副作用
+  const {
+    searchVisible,
+    setSearchVisible,
+    searchQuery,
+    setSearchQuery,
+    searchListOpen,
+    setSearchListOpen,
+    searchInputRef,
+    searchWrapperRef,
+    searchQueryRef,
+    searchListOpenRef,
+  } = useSearchState();
   // 当前打开 popup 的标签 — null = 没开
   // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
   // (是否弹由 shouldShowPopup 决定: popup=true 或 有 images/description/inputs/outputs)
   // popup 位置固定在地图左上角, 不需要 anchor
   const [selectedLabel, setSelectedLabel] = useState<NewLabel | null>(null);
-  // 搜索 input ref — 开启时自动 focus
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
-  // 搜索 wrapper ref — 用于挂 native event listener 阻止事件冒泡到地图
-  // (React 合成事件的 stopPropagation 在某些 path 下没真阻止 native 冒泡,
-  //  导致 list 内的 wheel 触发地图缩放, list 内的 click 触发地图 onClick 收起)
-  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  // searchInputRef / searchWrapperRef 都在 useSearchState hook 内 (上面)
   // popup 根 ref — 让 map.onPointerDown 拦截 popup 子树内的 pointerdown
   //   - 用户要求: popup 内拖动 = 选中文字, 不能拖地图 (跟搜索框 input 同款)
   //   - parent 检查 popupRef.current?.contains(e.target), 命中就 return
@@ -817,35 +811,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   }, []);
   // (showRotateHint + isPortrait 已删除 — 之前想加"全屏时竖屏提示旋转"但没实际渲染, 死代码)
 
-  // 搜索开关切换:
-  //  - 开启 → input 自动 focus (focus 顺带触发 onFocus → list 展开)
-  //  - 关闭 → 清空 query + 收起 list (避免下次开启时残留旧关键词/旧展开态)
-  //  - 首次挂载 (searchVisible=true 默认全开): 不抢焦点, 让用户自己点 input
-  //    (避免页面加载时移动端自动弹键盘, 也避免与 dim tab / 视觉重心抢焦点)
-  const prevSearchVisibleRef = useRef(searchVisible);
-  useEffect(() => {
-    // 首次挂载: searchVisible 跟初始值相同, 跳过副作用 (StrictMode 双挂载也安全)
-    if (searchVisible === prevSearchVisibleRef.current) {
-      prevSearchVisibleRef.current = searchVisible;
-      return;
-    }
-    prevSearchVisibleRef.current = searchVisible;
-
-    if (searchVisible) {
-      // requestAnimationFrame 等 DOM commit 后再 focus (避免 React 18 自动批处理导致 ref 未挂载)
-      const id = requestAnimationFrame(() => {
-        searchInputRef.current?.focus();
-      });
-      return () => cancelAnimationFrame(id);
-    } else {
-      // 关闭搜索时清空 query + 收起 list — 避免下次开启时残留旧关键词/旧展开态
-      //   - 这是 toggle 边界用例 (searchVisible → false), 不是普通 setState 同步重 render
-      //   - 触发频率低 (用户主动关闭搜索), 不存在 cascade render 性能问题
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSearchQuery("");
-      setSearchListOpen(false);
-    }
-  }, [searchVisible]);
+  // 搜索开关切换 effect 已搬到 useSearchState hook (内部)
 
   // 关键修复: 搜索 wrapper 内的事件需要差异化处理
   // 用 window 上挂 listener + 检查 target 在 wrapper 内 (event delegation),
@@ -2340,4 +2306,77 @@ function useFullscreen(opts: {
   }, [isFullscreen, computeMapScrollTarget]);
 
   return { isFullscreen, toggleFullscreen };
+}
+
+/**
+ * 搜索 state 集中管理
+ * - searchVisible / searchQuery / searchListOpen 三个核心 state
+ * - searchInputRef / searchWrapperRef DOM refs
+ * - searchQueryRef / searchListOpenRef 同步 ref (event handler 读最新值, 不触发 re-render)
+ * - searchVisible toggle effect:
+ *   - 开启 → requestAnimationFrame 等 DOM commit 后 focus input
+ *     (React 18 自动批处理 — ref 未挂载就 focus 会失败)
+ *   - 关闭 → 清空 query + 收起 list (避免下次开启时残留旧关键词/旧展开态)
+ *   - 首次挂载 (searchVisible=true 默认全开): 跳过副作用, 不抢焦点
+ *     (避免页面加载时移动端自动弹键盘, 也不抢视觉重心)
+ *
+ * 返回:
+ *   state + setters: searchVisible/setSearchVisible, searchQuery/setSearchQuery,
+ *                    searchListOpen/setSearchListOpen
+ *   DOM refs: searchInputRef, searchWrapperRef
+ *   同步 refs (event handler 用): searchQueryRef, searchListOpenRef
+ */
+function useSearchState() {
+  const [searchVisible, setSearchVisible] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchListOpen, setSearchListOpen] = useState(false);
+  // DOM refs — input / wrapper
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchWrapperRef = useRef<HTMLDivElement | null>(null);
+  // 同步 refs — wheel / pointerdown handler 不重新挂载也能读到最新值
+  // (closure 捕获, 但 wheel handler 在 useEffect [deps] 内, deps 不变就不重跑)
+  const searchQueryRef = useRef(searchQuery);
+  useEffect(() => {
+    searchQueryRef.current = searchQuery;
+  }, [searchQuery]);
+  const searchListOpenRef = useRef(searchListOpen);
+  useEffect(() => {
+    searchListOpenRef.current = searchListOpen;
+  }, [searchListOpen]);
+  // 切换 searchVisible 副作用: 开启 focus input, 关闭清空 query + 收 list
+  //   - 首次挂载跳过 (searchVisible 初始 true 跟 prevSearchVisibleRef 初值相同)
+  //   - StrictMode 双挂载也安全 (prevSearchVisibleRef 用 ref 跟踪上次值)
+  const prevSearchVisibleRef = useRef(searchVisible);
+  useEffect(() => {
+    if (searchVisible === prevSearchVisibleRef.current) {
+      prevSearchVisibleRef.current = searchVisible;
+      return;
+    }
+    prevSearchVisibleRef.current = searchVisible;
+    if (searchVisible) {
+      // requestAnimationFrame 等 DOM commit 后再 focus (避免 React 18 自动批处理导致 ref 未挂载)
+      const id = requestAnimationFrame(() => {
+        searchInputRef.current?.focus();
+      });
+      return () => cancelAnimationFrame(id);
+    } else {
+      // 关闭搜索时清空 query + 收起 list — 避免下次开启时残留旧关键词/旧展开态
+      //   - 这是 toggle 边界用例 (searchVisible → false), 不是普通 setState 同步重 render
+      //   - 触发频率低 (用户主动关闭搜索), 不存在 cascade render 性能问题
+      setSearchQuery("");
+      setSearchListOpen(false);
+    }
+  }, [searchVisible]);
+  return {
+    searchVisible,
+    setSearchVisible,
+    searchQuery,
+    setSearchQuery,
+    searchListOpen,
+    setSearchListOpen,
+    searchInputRef,
+    searchWrapperRef,
+    searchQueryRef,
+    searchListOpenRef,
+  };
 }
