@@ -519,7 +519,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // worldRef 留在主组件 — 切维度同步, 跟地图数据生命周期绑, 不是 zoom 状态
   const worldRef = useRef<NewWorldMeta | null>(null);
   const zoom = useMapZoom();
-  const { tx, ty, k, setTx, setTy, setK, txRef, tyRef, kRef, schedule, commit } = zoom;
+  const { tx, ty, k, setTx, setTy, setK, txRef, tyRef, kRef, schedule } = zoom;
   // commitImmediate 见下面 (跟 writeHover 一起调)
 
   // ---- 2b. overworld 高清 tile 加载状态 ----
@@ -615,7 +615,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     searchInputRef,
     searchWrapperRef,
     searchQueryRef,
-    searchListOpenRef,
   } = useSearchState();
   // 当前打开 popup 的标签 — null = 没开
   // 装可弹窗的标签 — 激进改动后所有 NewLabel 都可能弹窗
@@ -841,6 +840,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("click", onClickNative);
     };
+    // setSearchListOpen 是 useState setter (稳定引用), 加入 deps 不会触发 re-run 但冗余
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchVisible]);
 
   // 跨 3 维度搜索: 同时匹配 name + 拼音(全拼) + outputs.label
@@ -1123,6 +1124,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
         box.style.display = "none";
       }
     },
+    // kRef/txRef/tyRef 是 refs (不变引用 + 读 .current 取最新值), 不放 deps 是正确的
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tileMap, isFullscreen, isMobile],
   );
   // 同步 ref, 让更早定义的 commitImmediate 能调到最新 writeHoverCoordFromScreen
@@ -1254,6 +1257,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       // 滚到 header 下 (跟按钮缩放/退出全屏行为一致, 桌面端)
       scrollMapIntoView();
     },
+    // commitImmediate / setK / setTx / setTy 都是 useMapZoom 暴露的稳定引用
+    //   - useState setter 和 useCallback 引用稳定, 加 deps 是冗余
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [scrollMapIntoView, isFullscreen],
   );
 
@@ -1341,6 +1347,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     }
     queueMicrotask(() => commitImmediate(0, 0, 1));
     scrollMapIntoView();
+    // commitImmediate 是 useMapZoom 暴露的 useCallback, 引用稳定
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId, scrollMapIntoView]);
 
   // 全屏 + 滚地图逻辑已搬到 useFullscreen hook (上面 scrollMapIntoView 之后调)
@@ -1387,6 +1395,11 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
+    // kRef/txRef/tyRef/searchQueryRef 是 refs, setSearchListOpen 是 useState setter
+    //   - 加进 deps 会让 callback 在 ref 变化时重建 (但 ref 引用不变, 永远不会)
+    //   - 或者让 callback 在 setter 引用变化时重建 (useState setter 永远不变)
+    //   - 当前 deps 是真实依赖 (schedule 等会变化的 useCallback), 保留
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schedule, scheduleScrollAfterWheel, writeHoverCoordFromScreen, isFullscreen]);
 
   /**
@@ -1475,6 +1488,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
+    // kRef/txRef/tyRef 是 refs, 不放 deps 是正确的 (引用稳定 + 读 .current 取最新值)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schedule, writeHoverCoordFromScreen, isFullscreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -1677,6 +1692,13 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           }}
           searchVisible={searchVisible}
           onToggleSearch={() => {
+            // 关闭分支: 在 setState 同步阶段清掉 query + 收起 list (避免下次开启残留)
+            //   - 不能放 useEffect 里, react-hooks/set-state-in-effect 规则会报 error
+            //   - React 18+ 自动批处理把 3 个 setState 合并到一次 render
+            if (searchVisible) {
+              setSearchQuery("");
+              setSearchListOpen(false);
+            }
             setSearchVisible((v) => !v);
             // 搜索开关也滚到 header 下方, 跟另外两个开关保持一致
             scrollMapIntoView();
@@ -1935,6 +1957,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                   // ESC 关闭整个搜索 (区别于 X 按钮只清空文字)
                   if (e.key === "Escape") {
                     e.preventDefault();
+                    // 清掉 query + 收起 list — 跟 toggle 关闭分支同款
+                    setSearchQuery("");
+                    setSearchListOpen(false);
                     setSearchVisible(false);
                   }
                 }}
@@ -2159,13 +2184,12 @@ function useSearchState() {
         searchInputRef.current?.focus();
       });
       return () => cancelAnimationFrame(id);
-    } else {
-      // 关闭搜索时清空 query + 收起 list — 避免下次开启时残留旧关键词/旧展开态
-      //   - 这是 toggle 边界用例 (searchVisible → false), 不是普通 setState 同步重 render
-      //   - 触发频率低 (用户主动关闭搜索), 不存在 cascade render 性能问题
-      setSearchQuery("");
-      setSearchListOpen(false);
     }
+    // 关闭搜索时清空 query + 收起 list 的清理, 不在这里做 —
+    //   - 写在 effect 里 setState 会触发 react-hooks/set-state-in-effect error
+    //   - 改为在两个关闭点直接调 setSearchQuery("") + setSearchListOpen(false),
+    //     React 18+ 自动批处理合并到一次 render, 行为完全等价
+    //   - 关闭点: 1680 (toggle 关闭) / 1938 (ESC 关闭)
   }, [searchVisible]);
   return {
     searchVisible,
