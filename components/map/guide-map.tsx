@@ -358,20 +358,30 @@ function MapCanvas({
         className={isPanning ? "transition-transform duration-500 ease-in-out" : ""}
         style={{ pointerEvents: "none" }}
       >
-        {layer.tiles.map((t) => (
-          <image
-            key={`${t.col}-${t.row}`}
-            href={t.src}
-            // 修接缝: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026
-            //   → 相邻瓦片重叠 2px, 盖住 SVG sub-pixel 渲染的 1px 白缝
-            //   (原来 width=1024 没 overlap, 浮点坐标会留 1px 缝)
-            x={t.vbX - 1}
-            y={t.vbY - 1}
-            width={1026}
-            height={1026}
-            preserveAspectRatio="xMidYMid meet"
-          />
-        ))}
+        {/* 瓦片 src 按 k 阈值切换:
+            - k < 2.5 (默认缩略图阶段): 用 srcThumb (overworld = q=90 webp, 省流量)
+            - k >= 2.5 (放大阶段): 用 src (原 PNG, 高清无压缩)
+            用户实测 overworld 瓦片全用 webp 视觉损失明显 (细节密集, 压缩 artifact),
+            改成两阶段加载 — 缩略图阶段 webp 够用, 放大阶段切 PNG 保留细节
+            nether/end 没 srcThumb, 永远用 src */}
+        {layer.tiles.map((t) => {
+          const useHires = k >= 2.5 || !t.srcThumb;
+          const href = useHires ? t.src : t.srcThumb!;
+          return (
+            <image
+              key={`${t.col}-${t.row}`}
+              href={href}
+              // 修接缝: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026
+              //   → 相邻瓦片重叠 2px, 盖住 SVG sub-pixel 渲染的 1px 白缝
+              //   (原来 width=1024 没 overlap, 浮点坐标会留 1px 缝)
+              x={t.vbX - 1}
+              y={t.vbY - 1}
+              width={1026}
+              height={1026}
+              preserveAspectRatio="xMidYMid meet"
+            />
+          );
+        })}
         {/* 白框高亮 — 标记特殊区块 (主世界右下角的两个拼接区) */}
         {layer.highlights?.map((h, i) => (
           <g key={`hl-${i}`}>
@@ -1742,12 +1752,21 @@ const toggleFullscreen = () => {
   /**
    * 预加载整个维度的瓦片 (跟 guide-map 思路一致: 切维度时已经 cache 好, 0 滞留)
    * - 这里不只预加载"主图", 整个维度的所有瓦片都拉 (反正切过去就要全部显示)
-   * - 78 张主世界瓦片 ~62MB, 但浏览器并行解码比单张 17MB WebP 快 (浏览器有上限但能 6 并发)
+   * - 跟 MapCanvas 同款按 k 阈值选 src:
+   *   - k < 2.5 (切维度时默认): 用 srcThumb (webp 缩略图, 省内存)
+   *   - k >= 2.5: 用 src (原 PNG, 高清)
+   * - 不同时预加载 PNG — 用户放大跨过 2.5× 阈值时按需 fetch, 接受这一次小延迟
+   *   (vs 一次性全预加载 78 张 PNG 多花 60MB 内存)
+   * - nether/end 没 srcThumb, 永远用 src
    */
   const preloadWorld = useCallback((id: NewWorldId) => {
     const w = worlds.find((x) => x.id === id);
     if (!w) return;
-    for (const t of w.map.tiles) preloadImage(t.src);
+    const useHires = kRef.current >= 2.5;
+    for (const t of w.map.tiles) {
+      const href = useHires || !t.srcThumb ? t.src : t.srcThumb;
+      preloadImage(href);
+    }
   }, [worlds]);
 
   // 地铁线路 + 珍珠炮 (SVG, 进 MapCanvas 的 <g>) — 给 transitInWorld 回调用

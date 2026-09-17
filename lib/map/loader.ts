@@ -7,9 +7,9 @@ import { TILE_PX } from "./constants";
  * Server-side 数据加载器 — 把 public/images/maps/20260907/{overworld,nether,end}
  * 下的瓦片拼成 GuideMap 需要的 NewWorld[] 数据
  *
- * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.{png|webp}
- *   - overworld 现在用 webp (q=95), 跟 PNG 同目录, 这里优先 webp
- *   - nether / end 仍然用 PNG (用户要求其他维度不变)
+ * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.png
+ *   - overworld 同时配 overworld-thumbs/*.webp q=90 (缩略图, 客户端 k < 2.5 用)
+ *   - nether / end 只用 PNG (小瓦片, 不配缩略图)
  * 坐标系: x = (col - minCol) * 1024,  z = (row - minRow) * 1024  (viewBox 单位 = 1024 block)
  *  跟 public/test/ 不同, 这里不显式存世界坐标, 全部映射到 viewBox 局部坐标
  *
@@ -25,7 +25,17 @@ export interface NewMapTile {
   vbX: number;
   /** viewBox 局部坐标 (放在 SVG 里的 y) */
   vbY: number;
+  /** 默认 src — overworld = 原 PNG (无压缩), nether/end = 原 PNG */
   src: string;
+  /**
+   * 缩略图 src — overworld = q=90 webp (同目录 overworld-thumbs/), 其他维度无
+   * 客户端按当前 zoom (k) 阈值切换:
+   *   - k < 2.5: 用 srcThumb (省流量, 视觉够用)
+   *   - k >= 2.5: 用 src (高清, 放大清晰)
+   * 用户实测 overworld 瓦片全用 webp q=95 视觉损失明显 (细节密集, 压缩 artifact),
+   * 改成两阶段加载 — 缩略图阶段省带宽, 放大阶段切原 PNG
+   */
+  srcThumb?: string;
 }
 
 export type NewMapTone = "plains" | "nether" | "end";
@@ -69,10 +79,8 @@ export interface NewWorldMeta {
 }
 
 // TILE_PX 从 ./new-guide-map-constants 引入 (single source of truth, client 端也用同一份)
-// 注意: overworld 现在有 .webp 跟 .png 同目录, 我们**优先 webp** (体积小, 浏览器原生支持)
-// nether / end 仍然只有 PNG (用户要求其他维度不变)
+// 三个维度都只用 PNG (overworld 同时配 overworld-thumbs/*.webp 供客户端按 k 切换)
 const RE_PNG = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.png$/;
-const RE_WEBP = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.webp$/;
 
 /**
  * 主世界右下角 8 张瓦片 (col 12-13, row 9-12) 实际是 relayout 时从其他位置搬来的:
@@ -132,19 +140,22 @@ function loadDimension(
 ): NewMapLayer | null {
   const dimDir = path.join(baseDir, dimId);
   if (!fs.existsSync(dimDir)) return null;
-  // overworld 同时有 .png 和 .webp — 优先选 webp (q=95, 体积小, 浏览器原生支持)
-  // nether / end 只有 .png — 跟以前一样
-  const isOverworld = dimId === "overworld";
-  const files = isOverworld
-    ? fs
-        .readdirSync(dimDir)
-        .filter((f) => f.endsWith(".webp"))
-        .sort()
-    : fs
-        .readdirSync(dimDir)
-        .filter((f) => f.endsWith(".png"))
-        .sort();
+  // overworld 现在只用 .png — 客户端按 zoom 阈值决定显示 webp 缩略图还是原 PNG
+  //   - src     = PNG (默认, k >= 2.5 时用)
+  //   - srcThumb = overworld-thumbs/*.webp q=90 (k < 2.5 时用, 缩略图阶段省流量)
+  // nether / end 只有 .png, srcThumb 不设置 (直接用 src)
+  const files = fs
+    .readdirSync(dimDir)
+    .filter((f) => f.endsWith(".png"))
+    .sort();
   if (files.length === 0) return null;
+
+  // overworld-thumbs/ 目录 (同 baseDir 父目录下) — 给 overworld 瓦片配 srcThumb
+  const isOverworld = dimId === "overworld";
+  const thumbsDir: string | null = isOverworld ? path.join(baseDir, "overworld-thumbs") : null;
+  // 先 if-then 早退让 TS 缩窄 thumbsDir 为 string
+  const thumbsExist = thumbsDir !== null && fs.existsSync(thumbsDir);
+  const activeThumbsDir: string | null = thumbsExist ? thumbsDir : null;
 
   const tiles: NewMapTile[] = [];
   let minCol = Infinity;
@@ -153,7 +164,7 @@ function loadDimension(
   let maxRow = -Infinity;
 
   for (const f of files) {
-    const m = f.match(isOverworld ? RE_WEBP : RE_PNG);
+    const m = f.match(RE_PNG);
     if (!m) continue;
     const col = Number(m[1]);
     const row = Number(m[2]);
@@ -171,7 +182,16 @@ function loadDimension(
     minRow = Math.min(minRow, row);
     maxCol = Math.max(maxCol, col);
     maxRow = Math.max(maxRow, row);
-    tiles.push({ col, row, x, z, vbX: 0, vbY: 0, src: `/${path.relative(path.join(process.cwd(), "public"), path.join(dimDir, f)).replace(/\\/g, "/")}` });
+    const src = `/${path.relative(path.join(process.cwd(), "public"), path.join(dimDir, f)).replace(/\\/g, "/")}`;
+    // overworld 才有 srcThumb — 同名 .webp 在 overworld-thumbs/ 目录
+    let srcThumb: string | undefined;
+    if (activeThumbsDir) {
+      const webpName = f.replace(/\.png$/i, ".webp");
+      if (fs.existsSync(path.join(activeThumbsDir, webpName))) {
+        srcThumb = `/images/maps/20260907/overworld-thumbs/${webpName}`;
+      }
+    }
+    tiles.push({ col, row, x, z, vbX: 0, vbY: 0, src, srcThumb });
   }
   if (tiles.length === 0) return null;
 
