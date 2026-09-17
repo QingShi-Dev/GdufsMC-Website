@@ -60,6 +60,16 @@ export interface LabelPopupProps {
    *   - 移动 (true): 底部 sheet, 没有 hero, 全部图当细节图, 展开前/后切换
    */
   isMobile?: boolean;
+  /**
+   * lightbox 状态变化回调 — 通知 parent (GuideMap) 当前 lightbox 是否打开
+   *   - parent 用这个 state 调低 search wrapper z-index, 让 lightbox 浮在搜索栏之上
+   *   - 用户反馈: 全屏看大图时搜索栏应该在大图下面 (被大图覆盖)
+   *   - popup z-20 在 lightbox 打开时不够, 因为 search wrapper z-[60] 是 sibling
+   *   - 不 portal 的话, lightbox 在 popup 的 stacking context 内, popup z 必须 > 60
+   *     或 search wrapper z 必须降到 popup 之下 — 这里选降 search wrapper
+   *   - 桌面端 + 移动端都触发 (parent 通用)
+   */
+  onLightboxChange?: (open: boolean) => void;
 }
 
 export function LabelPopup({
@@ -69,6 +79,7 @@ export function LabelPopup({
   rootRef,
   isFullscreen,
   isMobile,
+  onLightboxChange,
 }: LabelPopupProps) {
   // 移动端走专属渲染分支 (bottom sheet 模式), 桌面端走原逻辑
   if (isMobile) {
@@ -77,6 +88,7 @@ export function LabelPopup({
         label={label}
         onClose={onClose}
         rootRef={rootRef}
+        onLightboxChange={onLightboxChange}
       />
     );
   }
@@ -88,6 +100,7 @@ export function LabelPopup({
       topClassName={topClassName}
       rootRef={rootRef}
       isFullscreen={isFullscreen}
+      onLightboxChange={onLightboxChange}
     />
   );
 }
@@ -100,12 +113,14 @@ function DesktopPopup({
   topClassName,
   rootRef,
   isFullscreen,
+  onLightboxChange,
 }: {
   label: NewLabel;
   onClose: () => void;
   topClassName?: string;
   rootRef?: React.RefObject<HTMLDivElement | null>;
   isFullscreen?: boolean;
+  onLightboxChange?: (open: boolean) => void;
 }) {
   // ESC 关闭
   useEffect(() => {
@@ -128,6 +143,18 @@ function DesktopPopup({
   const hasAnyContent = hasHero || hasDetails || hasDescription || hasInputs || hasOutputs;
 
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // 通知 parent (GuideMap) lightbox 状态变化 — 让 parent 调低 search wrapper z-index
+  //   - 转换时 (open ↔ close) 触发回调, parent re-render 后把 search wrapper 推到 popup 之下
+  //   - 用 cleanup 保证 unmount 时也触发 false (popup 被关掉时 lightboxIndex 仍是某个值,
+  //     useEffect 不再 fire, 需要 cleanup 兜底)
+  useEffect(() => {
+    const isOpen = lightboxIndex !== null;
+    onLightboxChange?.(isOpen);
+    return () => {
+      if (isOpen) onLightboxChange?.(false);
+    };
+  }, [lightboxIndex, onLightboxChange]);
 
   return (
     <div
@@ -281,10 +308,12 @@ function MobilePopup({
   label,
   onClose,
   rootRef,
+  onLightboxChange,
 }: {
   label: NewLabel;
   onClose: () => void;
   rootRef?: React.RefObject<HTMLDivElement | null>;
+  onLightboxChange?: (open: boolean) => void;
 }) {
   const images = label.images ?? [];
   // 移动端没有 hero — 全部图当 detail 处理
@@ -299,6 +328,16 @@ function MobilePopup({
   const [expanded, setExpanded] = useState(false);
   // 细节图 lightbox (跟桌面端共用 ImageLightbox)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // 通知 parent lightbox 状态变化 — 跟 DesktopPopup 同款 (z-index 联动逻辑)
+  //   - 移动端 popup 在底部, search wrapper 也在顶部, 视觉冲突小但仍走相同逻辑保持一致
+  useEffect(() => {
+    const isOpen = lightboxIndex !== null;
+    onLightboxChange?.(isOpen);
+    return () => {
+      if (isOpen) onLightboxChange?.(false);
+    };
+  }, [lightboxIndex, onLightboxChange]);
   // swipe 手势 ref — 用于 onTouchStart / onTouchMove
   const touchStartYRef = useRef<number | null>(null);
 
@@ -361,7 +400,7 @@ function MobilePopup({
       //  - 关闭按钮在 top bar (右上), 用户要求: 不依赖点击 popup 其它位置关
       className={cn(
         "fixed bottom-0 left-0 right-0 z-30",
-        "bg-white border-t border-slate-200 rounded-t-2xl",
+        "bg-white border-t border-slate-200 rounded-t-xl",
         "shadow-[0_-10px_30px_-5px_rgb(0,0,0,0.15)]",
         "animate-in slide-in-from-bottom duration-300",
         expanded ? "max-h-[90vh]" : "max-h-[50vh]",
@@ -375,13 +414,23 @@ function MobilePopup({
       onTouchCancel={onSwipeTouchEnd}
     >
       {/* 顶部 sticky bar — name + 关闭按钮 */}
-      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3">
+      <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 pt-4 flex flex-col items-start">
         <span
           id="lm-popup-name"
-          className="flex-1 min-w-0 text-[18px] font-semibold text-slate-800 truncate"
+          className="min-w-0 text-[22px] font-semibold text-slate-700"
         >
           {label.name}
         </span>
+        <div className="flex items-center pt-1 gap-1.5 text-[16px] text-slate-500">
+          <span className="font-mono text-slate-700">
+                  x={label.x} z={label.z}
+                </span>
+        </div>
+        {hasDescription && (
+            <span className="text-[16px] pt-0.5 text-slate-600">
+              {label.description}
+            </span>
+        )}
         <button
           type="button"
           onClick={(e) => {
@@ -389,7 +438,7 @@ function MobilePopup({
             onClose();
           }}
           aria-label="关闭"
-          className="shrink-0 w-9 h-9 rounded-full bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          className="absolute top-5 right-5 w-5.5 h-5.5 rounded-full flex items-center justify-center transition-colors"
         >
           <svg
             width="14"
@@ -410,12 +459,6 @@ function MobilePopup({
       </div>
 
       <div className="px-4 py-4 space-y-4">
-        {hasDescription && (
-          <p className="text-[14px] leading-relaxed text-slate-600">
-            {label.description}
-          </p>
-        )}
-
         {hasAnyImage && (
           <MobileImagesGrid
             images={showImages}
@@ -432,12 +475,6 @@ function MobilePopup({
         {expanded && (
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <div className="space-y-2">
-              <div className="flex items-center gap-1.5 text-[13px] text-slate-500">
-                <span className="uppercase w-11 shrink-0">坐标</span>
-                <span className="font-mono text-slate-700">
-                  x={label.x} z={label.z}
-                </span>
-              </div>
               {hasBuilder && (
                 <div className="flex items-center gap-1.5 text-[13px]">
                   <span className="uppercase w-11 shrink-0 text-slate-500">
@@ -484,7 +521,7 @@ function MobilePopup({
               alt=""
               className={cn(
                 "w-5 h-5 transition-transform",
-                expanded ? "rotate-180" : "rotate-0",
+                expanded ? "rotate-270" : "rotate-90",
               )}
             />
           </button>
@@ -528,9 +565,9 @@ function MobileImagesGrid({
   // overflow 模式: 横向滚动, 每张固定 70% 宽 (一次看一张多一点)
   if (overflowScroll) {
     return (
-      <div className="-mx-5">
+      <div>
         <div
-          className="flex gap-2 overflow-x-auto px-5 pb-2 snap-x snap-mandatory"
+          className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory"
           style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
         >
           {images.map((src, i) => (
@@ -541,7 +578,7 @@ function MobileImagesGrid({
                 e.stopPropagation();
                 onOpen(i);
               }}
-              className="shrink-0 w-[70%] aspect-video rounded-lg overflow-hidden bg-slate-100 snap-center cursor-zoom-in"
+              className="shrink-0 w-[70%] aspect-video rounded-lg overflow-hidden bg-white snap-center cursor-zoom-in"
             >
               <img
                 src={src}
