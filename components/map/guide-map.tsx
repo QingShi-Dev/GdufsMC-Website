@@ -41,6 +41,15 @@ import {
   PearlLines,
 } from "./transit-overlay";
 import { toPinyin } from "@/lib/search/pinyin";
+// 几何变换 + 预加载 cache (pure functions, 2026-09-17 从 guide-map.tsx 抽出来)
+import {
+  MAX_ZOOM,
+  preloadImage,
+  screenToVB,
+  worldToVB,
+  worldToScreenFactory,
+  computePanTransform,
+} from "@/lib/map/transforms";
 
 /**
  * 搜索匹配类型 — 同一地标可能多个字段同时命中 (e.g. 既匹配 name 也匹配 output)
@@ -456,182 +465,6 @@ function MapCanvas({
 
 const clamp = (n: number, min: number, max: number) =>
   Math.max(min, Math.min(max, n));
-
-/**
- * Hover preload Image cache (module-level, 跨组件实例 + 跨 mount 复用)
- * - 跟 guide-map 同样的 pattern, 这里 LRU 上限放大到 8 (3 维度 × 平均 ~30 张主图瓦片)
- * - 预加载的是「主图」的所有瓦片 (按 col/row 排, 一次拉完避免切换时 N 次网络往返)
- */
-const PRELOAD_CACHE = new Map<string, HTMLImageElement>();
-const MAX_PRELOAD = 8;
-function preloadImage(src: string) {
-  if (PRELOAD_CACHE.has(src)) return;
-  if (PRELOAD_CACHE.size >= MAX_PRELOAD) {
-    // 简单 FIFO: 清掉最早插入的 (Map 保插入序)
-    const firstKey = PRELOAD_CACHE.keys().next().value;
-    if (firstKey !== undefined) PRELOAD_CACHE.delete(firstKey);
-  }
-  const img = new Image();
-  img.src = src;
-  PRELOAD_CACHE.set(src, img);
-}
-
-/**
- * 各维度最大放大倍数
- * - 主世界: 16× (1600%) — 区域大, 容许看细节 (建筑 / 机器)
- * - 下界: 8× (800%, 默认) — 不变
- * - 末地: 6× (600%) — 末地外岛少, 内容稀疏, 过度放大无意义
- */
-const MAX_ZOOM: Record<NewWorldId, number> = {
-  overworld: 16,
-  nether: 8,
-  end: 6,
-};
-
-/**
- * 屏幕坐标 → viewBox 坐标 (考虑 SVG meet/slice 的 scale + 居中 offset)
- *
- * 之前没考虑 offset 是个 bug — 容器永远用主世界 13:6 比例, 下界 (5:2) 和
- * 末地 (3:2) 的 viewBox 跟容器比例不匹配, SVG `meet` 模式会留黑边 (或 slice
- * 模式裁切), 老的公式 ((clientX - rect.left) * vbW / rect.width) 假设了
- * svg 占满整个 container, 算出来的 viewBox 坐标就偏了一段 offsetX/Y
- *
- * 后果: 下界/末地滚轮缩放 zoom 中心点错, 右上角坐标也错. 切到主世界
- * 比例对得上, 数字又对了 → 表现为"切个地图就好了"
- *
- * 现在跟 worldToScreenFactory 用同一套 parScale + offset 公式, 跟 SVG
- * 渲染完全对得回来
- */
-const screenToVB = (
-  clientX: number,
-  clientY: number,
-  rect: { left: number; top: number; width: number; height: number },
-  vbW: number,
-  vbH: number,
-  isSlice: boolean = false,
-) => {
-  const cw = rect.width;
-  const ch = rect.height;
-  if (cw === 0 || ch === 0) return { x: 0, y: 0 };
-  const scale = isSlice
-    ? Math.max(cw / vbW, ch / vbH)
-    : Math.min(cw / vbW, ch / vbH);
-  const offsetX = (cw - vbW * scale) / 2;
-  const offsetY = (ch - vbH * scale) / 2;
-  return {
-    x: (clientX - rect.left - offsetX) / scale,
-    y: (clientY - rect.top - offsetY) / scale,
-  };
-};
-
-/**
- * MC 世界坐标 (x, z) → viewBox 空间 (vbX, vbY)
- * 纯几何转换, 不依赖 viewBox 尺寸或屏幕尺寸 — 给 panTo / worldToScreenFactory 共用
- *
- * 跟 MapCanvas 里 SVG <g> 的 transform 前一步对齐: viewBox 空间里的点 (vbX, vbY)
- * 才是后续能直接用 tx/ty/k 变换的输入。
- */
-function worldToVB(
-  worldX: number,
-  worldZ: number,
-  world: NewWorldMeta,
-): { vx: number; vy: number } | null {
-  for (let i = 0; i < world.map.tiles.length; i++) {
-    const t = world.map.tiles[i];
-    if (!t) continue;
-    if (
-      worldX >= t.x &&
-      worldX < t.x + TILE_PX &&
-      worldZ >= t.z &&
-      worldZ < t.z + TILE_PX
-    ) {
-      return {
-        vx: t.vbX + (worldX - t.x),
-        vy: t.vbY + (worldZ - t.z),
-      };
-    }
-  }
-  return null;
-}
-
-/**
- * MC 世界坐标 (x, z) → 当前容器内 CSS 像素 (left, top)
- * 给地标 HTML 标签用的 — 跟 MapCanvas 的 SVG transform + viewBox 渲染保持一致
- *
- * 数学 (跟 MapCanvas 里 SVG `viewBox` + `transform` 严格对应):
- *   1. world (x, z) → viewBox (vbX, vbY): 在哪张瓦片内 + 瓦片内偏移 (走 worldToVB)
- *   2. viewBox (vbX, vbY) → transformed (vbX*k + tx, vbY*k + ty): SVG g transform
- *   3. transformed → 容器 CSS 像素: 跟 preserveAspectRatio 模式有关
- *      - meet: scale = min(cw/vbW, ch/vbH), 居中 (offsetX/Y = (size - content)/2)
- *      - slice: scale = max(...), 居中
- *
- * 注: 容器 size 用 getBoundingClientRect() 实时取, 不缓存 (resize 时自动跟)
- */
-function worldToScreenFactory(args: {
-  // 容器尺寸 (state, 不是 ref) — react-hooks/refs 规则要求 render 阶段不能读 ref.current
-  //   - 之前用 containerRef.current, 在 React 19 下报 "Cannot access refs during render"
-  //   - ResizeObserver 在 layout 完成后回调, 把 {width, height} 存到 state
-  //   - render 阶段用 state 即可, 不需要 ref
-  containerRect: { width: number; height: number } | null;
-  world: NewWorldMeta | null;
-  tx: number;
-  ty: number;
-  k: number;
-  isFullscreen: boolean;
-  isMobile: boolean;
-}): (worldX: number, worldZ: number) => { x: number; y: number } | null {
-  const { containerRect, world, tx, ty, k, isFullscreen, isMobile } = args;
-  if (!containerRect || !world) return () => null;
-  const cw = containerRect.width;
-  const ch = containerRect.height;
-  if (cw === 0 || ch === 0) return () => null;
-  const vbW = world.map.width;
-  const vbH = world.map.height;
-  const slice = !isFullscreen && isMobile;
-  const parScale = slice
-    ? Math.max(cw / vbW, ch / vbH)
-    : Math.min(cw / vbW, ch / vbH);
-  const contentW = vbW * parScale;
-  const contentH = vbH * parScale;
-  const offsetX = (cw - contentW) / 2;
-  const offsetY = (ch - contentH) / 2;
-  return (worldX: number, worldZ: number) => {
-    const vb = worldToVB(worldX, worldZ, world);
-    if (!vb) return null;
-    // SVG g transform: translate(tx ty) scale(k) = (vb*k + tx, vb*k + ty)
-    const tvbX = vb.vx * k + tx;
-    const tvbY = vb.vy * k + ty;
-    return {
-      x: offsetX + tvbX * parScale,
-      y: offsetY + tvbY * parScale,
-    };
-  };
-}
-
-/**
- * 视角中心移到 (worldX, worldZ) 并缩放到 targetZoom
- * 给 region 大地名点击用 — 类似百度地图点地名跳到该区域
- *
- * 数学 (viewBox 中心对准目标点):
- *   想让 viewBox 中心 (vbW/2, vbH/2) 显示目标点的 viewBox 位置 (vbX, vbY)
- *   即 transform 后: (vbX*k + tx, vbY*k + ty) = (vbW/2, vbH/2)
- *   ⇒ tx = vbW/2 - vbX*k, ty = vbH/2 - vbY*k
- */
-function computePanTransform(
-  worldX: number,
-  worldZ: number,
-  targetZoom: number,
-  world: NewWorldMeta,
-): { tx: number; ty: number; k: number } | null {
-  const vb = worldToVB(worldX, worldZ, world);
-  if (!vb) return null;
-  const { width: vbW, height: vbH } = world.map;
-  return {
-    k: targetZoom,
-    tx: vbW / 2 - vb.vx * targetZoom,
-    ty: vbH / 2 - vb.vy * targetZoom,
-  };
-}
 
 /* ============================== Main Component ============================== */
 
