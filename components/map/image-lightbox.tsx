@@ -78,20 +78,6 @@ export function ImageLightbox({
 //   - 含 containing block: map 有 transition: transform 让 fixed 被 contained (commit 98404e9 解释)
 //     - fullscreen 时浏览器重置 containing block, 问题自动消失
 //   - SSR 时 useEffect 不跑, 第一次 render 直接 return null (避免 SSR 引用 document)
-  // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k)
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
-  const [k, setK] = useState(1);
-  // rAF 批处理, 避免拖动/滚轮期间多次 setState 触发 render
-  const rafRef = useRef<number | null>(null);
-  const pendingRef = useRef<{ tx: number; ty: number; k: number } | null>(null);
-  // 拖动引用: 起始坐标 + 起始时 tx/ty
-  const dragRef = useRef<{
-    x: number;
-    y: number;
-    tx: number;
-    ty: number;
-  } | null>(null);
   // 容器 ref — 用于 setPointerCapture / 鼠标位置转换
   const containerRef = useRef<HTMLDivElement | null>(null);
   // 图片原始尺寸 (naturalWidth/Height) — 用于计算 fit 大小 + drag 边界
@@ -102,6 +88,33 @@ export function ImageLightbox({
   const [containerSize, setContainerSize] = useState<{
     w: number;
     h: number;
+  } | null>(null);
+  // 计算图片在容器里的"fit"大小 (k=1 时的大小) — CSS max-w-full max-h-full 的同款行为
+  const fit = useMemo(() => {
+    if (!imgNatural || !containerSize) return null;
+    const cw = containerSize.w;
+    const ch = containerSize.h;
+    const aspect = imgNatural.w / imgNatural.h;
+    // CSS max-w-full max-h-full: 取 width-limited 或 height-limited 哪个更小
+    let fitW: number;
+    if (aspect > cw / ch) {
+      fitW = ch * aspect;
+    } else {
+      fitW = cw;
+    }
+    const fitH = fitW / aspect;
+    return { fitW, fitH };
+  }, [imgNatural, containerSize]);
+
+  // 平移 + 缩放 (跟 guide-map 同款命名: tx/ty/k) + rAF 批处理 + clamp + reset — 抽到 hook
+  const zoom = useLightboxZoom({ fit, containerSize });
+  const { tx, ty, k, schedule, reset } = zoom;
+  // 拖动引用: 起始坐标 + 起始时 tx/ty (drag 状态, 不放进 hook — 跟具体 pointer 事件绑)
+  const dragRef = useRef<{
+    x: number;
+    y: number;
+    tx: number;
+    ty: number;
   } | null>(null);
   // portal target — 决定 lightbox 挂在 DOM 哪里
   //   - 地图 fullscreen 时: document.fullscreenElement (地图 div) — 跟地图同一 stacking context
@@ -147,73 +160,8 @@ export function ImageLightbox({
     return () => observer.disconnect();
   }, [portalTarget]);
 
-  // 计算图片在容器里的"fit"大小 (k=1 时的大小) — CSS max-w-full max-h-full 的同款行为
-  const fit = useMemo(() => {
-    if (!imgNatural || !containerSize) return null;
-    const cw = containerSize.w;
-    const ch = containerSize.h;
-    const aspect = imgNatural.w / imgNatural.h;
-    // CSS max-w-full max-h-full: 取 width-limited 或 height-limited 哪个更小
-    let fitW: number;
-    if (aspect > cw / ch) {
-      fitW = ch * aspect;
-    } else {
-      fitW = cw;
-    }
-    const fitH = fitW / aspect;
-    return { fitW, fitH };
-  }, [imgNatural, containerSize]);
-
-  /** clamp tx/ty 让图片不拖出容器边界 */
-  const clampPan = useCallback(
-    (nextTx: number, nextTy: number, nextK: number): { tx: number; ty: number } => {
-      // k=1 时图片刚好 fit 容器, tx/ty 必须 = 0
-      if (nextK <= MIN_K || !fit) return { tx: 0, ty: 0 };
-      const cw = containerSize?.w ?? 0;
-      const ch = containerSize?.h ?? 0;
-      const maxX = Math.max(0, (fit.fitW * nextK - cw) / 2);
-      const maxY = Math.max(0, (fit.fitH * nextK - ch) / 2);
-      return {
-        tx: Math.max(-maxX, Math.min(maxX, nextTx)),
-        ty: Math.max(-maxY, Math.min(maxY, nextTy)),
-      };
-    },
-    [fit, containerSize],
-  );
-
-  // rAF 提交 (跟 guide-map 同款)
-  const commit = useCallback(() => {
-    rafRef.current = null;
-    const p = pendingRef.current;
-    if (!p) return;
-    pendingRef.current = null;
-    setTx(p.tx);
-    setTy(p.ty);
-    setK(p.k);
-  }, []);
-  const schedule = useCallback(
-    (nextTx: number, nextTy: number, nextK: number) => {
-      // 应用 clamp (边界 + k=1 时强制 tx=ty=0)
-      const clamped = clampPan(nextTx, nextTy, nextK);
-      pendingRef.current = { tx: clamped.tx, ty: clamped.ty, k: nextK };
-      if (rafRef.current === null) {
-        rafRef.current = requestAnimationFrame(commit);
-      }
-    },
-    [commit, clampPan],
-  );
-
-  /** 重置 (还原) */
-  const reset = useCallback(() => {
-    if (rafRef.current !== null) {
- cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    pendingRef.current = null;
-    setTx(0);
-    setTy(0);
-    setK(1);
-  }, []);
+  // 计算图片在容器里的"fit"大小 + zoom state machine 抽到 useLightboxZoom hook
+//   - 上面已用 useMemo 算 fit, 这里 useLightboxZoom({ fit, containerSize }) 拿 tx/ty/k + schedule/reset
 
   /** 翻图 — 切换 currentIndex, 重置缩放/平移 */
   const goTo = useCallback(
@@ -274,15 +222,7 @@ export function ImageLightbox({
     return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose, goNext, goPrev, images.length]);
 
-  // 卸载清理 rAF
-  useEffect(() => {
-    return () => {
-      if (rafRef.current !== null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-    };
-  }, []);
+  // rAF 卸载清理已搬到 useLightboxZoom hook 内部
 
   // 滚轮缩放 — 大步长 (1.25×), 一次操作明显放大/缩小
   useEffect(() => {
@@ -294,20 +234,12 @@ export function ImageLightbox({
       // 光标在容器里的相对位置 (中心为 0)
       const cursorX = e.clientX - rect.left - rect.width / 2;
       const cursorY = e.clientY - rect.top - rect.height / 2;
-      const curK = k;
-      const curTx = tx;
-      const curTy = ty;
       // 一次滚轮 = 一个步长 (向上滚放大, 向下滚缩小)
       const factor = e.deltaY < 0 ? WHEEL_STEP : 1 / WHEEL_STEP;
-      const newK = Math.max(MIN_K, Math.min(MAX_K, curK * factor));
-      if (newK === curK) return;
-      // 保持光标位置不变: 让光标下的 content 坐标不动
-      //   contentX = (cursorX - tx) / k; 改 k 后新 tx = cursorX - contentX * newK
-      const contentX = (cursorX - curTx) / curK;
-      const contentY = (cursorY - curTy) / curK;
-      const nextTx = cursorX - contentX * newK;
-      const nextTy = cursorY - contentY * newK;
-      schedule(nextTx, nextTy, newK);
+      // 共享 zoomAtPoint: 保持光标 content 位置不变的 zoom 算法
+      const next = zoomAtPoint(tx, ty, k, factor, cursorX, cursorY);
+      if (!next) return;
+      schedule(next.tx, next.ty, next.k);
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
@@ -345,21 +277,16 @@ export function ImageLightbox({
         t2.clientY - t1.clientY,
       );
       const ratio = currentDistance / pinchInitialDistance;
-      const newK = Math.max(
-        MIN_K,
-        Math.min(MAX_K, pinchInitialK * ratio),
-      );
       // 中心 = 两指中点
       const centerX = (t1.clientX + t2.clientX) / 2;
       const centerY = (t1.clientY + t2.clientY) / 2;
       const rect = el.getBoundingClientRect();
       const cursorX = centerX - rect.left - rect.width / 2;
       const cursorY = centerY - rect.top - rect.height / 2;
-      const contentX = (cursorX - tx) / k;
-      const contentY = (cursorY - ty) / k;
-      const nextTx = cursorX - contentX * newK;
-      const nextTy = cursorY - contentY * newK;
-      schedule(nextTx, nextTy, newK);
+      // 共享 zoomAtPoint: 跟滚轮共用同一份 zoom 公式
+      const next = zoomAtPoint(tx, ty, k, ratio, cursorX, cursorY);
+      if (!next) return;
+      schedule(next.tx, next.ty, next.k);
     };
     const onTouchEnd = () => {
       if (pinchInitialDistance !== 0) pinchInitialDistance = 0;
@@ -612,4 +539,120 @@ export function ImageLightbox({
   );
 
   return createPortal(lightboxContent, portalTarget);
+}
+
+/* ============================== Hooks / Helpers ============================== */
+
+/**
+ * 计算 "保持光标 content 位置不变" 的新 tx/ty/k
+ * - 滚轮: factor = WHEEL_STEP / 1/WHEEL_STEP (1.25× or 0.8×)
+ * - 双指: factor = ratio (currentDistance / initialDistance)
+ * - k 越界 (== MIN_K 或 == MAX_K) 返回 null, 调用方不 schedule
+ * - cursorX/Y 是相对容器中心的偏移 (调用方算好, 这里不依赖 DOM)
+ * - 抽出来: 之前 wheel handler 和 touch handler 重复同一段 content-preserve 公式
+ */
+function zoomAtPoint(
+  currentTx: number,
+  currentTy: number,
+  currentK: number,
+  factor: number,
+  cursorX: number,
+  cursorY: number,
+): { tx: number; ty: number; k: number } | null {
+  const newK = Math.max(MIN_K, Math.min(MAX_K, currentK * factor));
+  if (newK === currentK) return null;
+  // 保持光标位置: cursor 下的 content 坐标不变
+  //   contentX = (cursorX - tx) / k;  改 k 后新 tx = cursorX - contentX * newK
+  const contentX = (cursorX - currentTx) / currentK;
+  const contentY = (cursorY - currentTy) / currentK;
+  return {
+    tx: cursorX - contentX * newK,
+    ty: cursorY - contentY * newK,
+    k: newK,
+  };
+}
+
+/**
+ * 集中管理 lightbox 缩放/平移 state machine
+ * - tx/ty/k 三元组 + rAF 批处理 (跟 guide-map 同款 schedule/commit)
+ * - clampPan: k=1 时强制 tx=ty=0, k>1 时限制在图片边界内
+ * - reset: 翻图时归零 (用户调用 reset())
+ * - 内部维护 rafRef / pendingRef, 组件 unmount 自动 cancelAnimationFrame
+ *
+ * 输入 fit + containerSize 是 hook 外部计算好的 (useMemo), 跟 useLightboxZoom
+ * 解耦 — fit 是图片 fit 容器大小, containerSize 是容器尺寸, hook 只用它们算 clamp.
+ *
+ * 返回 { tx, ty, k, schedule, reset }
+ */
+function useLightboxZoom(opts: {
+  fit: { fitW: number; fitH: number } | null;
+  containerSize: { w: number; h: number } | null;
+}) {
+  const [tx, setTx] = useState(0);
+  const [ty, setTy] = useState(0);
+  const [k, setK] = useState(1);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef<{ tx: number; ty: number; k: number } | null>(null);
+
+  /** clamp tx/ty 让图片不拖出容器边界 */
+  const clampPan = useCallback(
+    (nextTx: number, nextTy: number, nextK: number): { tx: number; ty: number } => {
+      // k=1 时图片刚好 fit 容器, tx/ty 必须 = 0
+      if (nextK <= MIN_K || !opts.fit) return { tx: 0, ty: 0 };
+      const cw = opts.containerSize?.w ?? 0;
+      const ch = opts.containerSize?.h ?? 0;
+      const maxX = Math.max(0, (opts.fit.fitW * nextK - cw) / 2);
+      const maxY = Math.max(0, (opts.fit.fitH * nextK - ch) / 2);
+      return {
+        tx: Math.max(-maxX, Math.min(maxX, nextTx)),
+        ty: Math.max(-maxY, Math.min(maxY, nextTy)),
+      };
+    },
+    [opts.fit, opts.containerSize],
+  );
+
+  // rAF 提交 (跟 guide-map 同款)
+  const commit = useCallback(() => {
+    rafRef.current = null;
+    const p = pendingRef.current;
+    if (!p) return;
+    pendingRef.current = null;
+    setTx(p.tx);
+    setTy(p.ty);
+    setK(p.k);
+  }, []);
+  const schedule = useCallback(
+    (nextTx: number, nextTy: number, nextK: number) => {
+      const clamped = clampPan(nextTx, nextTy, nextK);
+      pendingRef.current = { tx: clamped.tx, ty: clamped.ty, k: nextK };
+      if (rafRef.current === null) {
+        rafRef.current = requestAnimationFrame(commit);
+      }
+    },
+    [commit, clampPan],
+  );
+
+  /** 重置 (还原) */
+  const reset = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    pendingRef.current = null;
+    setTx(0);
+    setTy(0);
+    setK(1);
+  }, []);
+
+  // 卸载清理 rAF
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
+
+  return { tx, ty, k, setTx, setTy, setK, schedule, reset };
 }
