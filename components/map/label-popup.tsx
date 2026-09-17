@@ -24,8 +24,7 @@
 "use client";
 /* eslint-disable @next/next/no-img-element -- 项目图标/PNG 缩略图用 /public 下资源, next/image 只优化位图不优化 SVG/动画 gif, 这里直接 <img> 更合适 */
 
-import { useEffect, useState } from "react";
-import { IconArrowRight } from "@tabler/icons-react";
+import { useEffect, useRef, useState } from "react";
 import type {
   NewLabel,
   NewLabelProduct,
@@ -300,8 +299,48 @@ function MobilePopup({
   const [expanded, setExpanded] = useState(false);
   // 细节图 lightbox (跟桌面端共用 ImageLightbox)
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  // swipe 手势 ref — 用于 onTouchStart / onTouchMove
+  const touchStartYRef = useRef<number | null>(null);
 
-  // 展开前: 只显示最多 3 张
+  // 锁定 body 滚动 — popup 打开期间页面不能滑
+  //   - 跟 desktop 上关掉 lightbox 滚动穿透同款 (commit 986a6c4 用了相同模式)
+  //   - 用 touch-action: none 在 popup 元素本身也能阻止页面滚动, 但 body 锁定是更稳的双保险
+  //   - 保存 prev, unmount 时还原避免污染 (可能其他 modal 也用 body.overflow)
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, []);
+
+  // swipe 手势: 上滑 (deltaY < -threshold) → expand; 下滑 (deltaY > threshold) → collapse
+  //   - 只在 popup 内容区域触发 (用户拖 popup 内容时, 不影响内嵌图片按钮的点击)
+  //   - 阈值 60px 避免误触 (单次滑动不会很快触发)
+  //   - touchcancel / touchend 后清状态
+  const SWIPE_THRESHOLD = 60;
+  const onSwipeTouchStart = (e: React.TouchEvent) => {
+    touchStartYRef.current = e.touches[0]?.clientY ?? null;
+  };
+  const onSwipeTouchMove = (e: React.TouchEvent) => {
+    const startY = touchStartYRef.current;
+    if (startY === null) return;
+    const curY = e.touches[0]?.clientY ?? startY;
+    const deltaY = curY - startY;
+    // 阈值 + 方向匹配才触发 (避免小抖动误触)
+    if (deltaY < -SWIPE_THRESHOLD && !expanded && hasAnyExpandable) {
+      setExpanded(true);
+      touchStartYRef.current = null; // 重置避免连续触发
+    } else if (deltaY > SWIPE_THRESHOLD && expanded) {
+      setExpanded(false);
+      touchStartYRef.current = null;
+    }
+  };
+  const onSwipeTouchEnd = () => {
+    touchStartYRef.current = null;
+  };
+
+  // 展开前: 只显示最多 3 张 (MobileImagesGrid 会补占位到 3 槽)
   // 展开后: 显示全部
   const collapsedImages = images.slice(0, 3);
   const expandedImages = images;
@@ -317,7 +356,8 @@ function MobilePopup({
       // 移动端: fixed bottom-0 全屏宽 (覆盖地图但地图还在 popup 上面仍可见)
       //  - max-h 控制 sheet 高度 (collapsed 50vh / expanded 90vh)
       //  - overflow-y-auto 让超长内容可滚动
-      //  - 不显示完整字段时不强制高度, 让内容自然撑开 (但仍底部对齐)
+      //  - touchAction="pan-y" 让 popup 内部可滚 (overflow-y-auto), 但页面其他部分不滚
+      //    (body.overflow=hidden 锁住页面滚动, touch 事件在 popup 内被消费)
       //  - 关闭按钮在 top bar (右上), 用户要求: 不依赖点击 popup 其它位置关
       className={cn(
         "fixed bottom-0 left-0 right-0 z-30",
@@ -326,9 +366,13 @@ function MobilePopup({
         "animate-in slide-in-from-bottom duration-300",
         expanded ? "max-h-[90vh]" : "max-h-[50vh]",
         "overflow-y-auto",
-        "select-text",
+        "touch-pan-y select-text",
       )}
       onMouseDown={(e) => e.stopPropagation()}
+      onTouchStart={onSwipeTouchStart}
+      onTouchMove={onSwipeTouchMove}
+      onTouchEnd={onSwipeTouchEnd}
+      onTouchCancel={onSwipeTouchEnd}
     >
       {/* 顶部 sticky bar — name + 关闭按钮 */}
       <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3">
@@ -375,6 +419,7 @@ function MobilePopup({
         {hasAnyImage && (
           <MobileImagesGrid
             images={showImages}
+            totalSlots={3}
             overflowScroll={overflowImages}
             onOpen={(idx) => {
               // idx 是 showImages 里的索引, 跟原始 images 同序
@@ -419,7 +464,11 @@ function MobilePopup({
           </div>
         )}
 
-        {/* 展开/收起按钮 — 有可展开内容才显示 */}
+        {/* 展开/收起按钮 — 有可展开内容才显示
+            用户要求: 不用太刻意, 只用箭头 SVG (旋转得到 ↑↓)
+            - collapsed 时箭头朝下 (▼ 暗示"上滑展开"或点开展开), expanded 时朝上 (▲)
+            - 用 public/icons/map/tabs/右侧箭头按钮.svg, rotate 180 转换方向
+            - 无背景, 简洁 */}
         {hasAnyExpandable && (
           <button
             type="button"
@@ -427,16 +476,17 @@ function MobilePopup({
               e.stopPropagation();
               setExpanded((v) => !v);
             }}
-            className="w-full py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-[13px] font-medium text-slate-700 flex items-center justify-center gap-1.5 transition-colors"
+            aria-label={expanded ? "收起" : "展开"}
+            className="w-full py-2 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
           >
-            <IconArrowRight
-              size={14}
+            <img
+              src="/icons/map/tabs/右侧箭头按钮.svg"
+              alt=""
               className={cn(
-                "transition-transform",
-                expanded ? "-rotate-90" : "rotate-90",
+                "w-5 h-5 transition-transform",
+                expanded ? "rotate-180" : "rotate-0",
               )}
             />
-            {expanded ? "收起" : "展开"}
           </button>
         )}
       </div>
@@ -461,10 +511,15 @@ function MobilePopup({
  */
 function MobileImagesGrid({
   images,
+  totalSlots,
   overflowScroll,
   onOpen,
 }: {
   images: string[];
+  /** 总槽位数 (默认 3) — 少于 totalSlots 时补占位元素, 让 grid 高度/视觉位置稳定
+   *  - 用户要求: 展开前图片太大了 (单张占满), 用固定 3 槽补占位让单张只占 1/3 宽
+   *  - 占位元素是看不见的占位 div (aria-hidden, transparent border + bg) */
+  totalSlots?: number;
   overflowScroll: boolean;
   onOpen: (idx: number) => void;
 }) {
@@ -504,64 +559,53 @@ function MobileImagesGrid({
     );
   }
 
-  // 标准 grid: 1 张大图 / 2-3 张 grid
-  if (images.length === 1) {
-    return (
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          onOpen(0);
-        }}
-        className="group relative block w-full aspect-video rounded-lg overflow-hidden bg-slate-100 cursor-zoom-in"
-      >
-        <img
-          src={images[0]}
-          alt=""
-          loading="lazy"
-          className="w-full h-full object-cover"
-          onError={(e) => {
-            e.currentTarget.style.display = "none";
-          }}
-        />
-        <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
-          <span className="text-[12px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
-            查看大图
-          </span>
-        </div>
-      </button>
-    );
-  }
+  // 固定槽位 grid (默认 3 槽) — 少于 3 张图时补占位元素, 让单张图也只占 1/3 宽度
+  //   - 用户要求: 展开前图片太大了 (单张 100% 宽), 现在固定 3 槽, 单张占 1/3
+  //   - 占位元素 transparent border + bg, 不显示但保留布局
+  //   - 高度统一 aspect-video, 不受图片数影响
+  const slots = totalSlots ?? 3;
+  const padded = Array.from({ length: slots }, (_, i) => images[i] ?? null);
 
-  // 2-3 张: 等宽 flex
   return (
     <div className="flex gap-1.5">
-      {images.map((src, i) => (
-        <button
-          key={i}
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpen(i);
-          }}
-          className="group relative flex-1 aspect-video rounded-lg overflow-hidden bg-slate-100 cursor-zoom-in"
-        >
-          <img
-            src={src}
-            alt=""
-            loading="lazy"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
+      {padded.map((src, i) =>
+        src ? (
+          <button
+            key={i}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpen(i);
             }}
+            className="group relative flex-1 aspect-video rounded-lg overflow-hidden bg-slate-100 cursor-zoom-in"
+          >
+            <img
+              src={src}
+              alt=""
+              loading="lazy"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
+              <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                查看大图
+              </span>
+            </div>
+          </button>
+        ) : (
+          <div
+            key={i}
+            // 占位槽: 看不见但占空间, 让单张图也能在 grid 里占 1/3 宽
+            //   - 用透明 dashed border (跟 desktop ImageThumbnails 一致)
+            //   - aspect-video 跟图片 button 同尺寸, layout 完全对齐
+            //   - aria-hidden 不参与 a11y tree
+            className="flex-1 aspect-video rounded-lg border border-dashed border-slate-200/60 bg-slate-50/30"
+            aria-hidden="true"
           />
-          <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
-            <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
-              查看大图
-            </span>
-          </div>
-        </button>
-      ))}
+        ),
+      )}
     </div>
   );
 }

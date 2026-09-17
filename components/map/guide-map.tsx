@@ -2262,27 +2262,25 @@ const toggleFullscreen = () => {
           </div>
         )}
 
-        {/* 缩放百分比 — 右上角 */}
-        <div className="absolute top-3 right-3 z-10 pointer-events-none">
-          <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
-            {Math.round(k * 100)}%
+        {/* 缩放百分比 — 右上角
+            打开搜索时 (searchVisible=true) 隐藏 — 搜索框展开后右上空间被压缩,
+            百分比 badge 跟搜索结果重叠, 用户焦点在搜索上时也不需要看缩放 */}
+        {!searchVisible && (
+          <div className="absolute top-3 right-3 z-10 pointer-events-none">
+            <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
+              {Math.round(k * 100)}%
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* 右下: 放大 / 缩小 / 全屏
-            打开搜索时 (searchVisible=true) 隐藏放大/缩小 — 搜索框展开后地图被挤压, 缩放按钮
-            没意义且占右下空间 (手机上更明显). 全屏按钮保留 (用户想沉浸式看地图时仍有用) */}
+        {/* 右下: 放大 / 缩小 / 全屏 (一直显示, 跟缩放百分比独立) */}
         <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-          {!searchVisible && (
-            <>
-              <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
-                <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
-              </ZoomBtn>
-              <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
-                <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
-              </ZoomBtn>
-            </>
-          )}
+          <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
+            <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
+          </ZoomBtn>
+          <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
+            <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
+          </ZoomBtn>
           <ZoomBtn
             onClick={(e) => {
               // 不让 click 冒泡到 map.onClick 关 popup (用户要求: 全屏前后 popup 保留)
