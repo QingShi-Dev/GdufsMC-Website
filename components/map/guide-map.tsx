@@ -2153,6 +2153,7 @@ const toggleFullscreen = () => {
             onClose={() => setSelectedLabel(null)}
             topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
             rootRef={popupRef}
+            isFullscreen={isFullscreen}
           />
         )}
 
@@ -2170,15 +2171,13 @@ const toggleFullscreen = () => {
             aria-label="搜索地标"
             className={cn(
               "absolute top-4 left-4 z-[60]",
-              "w-72 sm:w-80",
-              // max-width 按容器宽度算
-              //   - 非全屏: 父容器宽度的 100% - 24px (左右各 12px 留白)
-              //   - 全屏: 父容器 = viewport, 100% - 24px = 100vw - 24px
-              //     但非全屏父容器宽 < viewport, 这里直接用 viewport 也能正确
-              // 用户要求: 全屏时按"宽度"算 max-width (视觉效果是搜索栏加宽), 非全屏保持现状
+              // 宽度策略:
+              //   - 非全屏: w-72 sm:w-80 (288/320px 固定), max-w-父容器-24px
+              //   - 全屏: 按 viewport 25% (跟非全屏 320px / ~1280px viewport 视觉占比 25% 一致)
+              //     + min(25vw, 420px) 保证大屏不超 420px (桌面全屏后不会显得过大)
               isFullscreen
-                ? "max-w-[calc(100vw-24px)]"
-                : "max-w-[calc(100%-24px)]",
+                ? "w-[min(25vw,420px)] max-w-[calc(100vw-24px)]"
+                : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",

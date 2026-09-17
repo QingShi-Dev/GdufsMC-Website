@@ -37,9 +37,16 @@ export interface LabelPopupProps {
    *   - 不传 ref 时 parent 用 document.querySelector fallback (跟 searchWrapper 同款双保险)
    */
   rootRef?: React.RefObject<HTMLDivElement | null>;
+  /**
+   * 全屏状态 — 控制 popup 宽度
+   *   - false (非全屏): w-72 sm:w-80 (320px 固定)
+   *   - true (全屏): w-[min(25vw,420px)] 按 viewport 25% 但不超 420px
+   *     跟非全屏 320px / ~1280px viewport 视觉占比 25% 保持一致
+   */
+  isFullscreen?: boolean;
 }
 
-export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopupProps) {
+export function LabelPopup({ label, onClose, topClassName, rootRef, isFullscreen }: LabelPopupProps) {
   // ESC 关闭
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -75,7 +82,10 @@ export function LabelPopup({ label, onClose, topClassName, rootRef }: LabelPopup
       className={cn(
         "absolute left-4 z-20",
         topClassName ?? "top-4",
-        "w-72 sm:w-80 max-w-[calc(100%-24px)]",
+        // 宽度策略: 非全屏固定 320px, 全屏按 viewport 25% 但不超 420px (跟搜索栏一致)
+        isFullscreen
+          ? "w-[min(25vw,420px)] max-w-[calc(100vw-24px)]"
+          : "w-72 sm:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
         "overflow-hidden",
