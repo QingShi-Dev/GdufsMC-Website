@@ -679,13 +679,15 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // tx/ty/k 是 SVG g 的 transform, 也是地标 HTML 标签 left/top 的依据
   // 过渡时 (isPanning=true) SVG g 走 CSS transition, 标签也走 (left/top 500ms ease-in-out)
   // 两个动画同步开始/结束, 视觉上标签"绑"在地图上, 没有 drift, 没有 snap
-  const [tx, setTx] = useState(0);
-  const [ty, setTy] = useState(0);
-  const [k, setK] = useState(1);
-  const kRef = useRef(1);
-  const txRef = useRef(0);
-  const tyRef = useRef(0);
+  // 地图 zoom/pan state + rAF 批处理 + commit/schedule 抽到 useMapZoom hook
+  //   - tx/ty/k 三个 state + kRef/txRef/tyRef 同步 ref (event handler 不重挂载能读到最新值)
+  //   - rafRef/pendingRef rAF 批处理 (commit/schedule 跟 guide-map 异步拖动同款)
+  //   - 卸载自动 cancelAnimationFrame (跟 lightbox 的 useLightboxZoom 同款)
+  // worldRef 留在主组件 — 切维度同步, 跟地图数据生命周期绑, 不是 zoom 状态
   const worldRef = useRef<NewWorldMeta | null>(null);
+  const zoom = useMapZoom();
+  const { tx, ty, k, setTx, setTy, setK, txRef, tyRef, kRef, schedule, commit } = zoom;
+  // commitImmediate 见下面 (跟 writeHover 一起调)
 
   // ---- 2b. overworld 高清 tile 加载状态 ----
   // 思路 (用户要求):
@@ -1106,8 +1108,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //  - 用 wasDraggedRef 让 click handler 区分"纯点击" vs "拖动结束", 决定是否关 popup
   //  - 阈值 3px 跟 label/option drag-vs-click 一致, 避免手抖误判
   const wasDraggedRef = useRef(false);
-  const rafRef = useRef<number | null>(null);
-  const pendingRef = useRef<{ tx: number; ty: number; k: number } | null>(null);
+  // rafRef / pendingRef / commit / schedule 已在 useMapZoom hook 内部
 
   // ---- 5. 派生当前维度 ----
   const world = useMemo(
@@ -1124,25 +1125,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
    * 切维度 effect 读到就跳过 reset, 只保留 scrollMapIntoView
    */
   const skipWorldResetRef = useRef(false);
-
-  const commit = useCallback(() => {
-    rafRef.current = null;
-    const p = pendingRef.current;
-    if (!p) return;
-    pendingRef.current = null;
-    setTx(p.tx);
-    setTy(p.ty);
-    setK(p.k);
-  }, []);
-  const schedule = useCallback(
-    (tx: number, ty: number, k: number) => {
-      pendingRef.current = { tx, ty, k };
-      if (rafRef.current == null) {
-        rafRef.current = requestAnimationFrame(commit);
-      }
-    },
-    [commit],
-  );
 
   // ---- 全屏: state + 切换 + 退出滚地图位置 — 集中到 useFullscreen hook ----
   //   - 这里必须在 schedule 后, writeHoverCoordFromScreen 前:
@@ -1215,17 +1197,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   };
 
   const commitImmediate = (nextTx: number, nextTy: number, nextK: number) => {
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    pendingRef.current = null;
-    kRef.current = nextK;
-    txRef.current = nextTx;
-    tyRef.current = nextTy;
-    setK(nextK);
-    setTx(nextTx);
-    setTy(nextTy);
+    zoom.commitImmediate(nextTx, nextTy, nextK);
     // 同步刷新右上角坐标 — 改 transform 后不调就 stale
     //  (覆盖路径: + 按钮 (zoom), 点地标 (panToLandmark), 切维度 — 都走 commitImmediate)
     //  用 lastMouse 位置; 没记录过 (鼠标没进过地图) 就不刷
@@ -1414,17 +1386,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
       // 关键修复 1: 清掉 pendingRef 和 rAF, 避免之前的 drag rAF 用旧 k 覆盖 setK
       // 506% 跳变的根因: onPointerMove → schedule(curK) → rAF commit → setK(curK=旧值)
-      if (rafRef.current != null) {
-        cancelAnimationFrame(rafRef.current);
-        rafRef.current = null;
-      }
-      pendingRef.current = null;
-
-      // 关键修复 2: 同步更新 ref, 跟 setK 保持一致
-      // 之后的 onPointerMove 读 kRef.current 才是新值, schedule 才传正确 k
-      kRef.current = finalT.k;
-      txRef.current = finalTx;
-      tyRef.current = finalTy;
+      // commitImmediate 内部已经 cancel rAF + 清 pendingRef, 同步更新 ref + setState
+      commitImmediate(finalTx, finalTy, finalT.k);
 
       setK(finalT.k);
       setTx(finalTx);
@@ -1761,7 +1724,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     onPointerUp(e);
   };
 
-  const zoom = (factor: number) => {
+  const zoomByButton = (factor: number) => {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
     const curK = kRef.current;
@@ -1783,7 +1746,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     const cW = containerRef.current?.getBoundingClientRect().width ?? vbW;
     const cH = containerRef.current?.getBoundingClientRect().height ?? vbH;
     const { tx: cTx, ty: cTy } = clampBounds(rawTx, rawTy, newK, vbW, vbH, cW, cH, isSlice);
-    commitImmediate(cTx, cTy, newK);
+    schedule(cTx, cTy, newK);
     // 按钮缩放后滚到中央 (避开 header)
     scrollMapIntoView();
   };
@@ -2200,10 +2163,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
 
         {/* 右下: 放大 / 缩小 / 全屏 (一直显示, 跟缩放百分比独立) */}
         <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-          <ZoomBtn onClick={() => zoom(1.3)} ariaLabel="放大">
+          <ZoomBtn onClick={() => zoomByButton(1.3)} ariaLabel="放大">
             <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
-          <ZoomBtn onClick={() => zoom(1 / 1.3)} ariaLabel="缩小">
+          <ZoomBtn onClick={() => zoomByButton(1 / 1.3)} ariaLabel="缩小">
             <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
           <ZoomBtn
@@ -2378,5 +2341,107 @@ function useSearchState() {
     searchWrapperRef,
     searchQueryRef,
     searchListOpenRef,
+  };
+}
+
+/**
+ * 地图 zoom/pan state machine + rAF 批处理
+ * - tx/ty/k 三元组 + kRef/txRef/tyRef 同步 ref (event handler 读最新值不重挂载)
+ * - rafRef/pendingRef rAF 批处理 — wheel/drag/pinch 高频事件只 commit 一次
+ * - commit/schedule 是跟 guide-map 异步拖动同款 (commit 用 setState, schedule 累积 + rAF 触发)
+ * - 卸载自动 cancelAnimationFrame
+ *
+ * 返回:
+ *   state + setters: tx/setTx, ty/setTy, k/setK
+ *   同步 refs (event handler 用): txRef, tyRef, kRef
+ *   rAF 操作: schedule(tx, ty, k), commit (内部用)
+ */
+function useMapZoom() {
+  const [tx, setTx] = useState(0);
+  const [ty, setTy] = useState(0);
+  const [k, setK] = useState(1);
+  // 同步 refs — wheel/drag/pinch event handler 不重新挂载也能读到最新值
+  //   (useEffect 同步, deps 是 state 本身, 引用稳定)
+  const txRef = useRef(0);
+  const tyRef = useRef(0);
+  const kRef = useRef(1);
+  const rafRef = useRef<number | null>(null);
+  const pendingRef = useRef<{ tx: number; ty: number; k: number } | null>(null);
+
+  useEffect(() => {
+    txRef.current = tx;
+  }, [tx]);
+  useEffect(() => {
+    tyRef.current = ty;
+  }, [ty]);
+  useEffect(() => {
+    kRef.current = k;
+  }, [k]);
+
+  // rAF 提交 (跟 guide-map 异步拖动同款)
+  const commit = useCallback(() => {
+    rafRef.current = null;
+    const p = pendingRef.current;
+    if (!p) return;
+    pendingRef.current = null;
+    setTx(p.tx);
+    setTy(p.ty);
+    setK(p.k);
+  }, []);
+  const schedule = useCallback(
+    (nextTx: number, nextTy: number, nextK: number) => {
+      pendingRef.current = { tx: nextTx, ty: nextTy, k: nextK };
+      if (rafRef.current == null) {
+        rafRef.current = requestAnimationFrame(commit);
+      }
+    },
+    [commit],
+  );
+  // 同步提交 (按钮 zoom / 点地标 / 切维度用) — 跟 schedule 不同, 不走 rAF 批处理
+  //   - schedule 把状态写到 pendingRef 等下一帧 commit, 期间 ref 跟 state 不一致
+  //   - commitImmediate 直接 setState + 同步 ref, 保证 hook 内部 + 外部立即一致
+  //   - 适用: 按钮 zoom 后立刻写 hover coord (ref 已是新值), 点地标 pan 后立刻再 hover
+  //   - 不走 rAF 也避免 schedule 半完成的 pendingRef 覆盖新状态
+  const commitImmediate = useCallback(
+    (nextTx: number, nextTy: number, nextK: number) => {
+      // 先取消可能挂起的 rAF, 防止半完成的 schedule 覆盖我们刚 commit 的新值
+      if (rafRef.current != null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      pendingRef.current = null;
+      kRef.current = nextK;
+      txRef.current = nextTx;
+      tyRef.current = nextTy;
+      setK(nextK);
+      setTx(nextTx);
+      setTy(nextTy);
+    },
+    [],
+  );
+
+  // 卸载清理 rAF
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
+  }, []);
+
+  return {
+    tx,
+    ty,
+    k,
+    setTx,
+    setTy,
+    setK,
+    txRef,
+    tyRef,
+    kRef,
+    schedule,
+    commit,
+    commitImmediate,
   };
 }
