@@ -196,7 +196,13 @@ export function ImageLightbox({
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        // 阻止 LabelPopup 的 ESC listener 也触发 (popup 自己也有 window keydown listener)
+        //   - LabelPopup 的 onKey 收到 ESC 会调 onClose 关掉 popup
+        //   - 用户要求: 大图(lightbox)关闭时不关 popup, 只关 lightbox
+        //   - popup listener 是 bubble phase 顺序触发, lightbox 后注册后触发, stopImmediatePropagation 来不及
+        //   - 用 capture phase (true) 让 lightbox 先拦截, 同 phase 的 stopImmediatePropagation 生效
         e.preventDefault();
+        e.stopImmediatePropagation();
         onClose();
       } else if (e.key === "ArrowRight" && images.length > 1) {
         e.preventDefault();
@@ -206,8 +212,9 @@ export function ImageLightbox({
         goPrev();
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    // capture phase (true) 让 lightbox 先于 popup 的 bubble phase listener 触发
+    window.addEventListener("keydown", onKey, true);
+    return () => window.removeEventListener("keydown", onKey, true);
   }, [onClose, goNext, goPrev, images.length]);
 
   // 卸载清理 rAF
@@ -355,6 +362,14 @@ export function ImageLightbox({
       // 注意: 不再有 onClick 关闭 (用户要求: 只有右上角关闭按钮能关)
       //   - 之前点 backdrop (target === currentTarget) 也关, 用户觉得太容易误关
       //   - 现在只能点右上角关闭按钮关
+      onClick={(e) => {
+        // lightbox 内 click 不能冒泡到 map container 关 popup
+        //   - React 18 event delegation: lightbox (React Portal body) 在 React tree 上仍是
+        //     LabelPopup → map container 的后代, click 会沿虚拟 tree 冒泡到 map.onClick
+        //   - stopPropagation 阻止 React 虚拟 tree 上的冒泡
+        //   - 用户要求: 大图关闭时不关 popup, 任何 lightbox 内 click 都该被吸收
+        e.stopPropagation();
+      }}
       onWheel={(e) => {
         // 整个 dialog 上滚轮都 preventDefault, 避免:
         //   - 在 container padding 上滚轮: page scroll (lightbox wheel handler 只挂在 containerRef)
