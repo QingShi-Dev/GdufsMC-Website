@@ -145,7 +145,7 @@ export function ImageLightbox({
     const observer = new ResizeObserver(update);
     observer.observe(el);
     return () => observer.disconnect();
-  }, []);
+  }, [portalTarget]);
 
   // 计算图片在容器里的"fit"大小 (k=1 时的大小) — CSS max-w-full max-h-full 的同款行为
   const fit = useMemo(() => {
@@ -311,7 +311,10 @@ export function ImageLightbox({
     };
     el.addEventListener("wheel", handler, { passive: false });
     return () => el.removeEventListener("wheel", handler);
-  }, [k, tx, ty, schedule]);
+    // portalTarget 也在 deps: portal target 从 null → body/fullscreen 变化时,
+    // 旧 el (null) 的 effect bail 了, 新 portal commit 后 containerRef 才有值,
+    // 加 portalTarget 让 effect 在 portal 切换时重新跑, 挂到新 el 上
+  }, [k, tx, ty, schedule, portalTarget]);
 
   // 双指缩放 (移动端)
   useEffect(() => {
@@ -371,7 +374,8 @@ export function ImageLightbox({
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-  }, [k, tx, ty, schedule]);
+    // portalTarget 也在 deps: 同 wheel, portal 切换时重新挂监听
+  }, [k, tx, ty, schedule, portalTarget]);
 
   // 鼠标拖动平移
   const onPointerDown = (e: React.PointerEvent) => {
