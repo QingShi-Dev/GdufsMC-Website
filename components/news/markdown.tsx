@@ -17,7 +17,7 @@ import rehypeSanitize from "rehype-sanitize";
 
 export function MarkdownContent({ children }: { children: string }) {
   return (
-    <div className="text-slate-700">
+    <div className="px-1.5 sm:px-0 text-slate-700">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[rehypeSanitize]}

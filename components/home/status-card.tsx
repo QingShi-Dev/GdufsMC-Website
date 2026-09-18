@@ -253,7 +253,7 @@ function CopyButton({ text }: { text: string }) {
       <button
           type="button"
           onClick={handleClick}
-          className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] sm:text-[13px] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+          className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] sm:text-[13px] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
           aria-label="复制地址"
       >
         <IconCopy className="w-3.5 h-3.5" />
@@ -337,7 +337,7 @@ function GroupSection({
                   {servers.length > 0 ? (
                       servers.map((s) => <ServerRow key={s.key} s={s} />)
                   ) : (
-                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[12px] text-slate-400 text-center">
+                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[12px] text-slate-500 text-center">
                         {loading ? "检查通讯中..." : "暂无数据"}
                       </div>
                   )}

@@ -367,13 +367,13 @@ function ServerGroupCard({
           )}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className={cn("text-[12px] sm:text-[14px] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-500")}>
+        <span className={cn("text-[12px] sm:text-[14px] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-600")}>
           {line}
           {bandwidth && (
               <span
                   className={cn(
                       "ml-1.5 font-normal", "normal-case tracking-normal",
-                      recommended ? "text-emerald-600/70" : "text-slate-400"
+                      recommended ? "text-emerald-600/70" : "text-slate-500"
                   )}
               >
               {bandwidth}
@@ -392,7 +392,7 @@ function ServerGroupCard({
               <div key={s.host}>
                 <div className="flex font-mono text-[13px] sm:text-[14px] text-slate-800 justify-between">
                   <span className="truncate">{s.host}</span>
-                  <span className="text-[11px] sm:text-[13px] text-slate-500 flex-shrink-0">
+                  <span className="text-[11px] sm:text-[13px] text-slate-600 flex-shrink-0">
                       {s.version}
                   </span>
                 </div>
@@ -431,7 +431,7 @@ export function Footer() {
   const year = new Date().getFullYear();
 
   return (
-      <footer className="relative bg-white">
+      <footer className="relative bg-white cursor-default">
         <StoneDivider />
 
         <div

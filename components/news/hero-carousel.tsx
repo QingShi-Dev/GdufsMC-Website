@@ -106,7 +106,7 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
       {/* 大图区 — 21:9 比例, 整块可点击进详情 */}
       <Link
         href={`/news/${current.slug}`}
-        className="block relative aspect-[21/9] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm shadow-slate-900/[0.04]"
+        className="block relative min-h-[200px] sm:aspect-[21/7] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm shadow-slate-900/[0.04]"
         role="region"
         aria-roledescription="carousel"
         aria-label={`新闻轮播 — 当前: ${current.title}`}
@@ -120,7 +120,7 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
             animate="center"
             exit="exit"
             transition={{
-              x: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.5 },
+              x: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.75 },
             }}
             className="absolute inset-0"
           >
@@ -134,29 +134,29 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
             <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-slate-900/15 to-transparent" />
 
             {/* 底部文字 */}
-            <div className="absolute inset-x-0 bottom-0 p-6 sm:p-8">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 sm:p-8 sm:pb-6">
+              <div className="flex items-center gap-2 mb-1 sm:mb-3">
                 <span
                   className={cn(
-                    "text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
+                    "text-[11px] sm:text-[12px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
                     CATEGORY_BADGE_CLASS[current.category] ?? CATEGORY_BADGE_CLASS["公告"],
                   )}
                 >
                   {current.category}
                 </span>
                 {current.badge && (
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-500 text-white">
+                  <span className="text-[11px] sm:text-[12px] font-semibold px-2 py-0.5 rounded-md bg-rose-500 text-white">
                     {current.badge}
                   </span>
                 )}
-                <time className="text-[10px] text-white/70 font-mono tabular-nums">
+                <time className="text-[15px] sm:text-[16px] text-white font-semibold tabular-nums ml-2">
                   {current.date}
                 </time>
               </div>
-              <h2 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-2 max-w-2xl">
+              <h2 className="text-[22px] sm:text-[30px] font-bold text-white leading-tight sm:mb-2 max-w-2xl">
                 {current.title}
               </h2>
-              <p className="text-sm text-white/80 leading-relaxed max-w-2xl line-clamp-2">
+              <p className="hidden sm:flex text-[14px] text-white/80 leading-relaxed max-w-2xl line-clamp-2">
                 {current.summary}
               </p>
             </div>
@@ -173,9 +173,9 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
                 goTo(safeActive - 1);
               }}
               aria-label="上一条"
-              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-700 items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-700/90 items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
             >
-              <IconChevronLeft className="w-5 h-5" />
+              <IconChevronLeft className="w-6.5 h-6.5" />
             </button>
             <button
               onClick={(e) => {
@@ -184,16 +184,16 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
                 goTo(safeActive + 1);
               }}
               aria-label="下一条"
-              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-700 items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
+              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/90 hover:bg-white text-slate-700/90 items-center justify-center shadow-md opacity-0 group-hover:opacity-100 transition-opacity z-10"
             >
-              <IconChevronRight className="w-5 h-5" />
+              <IconChevronRight className="w-6.5 h-6.5" />
             </button>
           </>
         )}
 
         {/* 计数 — 右上角 */}
         {items.length > 1 && (
-          <div className="absolute top-3 right-3 px-2 py-1 rounded-md bg-black/40 text-white text-[10px] font-mono tabular-nums z-10 pointer-events-none">
+          <div className="hidden sm:flex absolute top-4 right-6 px-2.5 py-1 rounded-full bg-black/40 text-white text-[13px] font-mono tabular-nums z-10 pointer-events-none">
             {safeActive + 1} / {items.length}
           </div>
         )}
@@ -212,7 +212,7 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
               aria-label={`跳到第 ${i + 1} 条: ${it.title}`}
               className={cn(
                 "h-1.5 rounded-full transition-all",
-                i === safeActive ? "w-6 bg-slate-700" : "w-1.5 bg-slate-300 hover:bg-slate-400",
+                i === safeActive ? "w-5 bg-emerald-500/90" : "w-1.5 bg-slate-300 hover:bg-slate-400 cursor-pointer",
               )}
             />
           ))}

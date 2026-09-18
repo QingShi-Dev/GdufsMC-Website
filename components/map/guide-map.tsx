@@ -207,7 +207,7 @@ function WorldTabs({
             onFocus={() => preloadWorld(w.id)}
             onTouchStart={() => preloadWorld(w.id)}
             className={cn(
-              "px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center text-center gap-1.5",
+              "px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center text-center gap-1.5 cursor-pointer",
               active
                 ? "bg-white text-slate-800"
                 : "text-slate-500 hover:text-slate-700 hover:bg-white/40",
@@ -239,7 +239,7 @@ function WorldTabs({
         className={cn(
           "sm:ml-3.5",
           "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center text-center gap-2",
+          "transition-all flex items-center text-center gap-2 cursor-pointer",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
@@ -260,7 +260,7 @@ function WorldTabs({
         aria-pressed={labelsVisible}
         className={cn(
           "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center gap-2",
+          "transition-all flex items-center gap-2 cursor-pointer",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
@@ -283,7 +283,7 @@ function WorldTabs({
         className={cn(
           "lg:mr-72",
           "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center gap-2",
+          "transition-all flex items-center gap-2 cursor-pointer",
           "text-slate-500 hover:text-slate-700 hover:bg-white/40",
         )}
       >
@@ -1717,10 +1717,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
             style={{ display: "none" }}
           >
             <span className="text-slate-500">x</span>
-            <span data-x className="text-slate-900">-</span>
-            <span className="text-slate-400"> </span>
-            <span className="text-slate-500">z</span>
-            <span data-z className="text-slate-900">-</span>
+            <span data-x className="text-slate-700">-</span>
+            <span className="text-slate-500 ml-2">z</span>
+            <span data-z className="text-slate-700">-</span>
           </div>
         )}
       </div>
@@ -1964,7 +1963,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
                   }
                 }}
                 placeholder="搜索建筑名称或机器产物"
-                className="flex-1 min-w-0 px-2 text-[15px] text-slate-700 bg-transparent outline-none placeholder:text-slate-500/90"
+                className="flex-1 min-w-0 px-2 text-[15px] text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
               />
               {searchQuery.length > 0 && (
                 <button

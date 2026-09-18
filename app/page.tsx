@@ -29,7 +29,7 @@ export default function Home() {
     return (
         <HomeMotion>
             {/* ============== Hero：桌面 2 列 / 移动端堆叠 ============== */}
-            <section className="relative pt-28 pb-14 sm:pt-32 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden">
+            <section className="relative pt-28 pb-14 sm:pt-32 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden cursor-default">
                 {/* 像素方块装饰 */}
                 <div
                     aria-hidden="true"
@@ -108,7 +108,7 @@ export default function Home() {
             {/* ============== 服务器简介 ============== */}
             <section
                 id="server-intro"
-                className="relative py-10 sm:py-20 px-4 sm:px-6 lg:px-8"
+                className="relative py-10 sm:py-20 px-4 sm:px-6 lg:px-8 cursor-default"
             >
                 <div className="relative max-w-4xl mx-auto">
                     <div className="text-center mb-8">
@@ -145,7 +145,7 @@ export default function Home() {
             </section>
 
             {/* ============== 特性区 ============== */}
-            <section className="relative py-12 sm:pt-20 sm:pb-24 px-4 sm:px-6 lg:px-8">
+            <section className="relative py-12 sm:pt-20 sm:pb-24 px-4 sm:px-6 lg:px-8 cursor-default">
                 <div className="max-w-6xl mx-auto">
                     <div className="text-center mb-8 md:mb-12">
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
@@ -160,7 +160,7 @@ export default function Home() {
                         {FEATURES.map((f) => (
                             <div
                                 key={f.title}
-                                className="group relative px-5 py-4 sm:p-6 rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/70 hover:border-emerald-300/90 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 transition-all"
+                                className="group relative px-5 py-4 sm:p-6 sm:pb-4.5 rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/70 hover:border-emerald-300/90 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 transition-all"
                             >
                                 <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-sky-50 via-white to-emerald-50 border border-slate-200 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -171,10 +171,10 @@ export default function Home() {
                                         className="w-9 h-9"
                                     />
                                 </div>
-                                <h3 className="text-[17px] sm:text-[18px] font-bold text-slate-800 mb-2.5">
+                                <h3 className="text-[17px] sm:text-[18px] font-bold text-slate-800 mb-1.5">
                                     {f.title}
                                 </h3>
-                                <p className="text-[15px] sm:text-[16px] text-slate-500 leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[15px] sm:text-[16px] text-slate-600 leading-relaxed whitespace-pre-wrap">
                                     {f.desc}
                                 </p>
                             </div>

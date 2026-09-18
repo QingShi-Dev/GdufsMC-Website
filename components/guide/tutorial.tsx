@@ -164,7 +164,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                   "group w-full text-left flex items-center gap-3 sm:gap-3.5 py-1.5 sm:pt-3 sm:pb-2.5 px-3 sm:px-3.5 xl:-mx-3 rounded-xl transition-colors",
                   isActive
                     ? "bg-sky-100"
-                    : "hover:bg-slate-100/80",
+                    : "hover:bg-slate-100/80 cursor-pointer",
                 )}
               >
                 {/* 图标 (左, 小尺寸) */}
@@ -187,7 +187,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                     <span
                       className={cn(
                         "font-bold tracking-tighter tabular-nums leading-none transition-colors text-base flex-shrink-0",
-                        isActive ? "text-slate-800" : "text-slate-400 group-hover:text-slate-500",
+                        isActive ? "text-slate-800" : "text-slate-400 group-hover:text-slate-600",
                       )}
                     >
                       {String(i + 1).padStart(2, "0")}
@@ -195,7 +195,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                     <span
                       className={cn(
                         "font-semibold text-base sm:text-[17px] transition-colors truncate",
-                        isActive ? "text-slate-900" : "text-slate-500 group-hover:text-slate-600",
+                        isActive ? "text-slate-800" : "text-slate-500 group-hover:text-slate-700",
                       )}
                     >
                       {s.title}
@@ -274,7 +274,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                   </span>
                   {current.panel.subtitle && (
                     <>
-                      <span className="text-[14px] sm:text-[15px] text-slate-500 ml-0.5">
+                      <span className="text-[14px] sm:text-[15px] text-slate-600 ml-0.5">
                         {current.panel.subtitle}
                       </span>
                     </>
@@ -394,17 +394,17 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                   disabled={prevDisabled}
                   aria-label="上一张教程图"
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
                     prevDisabled
                       ? "text-slate-300 cursor-not-allowed"
                       : "text-slate-500 hover:text-slate-600 hover:bg-slate-200/60",
                   )}
                 >
-                  <IconChevronLeft className="w-5 h-5" />
+                  <IconChevronLeft className="w-6 h-6" />
                 </button>
 
                 <span
-                  className="text-[15px] sm:text-[16px] font-mono text-slate-400 tabular-nums"
+                  className="text-[15px] sm:text-[16px] font-mono text-slate-500 tabular-nums"
                   aria-current="true"
                 >
                   {contentIdx + 1} / {contents.length}
@@ -418,17 +418,17 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                   disabled={nextDisabled}
                   aria-label="下一张教程图"
                   className={cn(
-                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors",
+                    "w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer",
                     nextDisabled
                       ? "text-slate-300 cursor-not-allowed"
                       : "text-slate-500 hover:text-slate-600 hover:bg-slate-200/60",
                   )}
                 >
-                  <IconChevronRight className="w-5 h-5" />
+                  <IconChevronRight className="w-6 h-6" />
                 </button>
               </div>
               {/* 边界提示 + 键盘提示 */}
-              <div className="px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] text-slate-400 text-center bg-white/40 border-t border-slate-100">
+              <div className="px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] text-slate-500 text-center bg-white/40 border-t border-slate-100">
                 左右按钮点击翻页
               </div>
             </>

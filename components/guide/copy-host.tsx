@@ -61,7 +61,7 @@ export function CopyHost({ host }: { host: string }) {
       onClick={handleClick}
       className={cn(
         "inline-flex items-center gap-1.5 align-middle",
-        "px-1.5 py-0.5 rounded-md",
+        "px-1.5 py-0.5 rounded-md cursor-pointer",
         "font-mono text-[12px] font-medium",
         "border transition-colors tabular-nums",
         copied
