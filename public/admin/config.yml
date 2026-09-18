@@ -55,14 +55,22 @@ collections:
     folder: content/news
     create: true
     delete: true
-    slug: "{{title}}" # 文件名用标题生成, 实际 URL slug 由代码层 pinyin 派生
+    # URL slug 改成手动填写 (在 fields 里第一个字段)
+    #   - 旧 news 没 slug 字段 (fallback 到 pinyin 派生)
+    #   - 新 news 必须填 slug (小写英文/数字/短横线)
+    slug: "{{fields.slug}}"
     extension: md
     format: yaml-frontmatter
     fields: # 对应 lib/news.ts 的 NewsFrontmatter
+      - name: slug
+        label: URL slug
+        widget: string
+        hint: '英文/拼音/短横线, 例: welcome-to-alpha-test。改了不会迁移旧 URL, 小心外链失效'
+        pattern: ['^[a-z0-9][a-z0-9-]*[a-z0-9]$', '只能小写字母/数字/短横线, 不能以 - 开头/结尾']
       - name: title
         label: 标题
         widget: string
-        hint: 文章标题, 用于显示 + 派生 URL slug
+        hint: 文章标题, 用于显示
       - name: date
         label: 发布日期
         widget: datetime

@@ -1,4 +1,5 @@
 ---
+slug: "dev-plan"
 title: "关于网站的后续开发计划的构想"
 date: "2026-07-30"
 category: "公告"

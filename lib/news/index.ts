@@ -63,7 +63,10 @@ export const getNewsList = cache(async (): Promise<NewsItem[]> => {
           }
           return {
             ...fm,
-            slug: slugify(fm.title),
+            // 优先用 frontmatter.slug (手动填写), fallback 到 slugify(title) (pinyin)
+            //   - 旧 news (.md 没 slug 字段) 走 fallback
+            //   - 新 news (.md 有 slug 字段) 走手动值
+            slug: fm.slug?.trim() || slugify(fm.title),
             content: content.trim(),
           } satisfies NewsItem;
         } catch (err) {

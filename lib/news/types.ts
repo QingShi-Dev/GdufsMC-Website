@@ -16,6 +16,12 @@
 export type NewsCategory = "公告" | "更新" | "活动" | "公告-维护";
 
 export interface NewsFrontmatter {
+  /** URL slug (小写英文/数字/短横线). 手动填写, 不要从 title 自动派生
+   *  - 有值: 直接用这个作为 URL slug + 文件名
+   *  - 空 (旧 news 没填): fallback 到 lib/slugify.ts 从 title 派生 (pinyin)
+   *  - 注意: 改了 slug 不会迁移旧 URL — 旧 slug 已被搜索引擎/外链引用
+   */
+  slug?: string;
   title: string;
   /** YYYY-MM-DD */
   date: string;
@@ -28,7 +34,7 @@ export interface NewsFrontmatter {
 }
 
 export interface NewsItem extends NewsFrontmatter {
-  /** URL id, 由 slugify(title) 派生, 保证稳定 */
+  /** URL id, 优先用 frontmatter.slug, fallback 到 slugify(title) */
   slug: string;
   /** Markdown 正文 (不含 frontmatter) */
   content: string;
