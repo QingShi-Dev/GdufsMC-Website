@@ -29,19 +29,19 @@
 
 backend:
   name: github
-  repo: gdufsmc/gdufsmc-site-dev # TODO: 改成实际仓库 (owner/repo)
+  repo: QingShi-Dev/GdufsMC-Website # TODO: 改成实际仓库 (owner/repo)
   branch: main # TODO: 改成实际发布分支
   base_url: http://localhost:3000/admin # 本地开发填 http://localhost:3000/admin
-  auth_endpoint: api.github.com
-  open_authoring: false
-  squash_merges: true
 
 # 编辑界面本地化 (中文)
 locale: zh-Hans
 
 # 媒体 (图片) 上传
-media_folder: public/images/news
-public_folder: /images/news
+# 所有新闻图片统一池子: content/news/images/<hash>.webp
+# Sveltia 默认 hash 文件名, 自动避免冲突
+# Sveltia 自带 Asset Library (侧边栏 Alt+2) 浏览/删除/上传
+media_folder: content/news/images
+public_folder: /content/news/images
 
 # -----------------------------------------------------------------------------
 # 内容集合
@@ -58,8 +58,6 @@ collections:
     slug: "{{title}}" # 文件名用标题生成, 实际 URL slug 由代码层 pinyin 派生
     extension: md
     format: yaml-frontmatter
-    media_folder: "/images/news/{{filename}}" # 每条新闻独立图片目录
-    public_folder: "/images/news/{{filename}}"
     fields: # 对应 lib/news.ts 的 NewsFrontmatter
       - name: title
         label: 标题
@@ -88,7 +86,10 @@ collections:
       - name: cover
         label: 封面图
         widget: image
-        allow_multiple: false
+        # Sveltia CMS 不支持 allow_multiple, 用 multiple 代替 (默认 false)
+        multiple: false
+        # 字段级 media_folder 模板 {{slug}} 在 Sveltia 0.215 是回归 bug (issue #74), 不解析
+        # 直接用全局配置: images/news/<hash>.webp
         hint: 推荐 16:10 或更宽, 会用作列表缩略图 + 顶部轮播图
       - name: badge
         label: 轮播图标签 (可选)
@@ -103,4 +104,52 @@ collections:
       - name: body
         label: 正文
         widget: markdown
+        # markdown widget 内嵌图也走全局 (Sveltia 0.215 字段级模板不解析)
         hint: 支持 GFM (表格/任务列表/删除线), 可插入图片
+
+  # 小游戏积分榜 — 单文件 collection, 整个榜单存一个 YAML
+  - name: leaderboard
+    label: 小游戏积分榜
+    description: 网站 /news 页右侧的积分榜, 单文件结构, 修改后即时生效
+    files:
+      - name: data
+        label: 榜单数据
+        file: content/leaderboard/index.yml
+        fields:
+          - name: title
+            label: 卡片标题
+            widget: string
+            hint: 卡片头部显示的标题, 可加 emoji
+          - name: subtitle
+            label: 副标题
+            widget: string
+            hint: 副标题, 例如"更新于 2026-09-18 06:00"
+          - name: entries
+            label: 选手列表
+            widget: list
+            hint: 选手条目, 按 rank 升序展示, rank=1 在最上
+            fields:
+              - name: rank
+                label: 排名
+                widget: number
+                value_type: int
+                min: 1
+                hint: 1-based 排名
+              - name: player
+                label: 玩家名
+                widget: string
+                hint: MC 用户名
+              - name: score
+                label: 分数
+                widget: number
+                value_type: int
+                min: 0
+                hint: 当前积分
+              - name: change
+                label: 相对昨日变化
+                widget: select
+                options:
+                  - { label: "↑ 上升", value: up }
+                  - { label: "↓ 下降", value: down }
+                  - { label: "— 持平", value: same }
+                default: same

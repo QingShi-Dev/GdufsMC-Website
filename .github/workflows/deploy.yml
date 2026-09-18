@@ -1,0 +1,157 @@
+# =============================================================================
+# GitHub Actions — 自动部署到阿里云香港 ECS
+# =============================================================================
+#
+# 触发: push 到 main 时 (Sveltia CMS 编辑完提交也算)
+# 流程:
+#   1. runner 上 build (避免 0.5g 服务器 OOM)
+#   2. rsync 产物到 /opt/gdufsmc
+#   3. 服务器 pnpm install --prod + pm2 restart
+#   4. 健康检查 (主页 + API)
+#
+# 跟现有 deploy/app-deploy.sh 一致, 只是 runner 替代本地
+#
+# 需要的 Secrets (在 GitHub repo → Settings → Secrets → Actions 里配):
+#   SERVER_HOST         服务器 IP 或域名 (例: 1.2.3.4)
+#   SERVER_USER         SSH 用户名 (例: ubuntu)
+#   SSH_PRIVATE_KEY     SSH 私钥全文 (配对的公钥加到服务器的 ~/.ssh/authorized_keys)
+#
+# 安全: 用专用 deploy key, 不要用主登录 key
+# =============================================================================
+
+name: Deploy to production
+
+on:
+  push:
+    branches: [main]
+  # 手动重跑 — 修部署脚本时用
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: '重跑原因 (写到 commit message)'
+        required: false
+        default: 'manual'
+
+# 不要并发跑两个部署 (新 commit 触发时旧的会被取消或排队)
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false    # 跑完当前的再跑下一个, 别 kill 正在跑的
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: build + 校验 (push 和手动触发都跑)
+  # ---------------------------------------------------------------------------
+  build:
+    name: Build & validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Build Next.js
+        run: pnpm build
+        env:
+          # 构建时不需要真实 GH token, 用 dummy 就行
+          NEXT_TELEMETRY_DISABLED: '1'
+
+      # build 产物 + 配置文件打成包, 传到下一 job
+      # 不含 node_modules / .git / .next/cache — 服务器自己装 prod 依赖
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gdufsmc-build
+          path: |
+            .next
+            public
+            package.json
+            pnpm-lock.yaml
+            next.config.ts
+            proxy.ts
+            deploy/ecosystem.config.js
+          retention-days: 1
+          if-no-files-found: error
+
+  # ---------------------------------------------------------------------------
+  # Job 2: deploy (只在 push 触发时跑, manual workflow_dispatch 只跑 build)
+  # ---------------------------------------------------------------------------
+  deploy:
+    name: Deploy to ${{ secrets.SERVER_HOST }}
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push'
+    timeout-minutes: 5
+    environment:
+      name: production
+      url: https://${{ secrets.SERVER_HOST }}    # 显示在 GitHub Actions 摘要里
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gdufsmc-build
+          path: ./artifacts
+
+      # 同步到服务器
+      # --delete: 删目标里有但 artifact 没有的 (但 excludes 里的路径不参与)
+      # --exclude=node_modules / logs: 服务器上已有, 不要碰
+      - name: Rsync artifact to /opt/gdufsmc
+        uses: burnett01/rsync-deployments@6.0.0
+        with:
+          switches: >-
+            -avz --delete
+            --exclude=.git
+            --exclude=node_modules
+            --exclude=logs
+            --exclude=.next/cache
+            --exclude=.next/dev
+            --exclude=.next/types
+          path: ./artifacts/
+          remote_path: /opt/gdufsmc/
+          remote_host: ${{ secrets.SERVER_HOST }}
+          remote_user: ${{ secrets.SERVER_USER }}
+          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      # 服务器端: 装 prod 依赖 + 重启 PM2 + 健康检查
+      - name: Install prod deps & restart PM2
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            cd /opt/gdufsmc
+
+            echo "==> pnpm install --prod"
+            pnpm install --prod --frozen-lockfile
+
+            echo "==> PM2 重启"
+            # 首次部署时可能还没 pm2 start 过, 用 start; 否则 restart
+            pm2 restart gdufsmc 2>/dev/null || pm2 start deploy/ecosystem.config.js
+            pm2 save
+            sleep 2
+
+            echo "==> PM2 状态"
+            pm2 status
+
+            echo ""
+            echo "==> 健康检查"
+            curl -s -o /dev/null -w '主页:        HTTP %{http_code}  %{time_total}s\n' http://127.0.0.1:3000/
+            curl -s -o /dev/null -w 'API 状态:    HTTP %{http_code}\n'                    http://127.0.0.1:3000/api/server-status

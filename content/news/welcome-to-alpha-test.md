@@ -3,7 +3,7 @@ title: "欢迎来到：云城像素社网站 Alpha 内测版本"
 date: "2026-07-31"
 category: "更新"
 summary: "经过约一周的开发，云城像素社网站迎来了首次内部测试！建立起的这个网站，不仅是对我们过去奋斗的记录，更是对外展现组织风貌的重要窗口，诚邀大家一同探索、体验，并帮助我们做得更好。"
-cover: "/images/news/welcome-to-alpha-test/home-server-status.webp"
+cover: "/content/news/images/87901f68.webp"
 badge: "最新"
 pinned: true
 ---
@@ -30,7 +30,7 @@ pinned: true
 
 计划在后续开发中加入对地标建筑和重要机器的标识及介绍，并通过多层过渡的方式呈现更加清晰的细节
 
-![地图总览](/images/news/welcome-to-alpha-test/tour-map-overview.webp)
+![地图总览](/content/news/images/5664d66a.webp)
 
 ### 3. 轮播图逐步教程
 
@@ -41,7 +41,7 @@ pinned: true
 - 对链接进行特别优化，显示突出
 - 底部配有页数，可随时了解当前进度
 
-![游玩指南](/images/news/welcome-to-alpha-test/tutorial-join-server-steps.webp)
+![游玩指南](/content/news/images/d1329326.webp)
 
 ### 如您发现 Bug、体验问题或有改进建议，请及时与我联系。
 

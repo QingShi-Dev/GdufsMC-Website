@@ -1,5 +1,5 @@
 import { getLatestNews, getNewsList } from "@/lib/news";
-import { LEADERBOARD } from "@/data/leaderboard";
+import { getLeaderboard } from "@/lib/leaderboard";
 import { HeroCarousel } from "@/components/news/hero-carousel";
 import { NewsList } from "@/components/news/list";
 import { Leaderboard } from "@/components/news/leaderboard";
@@ -12,11 +12,15 @@ import { Leaderboard } from "@/components/news/leaderboard";
  *     - 主栏 (flex-1): NewsList — 最新 1 条 featured + 后续 3 列 grid
  *     - 侧栏 (lg:w-72): 小游戏积分榜 (sticky 跟随滚动)
  *
- * 数据走 lib/news 抽象层, 后期换后台 0 改动
+ * 数据走 lib/news + lib/leaderboard 抽象层, 后期换后台 0 改动
  */
 export default async function NewsPage() {
   // server component 调抽象层, 后期换 fetch 不动这里
-  const [carousel, list] = await Promise.all([getLatestNews(5), getNewsList()]);
+  const [carousel, list, leaderboard] = await Promise.all([
+    getLatestNews(5),
+    getNewsList(),
+    getLeaderboard(),
+  ]);
 
   return (
     <div className="pt-24 pb-20 my-5 relative overflow-hidden">
@@ -42,7 +46,7 @@ export default async function NewsPage() {
 
           {/* 侧栏: 小游戏积分榜 (lg 以上显示, sticky 跟随滚动) */}
           <div className="lg:w-72 lg:shrink-0">
-            <Leaderboard data={LEADERBOARD} />
+            <Leaderboard data={leaderboard} />
           </div>
         </div>
       </div>

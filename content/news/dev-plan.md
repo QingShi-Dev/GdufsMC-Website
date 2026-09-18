@@ -3,7 +3,7 @@ title: "关于网站的后续开发计划的构想"
 date: "2026-07-30"
 category: "公告"
 summary: "碍于时间仓促，许多功能还未能与大家见面，基于最初的构想，我将按照一定优先级顺序开发以下功能，该计划后续也会根据反馈进行调整"
-cover: "/images/news/dev-plan/biome-map-preview.webp"
+cover: "/content/news/images/6bad46f5.webp"
 ---
 
 # 开发计划总览（按优先级从高到低排序）
@@ -17,7 +17,7 @@ cover: "/images/news/dev-plan/biome-map-preview.webp"
 - 增加网站编辑入口，让发布更轻松
 - 实现富文本编辑器，让内容更灵活
 
-![news.ts](/images/news/dev-plan/news-source-code.webp)
+![news.ts](/content/news/images/d32171f5.webp)
 
 ## 二、完善导览地图的建筑、机器标点与介绍
 
@@ -29,7 +29,7 @@ cover: "/images/news/dev-plan/biome-map-preview.webp"
 - 增加机器标点，标注使用说明与注意事项
 - 引入分层筛选功能，可按"建筑""机器""交通设施"等类别筛选
 
-![地图总览](/images/news/welcome-to-alpha-test/tour-map-overview.webp)
+![地图总览](/content/news/images/5664d66a.webp)
 
 ## 三、优化网站性能
 

@@ -13,7 +13,7 @@
  */
 
 import { IconArrowUpRight, IconArrowDownRight, IconMinus } from "@tabler/icons-react";
-import type { LeaderboardData } from "@/data/leaderboard";
+import type { LeaderboardData } from "@/lib/leaderboard/types";
 
 const RANK_STYLE: Record<number, string> = {
   1: "bg-amber-50 border-amber-200/80",

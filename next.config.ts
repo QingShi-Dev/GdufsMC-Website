@@ -39,10 +39,14 @@ const SECURITY_HEADERS: { key: string; value: string }[] = [
       // raw.githubusercontent.com: Sveltia 预览媒体 (上传/已上传图片)
       // avatars.githubusercontent.com: Sveltia 显示 GitHub 用户头像
       "img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com",
-      "font-src 'self' data:",
+      // fonts.gstatic.com / cdn.jsdelivr.net: Sveltia CMS 字体 (Material Symbols + Source Sans 3 + Noto Mono)
+//   jsdelivr 是 fontsource CDN, Sveltia 默认从这拉字体
+      "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
       // api.github.com: Sveltia GitHub backend 读写
       // raw.githubusercontent.com: 媒体 fetch
-      "connect-src 'self' https://api.github.com https://raw.githubusercontent.com",
+      // unpkg.com: Sveltia 运行时 fetch locales/*.json + schema/* (locale 化 / 配置校验)
+      // data:: Sveltia 用 fetch 加载 data:image/svg+xml 的 logo SVG
+      "connect-src 'self' data: https://api.github.com https://raw.githubusercontent.com https://unpkg.com",
       "worker-src 'self' blob:",
       "object-src 'none'",
       "base-uri 'self'",
@@ -59,6 +63,17 @@ const nextConfig: NextConfig = {
         source: "/:path*",
         headers: SECURITY_HEADERS,
       },
+    ];
+  },
+  /**
+   * /admin 重写 — Next.js dev server redirect() 跟带中文注释的 page.tsx
+   * 组合会抛 ByteString 错误, 改用 rewrites 在 header 层重写 URL,
+   * 完全不进 app router page render
+   */
+  async rewrites() {
+    return [
+      { source: "/admin", destination: "/admin/index.html" },
+      { source: "/admin/", destination: "/admin/index.html" },
     ];
   },
 };
