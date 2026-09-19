@@ -350,7 +350,7 @@ export function HeaderNav() {
                             {hearts.map((h) => (
                                 <motion.img
                                     key={h.id}
-                                    src="/icons/global/爱心图标.png"
+                                    src="/icons/global/爱心图标.webp"
                                     alt=""
                                     initial={{ y: 0, opacity: 0, scale: 0.5, x: h.offsetX }}
                                     animate={{ y: -55, opacity: [0, 1, 1, 0], scale: 1 }}

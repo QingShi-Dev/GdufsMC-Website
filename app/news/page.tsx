@@ -23,7 +23,7 @@ export default async function NewsPage() {
   ]);
 
   return (
-    <div className="pt-16 sm:pt-18 pb-12 sm:pb-20 mt-5 sm:my-5 relative overflow-hidden">
+    <div className="pt-16 sm:pt-18 pb-12 sm:pb-20 mt-5 sm:my-5 relative overflow-hidden cursor-default">
 
       <div className="mx-auto max-w-6xl px-4 relative">
 
@@ -34,11 +34,11 @@ export default async function NewsPage() {
 
         {/* 下半部分: 主栏 (动态列表) + 侧栏 (积分榜) */}
         <div className="mt-11 flex flex-col lg:flex-row gap-8">
-          <div className="sm:hidden lg:w-72 lg:shrink-0">
+          <div className="sm:hidden lg:w-72 lg:shrink-0 px-2 sm:px-0">
             <Leaderboard data={leaderboard} />
           </div>
           {/* 主栏: 全部动态 */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 px-2 sm:px-0">
             <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-5">
               <span className="text-[19px] font-semibold text-slate-800">全部动态</span>
               <span className="text-[17px] text-slate-500 ml-1.5">共 {list.length} 条</span>

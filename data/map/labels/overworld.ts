@@ -303,7 +303,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/鱿鱼农场.webp",
       ],
       outputs: [
-        { label: "墨囊", icon: "/icons/map/items/ink_sac.png" },
+        { label: "墨囊", icon: "/icons/map/items/ink_sac.webp" },
       ],
     },
     {
@@ -319,9 +319,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/溺尸塔.webp",
       ],
       outputs: [
-        { label: "铜锭", icon: "/icons/map/items/copper_ingot.png" },
-        { label: "鹦鹉螺壳", icon: "/icons/map/items/nautilus_shell.png" },
-        { label: "三叉戟", icon: "/icons/map/items/trident.png" },
+        { label: "铜锭", icon: "/icons/map/items/copper_ingot.webp" },
+        { label: "鹦鹉螺壳", icon: "/icons/map/items/nautilus_shell.webp" },
+        { label: "三叉戟", icon: "/icons/map/items/trident.webp" },
       ],
     },
     {
@@ -338,9 +338,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/守卫者农场.webp",
       ],
       outputs: [
-        { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.png" },
-        { label: "海晶砂粒", icon: "/icons/map/items/prismarine_crystals.png" },
-        { label: "生鳕鱼", icon: "/icons/map/items/cod.png" },
+        { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.webp" },
+        { label: "海晶砂粒", icon: "/icons/map/items/prismarine_crystals.webp" },
+        { label: "生鳕鱼", icon: "/icons/map/items/cod.webp" },
       ],
     },
     {
@@ -357,12 +357,12 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/船吸刷怪塔.webp",
       ],
       outputs: [
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
-        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
-        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.png" },
-        { label: "箭", icon: "/icons/map/items/arrow.png" },
-        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.webp" },
+        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.webp" },
+        { label: "箭", icon: "/icons/map/items/arrow.webp" },
+        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.webp" },
       ],
     },
     {
@@ -379,7 +379,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/猪人塔收集.webp",
       ],
       outputs: [
-        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.webp" },
       ],
     },
     {
@@ -395,7 +395,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/刷冰机.webp",
       ],
       outputs: [
-        { label: "冰", icon: "/icons/map/blocks/ice.png" },
+        { label: "冰", icon: "/icons/map/blocks/ice.webp" },
       ],
     },
     {
@@ -411,11 +411,11 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/袭击塔.webp",
       ],
       outputs: [
-        { label: "绿宝石", icon: "/icons/map/items/emerald.png" },
-        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
-        { label: "不死图腾", icon: "/icons/map/items/totem_of_undying.png" },
-        { label: "不详之瓶", icon: "/icons/map/items/ominous_bottle.png" },
-        { label: "鞍", icon: "/icons/map/items/saddle.png" },
+        { label: "绿宝石", icon: "/icons/map/items/emerald.webp" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.webp" },
+        { label: "不死图腾", icon: "/icons/map/items/totem_of_undying.webp" },
+        { label: "不详之瓶", icon: "/icons/map/items/ominous_bottle.webp" },
+        { label: "鞍", icon: "/icons/map/items/saddle.webp" },
       ],
     },
     {
@@ -431,12 +431,12 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/女巫塔.webp",
       ],
       outputs: [
-        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
-        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.png" },
-        { label: "糖", icon: "/icons/map/items/sugar.png" },
-        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
-        { label: "木棍", icon: "/icons/map/items/stick.png" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.webp" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
+        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.webp" },
+        { label: "糖", icon: "/icons/map/items/sugar.webp" },
+        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.webp" },
+        { label: "木棍", icon: "/icons/map/items/stick.webp" },
       ],
     },
     {
@@ -453,10 +453,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/蛙明灯农场收集.webp",
       ],
       outputs: [
-        { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.png" },
-        { label: "珠光蛙明灯", icon: "/icons/map/blocks/pearlescent_froglight_side.png" },
-        { label: "青翠蛙明灯", icon: "/icons/map/blocks/verdant_froglight_side.png" },
-        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
+        { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.webp" },
+        { label: "珠光蛙明灯", icon: "/icons/map/blocks/pearlescent_froglight_side.webp" },
+        { label: "青翠蛙明灯", icon: "/icons/map/blocks/verdant_froglight_side.webp" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.webp" },
       ],
     },
     {
@@ -473,12 +473,12 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/蜜蜂农场.webp",
       ],
       inputs: [
-        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
-        { label: "剪刀", icon: "/icons/map/items/shears.png" },
+        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.webp" },
+        { label: "剪刀", icon: "/icons/map/items/shears.webp" },
       ],
       outputs: [
-        { label: "蜂蜜瓶", icon: "/icons/map/items/honey_bottle.png" },
-        { label: "蜜脾", icon: "/icons/map/items/honeycomb.png" },
+        { label: "蜂蜜瓶", icon: "/icons/map/items/honey_bottle.webp" },
+        { label: "蜜脾", icon: "/icons/map/items/honeycomb.webp" },
       ],
     },
     {
@@ -496,8 +496,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
       ],
       outputs: [
         { label: "凋灵骷髅头颅", icon: "null" },
-        { label: "煤炭", icon: "/icons/map/items/coal.png" },
-        { label: "骨头", icon: "/icons/map/items/bone.png" },
+        { label: "煤炭", icon: "/icons/map/items/coal.webp" },
+        { label: "骨头", icon: "/icons/map/items/bone.webp" },
       ],
     },
     {
@@ -528,8 +528,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/刷铁机.webp",
       ],
       outputs: [
-        { label: "铁锭", icon: "/icons/map/items/iron_ingot.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "铁锭", icon: "/icons/map/items/iron_ingot.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
     },
     {
@@ -546,7 +546,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/史莱姆农场.webp",
       ],
       outputs: [
-        { label: "粘液球", icon: "/icons/map/items/slime_ball.png" },
+        { label: "粘液球", icon: "/icons/map/items/slime_ball.webp" },
       ],
     },
     {
@@ -576,7 +576,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/海泡菜机.webp",
       ],
       inputs: [
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
         { label: "海泡菜", icon: "null" },
@@ -596,7 +596,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/甘蔗机.webp",
       ],
       outputs: [
-        { label: "甘蔗", icon: "/icons/map/items/sugar_cane.png" },
+        { label: "甘蔗", icon: "/icons/map/items/sugar_cane.webp" },
       ],
     },
     {
@@ -612,13 +612,13 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/全自动农场.webp",
       ],
       outputs: [
-        { label: "面包", icon: "/icons/map/items/bread.png" },
-        { label: "胡萝卜", icon: "/icons/map/items/carrot.png" },
-        { label: "马铃薯", icon: "/icons/map/items/potato.png" },
-        { label: "小麦", icon: "/icons/map/items/wheat.png" },
-        { label: "甜菜根", icon: "/icons/map/items/beetroot.png" },
-        { label: "小麦种子", icon: "/icons/map/items/wheat_seeds.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "面包", icon: "/icons/map/items/bread.webp" },
+        { label: "胡萝卜", icon: "/icons/map/items/carrot.webp" },
+        { label: "马铃薯", icon: "/icons/map/items/potato.webp" },
+        { label: "小麦", icon: "/icons/map/items/wheat.webp" },
+        { label: "甜菜根", icon: "/icons/map/items/beetroot.webp" },
+        { label: "小麦种子", icon: "/icons/map/items/wheat_seeds.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
     },
     {
@@ -635,8 +635,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/仙人掌农场.webp",
       ],
       outputs: [
-        { label: "仙人掌", icon: "/icons/map/blocks/cactus_side.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "仙人掌", icon: "/icons/map/blocks/cactus_side.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
     },
     {
@@ -652,11 +652,11 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/金胡萝卜机.webp",
       ],
       inputs: [
-        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
-        { label: "胡萝卜", icon: "/icons/map/items/carrot.png" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.webp" },
+        { label: "胡萝卜", icon: "/icons/map/items/carrot.webp" },
       ],
       outputs: [
-        { label: "金胡萝卜", icon: "/icons/map/items/golden_carrot.png" },
+        { label: "金胡萝卜", icon: "/icons/map/items/golden_carrot.webp" },
       ],
     },
     {
@@ -672,8 +672,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/烤鸡机.webp",
       ],
       outputs: [
-        { label: "熟鸡肉", icon: "/icons/map/items/cooked_chicken.png" },
-        { label: "羽毛", icon: "/icons/map/items/feather.png" },
+        { label: "熟鸡肉", icon: "/icons/map/items/cooked_chicken.webp" },
+        { label: "羽毛", icon: "/icons/map/items/feather.webp" },
       ],
     },
     {
@@ -689,8 +689,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/竹子机及铁轨机.webp",
       ],
       outputs: [
-        { label: "竹子", icon: "/icons/map/items/bamboo.png" },
-        { label: "铁轨", icon: "/icons/map/blocks/rail.png" },
+        { label: "竹子", icon: "/icons/map/items/bamboo.webp" },
+        { label: "铁轨", icon: "/icons/map/blocks/rail.webp" },
       ],
     },
     {
@@ -707,11 +707,11 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/水流刷怪塔.webp",
       ],
       outputs: [
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
-        { label: "骨头", icon: "/icons/map/items/bone.png" },
-        { label: "线", icon: "/icons/map/items/string.png" },
-        { label: "箭", icon: "/icons/map/items/arrow.png" },
-        { label: "腐肉", icon: "/icons/map/items/rotten_flesh.png" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
+        { label: "骨头", icon: "/icons/map/items/bone.webp" },
+        { label: "线", icon: "/icons/map/items/string.webp" },
+        { label: "箭", icon: "/icons/map/items/arrow.webp" },
+        { label: "腐肉", icon: "/icons/map/items/rotten_flesh.webp" },
       ],
     },
     {
@@ -728,13 +728,13 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/简易树场.webp",
       ],
       inputs: [
-        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
-        { label: "原木", icon: "/icons/map/blocks/oak_log.png" },
-        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.png" },
-        { label: "木棍", icon: "/icons/map/items/stick.png" },
+        { label: "原木", icon: "/icons/map/blocks/oak_log.webp" },
+        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.webp" },
+        { label: "木棍", icon: "/icons/map/items/stick.webp" },
       ],
     },
     {
@@ -751,10 +751,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/泥巴机.webp",
       ],
       inputs: [
-        { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
+        { label: "泥土", icon: "/icons/map/blocks/dirt.webp" },
       ],
       outputs: [
-        { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
+        { label: "泥巴", icon: "/icons/map/blocks/mud.webp" },
       ],
     },
     {
@@ -784,7 +784,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/竹筏炸雪机.webp",
       ],
       outputs: [
-        { label: "雪块", icon: "/icons/map/blocks/snow.png" },
+        { label: "雪块", icon: "/icons/map/blocks/snow.webp" },
       ],
     },
     {
@@ -801,7 +801,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/紫水晶农场.webp",
       ],
       outputs: [
-        { label: "紫水晶碎片", icon: "/icons/map/items/amethyst_shard.png" },
+        { label: "紫水晶碎片", icon: "/icons/map/items/amethyst_shard.webp" },
       ],
     },
     {
@@ -818,14 +818,14 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/红树树场.webp",
       ],
       inputs: [
-        { label: "红树胎生苗", icon: "/icons/map/blocks/mangrove_propagule.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "红树胎生苗", icon: "/icons/map/blocks/mangrove_propagule.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
-        { label: "红树原木", icon: "/icons/map/blocks/mangrove_log.png" },
-        { label: "红树胎生苗", icon: "/icons/map/blocks/mangrove_propagule.png" },
-        { label: "木棍", icon: "/icons/map/items/stick.png" },
-        { label: "红树根", icon: "/icons/map/blocks/mangrove_roots_side.png" },
+        { label: "红树原木", icon: "/icons/map/blocks/mangrove_log.webp" },
+        { label: "红树胎生苗", icon: "/icons/map/blocks/mangrove_propagule.webp" },
+        { label: "木棍", icon: "/icons/map/items/stick.webp" },
+        { label: "红树根", icon: "/icons/map/blocks/mangrove_roots_side.webp" },
       ],
     },
     {
@@ -842,18 +842,18 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/炼药机.webp",
       ],
       inputs: [
-        { label: "下界疣", icon: "/icons/map/items/nether_wart.png" },
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
-        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
-        { label: "发酵蛛眼", icon: "/icons/map/items/fermented_spider_eye.png" },
-        { label: "金胡萝卜", icon: "/icons/map/items/golden_carrot.png" },
-        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
-        { label: "闪烁的西瓜片", icon: "/icons/map/items/glistering_melon_slice.png" },
+        { label: "下界疣", icon: "/icons/map/items/nether_wart.webp" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.webp" },
+        { label: "发酵蛛眼", icon: "/icons/map/items/fermented_spider_eye.webp" },
+        { label: "金胡萝卜", icon: "/icons/map/items/golden_carrot.webp" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.webp" },
+        { label: "闪烁的西瓜片", icon: "/icons/map/items/glistering_melon_slice.webp" },
       ],
       outputs: [
-        { label: "隐身药水", icon: "/icons/map/effect/invisibility.png" },
-        { label: "抗火药水", icon: "/icons/map/effect/fire_resistance.png" },
-        { label: "治疗药水", icon: "/icons/map/effect/regeneration.png" },
+        { label: "隐身药水", icon: "/icons/map/effect/invisibility.webp" },
+        { label: "抗火药水", icon: "/icons/map/effect/fire_resistance.webp" },
+        { label: "治疗药水", icon: "/icons/map/effect/regeneration.webp" },
       ],
     },
     {
@@ -870,7 +870,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/刷石机.webp",
       ],
       outputs: [
-        { label: "圆石", icon: "/icons/map/blocks/cobblestone.png" },
+        { label: "圆石", icon: "/icons/map/blocks/cobblestone.webp" },
       ],
     },
     {
@@ -887,8 +887,8 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/恶魂农场收集.webp",
       ],
       outputs: [
-        { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.png" },
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
+        { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.webp" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
       ],
     },
     {
@@ -905,10 +905,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/矢车菊刷花机.webp",
       ],
       inputs: [
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
-        { label: "矢车菊", icon: "/icons/map/blocks/cornflower.png" },
+        { label: "矢车菊", icon: "/icons/map/blocks/cornflower.webp" },
       ],
     },
     {
@@ -925,7 +925,7 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/骨粉机.webp",
       ],
       outputs: [
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
     },
     {
@@ -942,9 +942,9 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/末地门刷沙机.webp",
       ],
       outputs: [
-        { label: "沙子", icon: "/icons/map/blocks/sand.png" },
-        { label: "沙砾", icon: "/icons/map/blocks/gravel.png" },
-        { label: "混凝土粉末", icon: "/icons/map/blocks/white_concrete_powder.png" },
+        { label: "沙子", icon: "/icons/map/blocks/sand.webp" },
+        { label: "沙砾", icon: "/icons/map/blocks/gravel.webp" },
+        { label: "混凝土粉末", icon: "/icons/map/blocks/white_concrete_powder.webp" },
         { label: "铁砧", icon: "null" },
       ],
     },
@@ -961,10 +961,10 @@ export const OVERWORLD_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/overworld/珊瑚扇机.webp",
       ],
       inputs: [
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
-        { label: "珊瑚扇", icon: "/icons/map/blocks/brain_coral_fan.png" },
+        { label: "珊瑚扇", icon: "/icons/map/blocks/brain_coral_fan.webp" },
       ],
     },
     {

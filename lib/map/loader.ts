@@ -7,11 +7,16 @@ import { TILE_PX } from "./constants";
  * Server-side 数据加载器 — 把 public/images/maps/20260907/{overworld,nether,end}
  * 下的瓦片拼成 GuideMap 需要的 NewWorld[] 数据
  *
- * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.png
- *   - overworld 同时配 overworld-thumbs/*.webp q=90 (缩略图, 客户端 k < 2.5 用)
- *   - nether / end 只用 PNG (小瓦片, 不配缩略图)
+ * 瓦片文件名: {col}_{row}_x{xCoord}_z{zCoord}.{png|webp}
+ *   - overworld 优先 webp lossless (1024², ~526KB/张, 全现代浏览器)
+ *     早期 .png 兼容: 若 .webp 不存在则 fallback 到 .png
+ *   - overworld 还配 overworld-thumbs/*.webp q=90 (缩略图, 客户端秒显示)
+ *   - nether / end 优先 webp lossless; 没有就 .png (小瓦片, 仍可用 PNG)
  * 坐标系: x = (col - minCol) * 1024,  z = (row - minRow) * 1024  (viewBox 单位 = 1024 block)
  *  跟 public/test/ 不同, 这里不显式存世界坐标, 全部映射到 viewBox 局部坐标
+ *
+ * 每个维度还会找一张 {dim}-overview.webp (拼合+下采样的低分辨率总览图, ~100KB)
+ * 给 zoom-out 视图用 — 用户缩远时只下载这张 100KB 总览, 不下 78 张 526KB 瓦片
  *
  * 维度顺序固定 overworld → nether → end, tab 顺序跟原 guide-map 一致
  */
@@ -82,9 +87,9 @@ export interface NewWorldMeta {
   map: NewMapLayer;
 }
 
-// TILE_PX 从 ./new-guide-map-constants 引入 (single source of truth, client 端也用同一份)
-// 三个维度都只用 PNG (overworld 同时配 overworld-thumbs/*.webp 供客户端按 k 切换)
-const RE_PNG = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.png$/;
+// TILE_PX 从 ./constants 引入 (single source of truth, client 端也用同一份)
+// 匹配 .png 或 .webp (优先 webp — webp lossless 体积更小; png 是 fallback/历史)
+const RE_TILE = /^(\d+)_(\d+)_x(-?\d+)_z(-?\d+)\.(png|webp)$/i;
 
 /**
  * 主世界右下角 8 张瓦片 (col 12-13, row 9-12) 实际是 relayout 时从其他位置搬来的:
@@ -144,14 +149,31 @@ function loadDimension(
 ): NewMapLayer | null {
   const dimDir = path.join(baseDir, dimId);
   if (!fs.existsSync(dimDir)) return null;
-  // overworld 现在只用 .png — 客户端按 zoom 阈值决定显示 webp 缩略图还是原 PNG
-  //   - src     = PNG (默认, k >= 2.5 时用)
-  //   - srcThumb = overworld-thumbs/*.webp q=90 (k < 2.5 时用, 缩略图阶段省流量)
-  // nether / end 只有 .png, srcThumb 不设置 (直接用 src)
-  const files = fs
+  // 优先 webp lossless, fallback png; 同名同时存在时 webp 赢
+  // overworld 早期版本只有 .png — 兼容老 commit 跑出来的目录
+  const all = fs
     .readdirSync(dimDir)
-    .filter((f) => f.endsWith(".png"))
+    .filter((f) => /\.(png|webp)$/i.test(f))
     .sort();
+  // 按 base name 去重, 同名时 webp 优先:
+  // - 先建 base -> chosenFile 映射
+  // - 第一次见到的 base (按字母序) 不论 ext 都暂存
+  // - 之后若见到同名 webp 替换
+  const chosenByBase = new Map<string, string>();
+  for (const f of all) {
+    const m = f.match(/^(.+)\.(png|webp)$/i);
+    if (!m) continue;
+    const base = m[1];
+    if (base === undefined) continue;
+    const ext = (m[2] ?? "").toLowerCase();
+    const existing = chosenByBase.get(base);
+    if (existing === undefined) {
+      chosenByBase.set(base, f);
+    } else if (ext === "webp" && !existing.endsWith(".webp")) {
+      chosenByBase.set(base, f); // 用 webp 替换 png
+    }
+  }
+  const files = [...chosenByBase.values()].sort();
   if (files.length === 0) return null;
 
   // overworld-thumbs/ 目录 (同 baseDir 父目录下) — 给 overworld 瓦片配 srcThumb
@@ -168,7 +190,7 @@ function loadDimension(
   let maxRow = -Infinity;
 
   for (const f of files) {
-    const m = f.match(RE_PNG);
+    const m = f.match(RE_TILE);
     if (!m) continue;
     const col = Number(m[1]);
     const row = Number(m[2]);

@@ -174,7 +174,7 @@ export default function HelpPage() {
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">玩家社群</span>
             <span className="text-slate-500 text-[16px] sm:text-[17px] ml-1.5">扫码加入</span>
           </div>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid sm:grid-cols-2 gap-3 px-1.5 sm:px-0">
             {/* 微信群 */}
             <div className="group relative p-4 sm:p-6 rounded-2xl bg-white/70 backdrop-blur-sm border border-slate-200/70 hover:border-emerald-300/90 hover:shadow-lg hover:shadow-emerald-500/10 hover:-translate-y-0.5 transition-all overflow-hidden">
               <div
@@ -266,7 +266,7 @@ export default function HelpPage() {
         </div>
 
         {/* 4 步教程 — 左侧步骤列表 + 右侧手动轮播 */}
-        <div className="mt-14">
+        <div className="mt-14 px-1.5 sm:px-0">
           <div className="mb-5 flex items-baseline gap-2 flex-wrap">
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">逐步教程</span>
             <br className="flex md:hidden" />
@@ -286,7 +286,7 @@ export default function HelpPage() {
             <img src="/icons/guide/服务器列表图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">服务器列表</span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-1.5 sm:px-0">
             {SERVERS.filter((g) => g.group !== "整合包 · BetterMC5").map((g) => (
               <div
                 key={g.group}
@@ -345,7 +345,7 @@ export default function HelpPage() {
               </span>
             </div>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 px-1.5 sm:px-0">
             {RECOMMENDED_MODS.map((m) => {
               return (
                 <div
@@ -384,14 +384,14 @@ export default function HelpPage() {
             <img src="/icons/guide/相关链接图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">相关链接</span>
           </div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 px-1.5 sm:px-0">
             {EXTERNAL.map((e) => (
               <a
                 key={e.url}
                 href={e.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative flex items-center gap-3 sm:gap-4 p-2 sm:p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-slate-200/70 hover:border-blue-300/90 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all"
+                className="group relative flex items-center gap-3 sm:gap-4 px-3.5 py-2 sm:p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-slate-200/70 hover:border-blue-300/90 hover:shadow-lg hover:shadow-blue-500/10 hover:-translate-y-0.5 transition-all"
               >
                 <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-slate-100 flex items-center justify-center group-hover:bg-blue-50 transition-all">
                   <IconExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-500 transition-colors" />

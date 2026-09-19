@@ -353,7 +353,13 @@ export function ImageLightbox({
           : "图片查看"
       }
       // z-[300] 远超 header (z-100) 和 search wrapper (z-[60]), 确保在最上层
+      // touchAction: "none" 让浏览器默认 pan/zoom 不干扰 lightbox 内的双指缩放/拖动
+      //   阻止 iOS Safari edge swipe (左右边缘滑动) 触发 history.back/forward (用户要求 #5)
+      //   阻止双指捏时浏览器想自己 pan 页面
+      // overscroll-behavior: contain 阻止 lightbox 内滚动连带触发页面级导航/刷新
+      //   (iOS Safari 边缘滑动返回手势, 用户要求 #5 "竖屏几乎无法用还会触发返回手势")
       className="fixed inset-0 z-[300] bg-slate-500/50 backdrop-blur-sm"
+      style={{ touchAction: "none", overscrollBehavior: "contain" }}
       // 注意: 不再有 onClick 关闭 (用户要求: 只有右上角关闭按钮能关)
       //   - 之前点 backdrop (target === currentTarget) 也关, 用户觉得太容易误关
       //   - 现在只能点右上角关闭按钮关

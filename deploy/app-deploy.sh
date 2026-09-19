@@ -69,6 +69,13 @@ ssh "$SSH_TARGET" "set -e
   cd ${REMOTE_DIR}
   pnpm install --prod --frozen-lockfile
 
+  # 同步 favicon — Next.js 16 build 把 favicon 输出到 .next/static/media/favicon.<hash>.ico
+  # nginx 配 alias /opt/gdufsmc/app/favicon.ico (固定路径), 这里 cp 同步当前 hash 文件
+  # 没这一步 /favicon.ico 会 404, 浏览器 tab 没图标
+  mkdir -p ${REMOTE_DIR}/app
+  cp ${REMOTE_DIR}/.next/static/media/favicon.*.ico ${REMOTE_DIR}/app/favicon.ico
+  ls -la ${REMOTE_DIR}/app/favicon.ico
+
   # ecosystem.config.js 是 CommonJS, 在 project root, PM2 直接吃
   pm2 delete gdufsmc 2>/dev/null || true
   pm2 start deploy/ecosystem.config.js

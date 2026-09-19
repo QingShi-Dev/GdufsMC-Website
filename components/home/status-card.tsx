@@ -578,7 +578,13 @@ export function StatusCard() {
                         transition={{
                           // 出现用 spring 带轻微 overshoot → "啪"一下弹出，存在感强
                           // 消失用更柔的 easeOut，时长比出现短
-                          default: { type: "spring", stiffness: 420, damping: 22, mass: 0.7 },
+                          // 注意: framer-motion v12 移除了 `default:` 子键, 现在顶层 type/stiffness
+                          //   本身就是所有属性的默认 transition, per-property 配置覆盖
+                          //   (v11 用 `default:` 时 v12 解析 transition 为 undefined, 触发 .startTime 报错)
+                          type: "spring",
+                          stiffness: 420,
+                          damping: 22,
+                          mass: 0.7,
                           opacity: { duration: 0.16, ease: "easeOut" },
                         }}
                         className="absolute right-full mr-1.5 top-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300/70 text-emerald-700 text-[12px] sm:text-[13px] font-medium whitespace-nowrap shadow-sm shadow-emerald-500/10"

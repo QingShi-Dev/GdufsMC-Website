@@ -36,7 +36,7 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/猪人塔.webp",
       ],
       outputs: [
-        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.webp" },
       ],
     }
     , {
@@ -53,8 +53,8 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/恶魂农场.webp",
       ],
       outputs: [
-        { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.png" },
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
+        { label: "恶魂之泪", icon: "/icons/map/items/ghast_tear.webp" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
       ],
     }
     , {
@@ -72,8 +72,8 @@ export const NETHER_LABELS: NewLabel[] = [
       ],
       outputs: [
         { label: "凋灵骷髅头颅", icon: "null" },
-        { label: "煤炭", icon: "/icons/map/items/coal.png" },
-        { label: "骨头", icon: "/icons/map/items/bone.png" },
+        { label: "煤炭", icon: "/icons/map/items/coal.webp" },
+        { label: "骨头", icon: "/icons/map/items/bone.webp" },
       ],
     }
     , {
@@ -89,23 +89,23 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/猪灵交易所.webp",
       ],
       inputs: [
-        { label: "金锭", icon: "/icons/map/items/gold_ingot.png" },
+        { label: "金锭", icon: "/icons/map/items/gold_ingot.webp" },
       ],
       outputs: [
-        { label: "下界石英", icon: "/icons/map/items/quartz.png" },
-        { label: "黑曜石", icon: "/icons/map/blocks/obsidian.png" },
-        { label: "哭泣的黑曜石", icon: "/icons/map/blocks/crying_obsidian.png" },
-        { label: "灵魂沙", icon: "/icons/map/blocks/soul_sand.png" },
-        { label: "黑石", icon: "/icons/map/blocks/blackstone.png" },
-        { label: "沙砾", icon: "/icons/map/blocks/gravel.png" },
-        { label: "皮革", icon: "/icons/map/items/leather.png" },
-        { label: "下界砖", icon: "/icons/map/items/nether_brick.png" },
-        { label: "光灵箭", icon: "/icons/map/items/spectral_arrow.png" },
-        { label: "火焰弹", icon: "/icons/map/items/fire_charge.png" },
-        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.png" },
+        { label: "下界石英", icon: "/icons/map/items/quartz.webp" },
+        { label: "黑曜石", icon: "/icons/map/blocks/obsidian.webp" },
+        { label: "哭泣的黑曜石", icon: "/icons/map/blocks/crying_obsidian.webp" },
+        { label: "灵魂沙", icon: "/icons/map/blocks/soul_sand.webp" },
+        { label: "黑石", icon: "/icons/map/blocks/blackstone.webp" },
+        { label: "沙砾", icon: "/icons/map/blocks/gravel.webp" },
+        { label: "皮革", icon: "/icons/map/items/leather.webp" },
+        { label: "下界砖", icon: "/icons/map/items/nether_brick.webp" },
+        { label: "光灵箭", icon: "/icons/map/items/spectral_arrow.webp" },
+        { label: "火焰弹", icon: "/icons/map/items/fire_charge.webp" },
+        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.webp" },
         { label: "失水恶魂", icon: "null" },
-        { label: "抗火药水", icon: "/icons/map/effect/fire_resistance.png" },
-        { label: "灵魂疾行", icon: "/icons/map/items/enchanted_book.png" },
+        { label: "抗火药水", icon: "/icons/map/effect/fire_resistance.webp" },
+        { label: "灵魂疾行", icon: "/icons/map/items/enchanted_book.webp" },
       ],
     }
     , {
@@ -122,12 +122,12 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/船吸刷怪塔收集.webp",
       ],
       outputs: [
-        { label: "火药", icon: "/icons/map/items/gunpowder.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
-        { label: "红石粉", icon: "/icons/map/items/redstone.png" },
-        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.png" },
-        { label: "箭", icon: "/icons/map/items/arrow.png" },
-        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.png" },
+        { label: "火药", icon: "/icons/map/items/gunpowder.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
+        { label: "红石粉", icon: "/icons/map/items/redstone.webp" },
+        { label: "萤石粉", icon: "/icons/map/items/glowstone_dust.webp" },
+        { label: "箭", icon: "/icons/map/items/arrow.webp" },
+        { label: "玻璃瓶", icon: "/icons/map/items/glass_bottle.webp" },
       ],
     }
     , {
@@ -143,7 +143,7 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/岩浆怪农场.webp",
       ],
       outputs: [
-        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.webp" },
       ],
     }
     , {
@@ -161,10 +161,10 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/蛙明灯农场.webp",
       ],
       outputs: [
-        { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.png" },
-        { label: "珠光蛙明灯", icon: "/icons/map/blocks/pearlescent_froglight_side.png" },
-        { label: "青翠蛙明灯", icon: "/icons/map/blocks/verdant_froglight_side.png" },
-        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.png" },
+        { label: "赭黄蛙明灯", icon: "/icons/map/blocks/ochre_froglight_side.webp" },
+        { label: "珠光蛙明灯", icon: "/icons/map/blocks/pearlescent_froglight_side.webp" },
+        { label: "青翠蛙明灯", icon: "/icons/map/blocks/verdant_froglight_side.webp" },
+        { label: "岩浆膏", icon: "/icons/map/items/magma_cream.webp" },
       ],
     }
     , {
@@ -181,7 +181,7 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/烈焰人农场.webp",
       ],
       outputs: [
-        { label: "烈焰棒", icon: "/icons/map/items/blaze_rod.png" },
+        { label: "烈焰棒", icon: "/icons/map/items/blaze_rod.webp" },
       ],
     }
     , {
@@ -197,7 +197,7 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/玄武岩机.webp",
       ],
       outputs: [
-        { label: "玄武岩", icon: "/icons/map/blocks/basalt_side.png" },
+        { label: "玄武岩", icon: "/icons/map/blocks/basalt_side.webp" },
       ],
     }
     , {
@@ -213,8 +213,8 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/猪肉塔.webp",
       ],
       outputs: [
-        { label: "熟猪排", icon: "/icons/map/items/cooked_porkchop.png" },
-        { label: "皮革", icon: "/icons/map/items/leather.png" },
+        { label: "熟猪排", icon: "/icons/map/items/cooked_porkchop.webp" },
+        { label: "皮革", icon: "/icons/map/items/leather.webp" },
       ],
     }
     , {
@@ -231,9 +231,9 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/守卫者农场收集.webp",
       ],
       outputs: [
-        { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.png" },
-        { label: "海晶砂粒", icon: "/icons/map/items/prismarine_crystals.png" },
-        { label: "生鳕鱼", icon: "/icons/map/items/cod.png" },
+        { label: "海晶碎片", icon: "/icons/map/items/prismarine_shard.webp" },
+        { label: "海晶砂粒", icon: "/icons/map/items/prismarine_crystals.webp" },
+        { label: "生鳕鱼", icon: "/icons/map/items/cod.webp" },
       ],
     }
     , {
@@ -262,10 +262,10 @@ export const NETHER_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/nether/盾构机.webp",
       ],
       outputs: [
-        { label: "远古残骸", icon: "/icons/map/blocks/ancient_debris_side.png" },
-        { label: "下界石英", icon: "/icons/map/items/quartz.png" },
-        { label: "金粒", icon: "/icons/map/items/gold_nugget.png" },
-        { label: "下界岩", icon: "/icons/map/blocks/netherrack.png" },
+        { label: "远古残骸", icon: "/icons/map/blocks/ancient_debris_side.webp" },
+        { label: "下界石英", icon: "/icons/map/items/quartz.webp" },
+        { label: "金粒", icon: "/icons/map/items/gold_nugget.webp" },
+        { label: "下界岩", icon: "/icons/map/blocks/netherrack.webp" },
       ],
     },
 
@@ -608,10 +608,10 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/紫颂果农场.webp",
       ],
       inputs: [
-        { label: "紫颂花", icon: "/icons/map/blocks/chorus_flower.png" },
+        { label: "紫颂花", icon: "/icons/map/blocks/chorus_flower.webp" },
       ],
       outputs: [
-        { label: "紫颂果", icon: "/icons/map/items/chorus_fruit.png" },
+        { label: "紫颂果", icon: "/icons/map/items/chorus_fruit.webp" },
       ],
     }
     , {
@@ -628,10 +628,10 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/固化机及刷沙机收集.webp",
       ],
       outputs: [
-        { label: "沙子", icon: "/icons/map/blocks/sand.png" },
-        { label: "沙砾", icon: "/icons/map/blocks/gravel.png" },
-        { label: "混凝土", icon: "/icons/map/blocks/white_concrete.png" },
-        { label: "混凝土粉末", icon: "/icons/map/blocks/white_concrete_powder.png" },
+        { label: "沙子", icon: "/icons/map/blocks/sand.webp" },
+        { label: "沙砾", icon: "/icons/map/blocks/gravel.webp" },
+        { label: "混凝土", icon: "/icons/map/blocks/white_concrete.webp" },
+        { label: "混凝土粉末", icon: "/icons/map/blocks/white_concrete_powder.webp" },
         { label: "铁砧", icon: "null" },
       ],
     }
@@ -642,14 +642,14 @@ export const END_LABELS: NewLabel[] = [
       z: 0,
       targetZoom: 600,
       kind: "machine",
-      builder: "KirkLee123",
+      builder: "Evenstar_X KirkLee123",
       description: "手动处死可获得大量经验",
       fontSize: { min: 12, max: 16, maxZoom: 600 },
       images: [
         "/images/maps/thumbs/machines/end/小黑塔.webp",
       ],
       outputs: [
-        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.png" },
+        { label: "末影珍珠", icon: "/icons/map/items/ender_pearl.webp" },
       ],
     }
     , {
@@ -666,14 +666,14 @@ export const END_LABELS: NewLabel[] = [
       ],
       description: "可适配全类型树苗",
       inputs: [
-        { label: "树苗", icon: "/icons/map/blocks/spruce_sapling.png" },
-        { label: "骨粉", icon: "/icons/map/items/bone_meal.png" },
+        { label: "树苗", icon: "/icons/map/blocks/spruce_sapling.webp" },
+        { label: "骨粉", icon: "/icons/map/items/bone_meal.webp" },
       ],
       outputs: [
-        { label: "原木", icon: "/icons/map/blocks/spruce_log.png" },
-        { label: "圆石", icon: "/icons/map/blocks/cobblestone.png" },
-        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.png" },
-        { label: "木棍", icon: "/icons/map/items/stick.png" },
+        { label: "原木", icon: "/icons/map/blocks/spruce_log.webp" },
+        { label: "圆石", icon: "/icons/map/blocks/cobblestone.webp" },
+        { label: "树苗", icon: "/icons/map/blocks/oak_sapling.webp" },
+        { label: "木棍", icon: "/icons/map/items/stick.webp" },
       ],
     }
     , {
@@ -689,7 +689,7 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/潜影贝农场.webp",
       ],
       outputs: [
-        { label: "潜影壳", icon: "/icons/map/items/shulker_shell.png" },
+        { label: "潜影壳", icon: "/icons/map/items/shulker_shell.webp" },
       ],
     }
     , {
@@ -719,10 +719,10 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/泥土机.webp",
       ],
       inputs: [
-        { label: "砂土", icon: "/icons/map/blocks/coarse_dirt.png" },
+        { label: "砂土", icon: "/icons/map/blocks/coarse_dirt.webp" },
       ],
       outputs: [
-        { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
+        { label: "泥土", icon: "/icons/map/blocks/dirt.webp" },
       ],
     }
     , {
@@ -738,10 +738,10 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/泥巴机.webp",
       ],
       inputs: [
-        { label: "泥土", icon: "/icons/map/blocks/dirt.png" },
+        { label: "泥土", icon: "/icons/map/blocks/dirt.webp" },
       ],
       outputs: [
-        { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
+        { label: "泥巴", icon: "/icons/map/blocks/mud.webp" },
       ],
     }
     , {
@@ -758,7 +758,7 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/滴水石锥农场.webp",
       ],
       outputs: [
-        { label: "滴水石锥", icon: "/icons/map/items/pointed_dripstone.png" },
+        { label: "滴水石锥", icon: "/icons/map/items/pointed_dripstone.webp" },
       ],
     }
     , {
@@ -775,10 +775,10 @@ export const END_LABELS: NewLabel[] = [
         "/images/maps/thumbs/machines/end/粘土机.webp",
       ],
       inputs: [
-        { label: "泥巴", icon: "/icons/map/blocks/mud.png" },
+        { label: "泥巴", icon: "/icons/map/blocks/mud.webp" },
       ],
       outputs: [
-        { label: "黏土球", icon: "/icons/map/items/clay_ball.png" },
+        { label: "黏土球", icon: "/icons/map/items/clay_ball.webp" },
       ],
     }
 ];

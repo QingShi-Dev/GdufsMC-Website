@@ -38,6 +38,16 @@ export const MAX_ZOOM: Record<NewWorldId, number> = {
 };
 
 /**
+ * 高清 (1024² webp lossless) 瓦片触发懒加载的缩放阈值.
+ * - k < 此值: 只渲染 thumb 层 (q=85, 512², ~46 KB/张) — 缩远时足够清晰, 不浪费带宽
+ * - k >= 此值: 渲染高清 webp lossless (1024², ~595 KB/张), 用 loading="lazy" 让浏览器视口接近时再下载
+ * - 高清加载完后 sticky 显示, 缩小也不再切回 thumb (用户要求)
+ * - 800% (k=8) 是用户实际想看细节的阈值 — 800% 时 thumb 已经明显糊, 高清细节看得清
+ *   之前用 k=10 (1000%), 用户体验太长 — 800% 触发更自然
+ */
+export const HIGH_RES_ZOOM_THRESHOLD = 8;
+
+/**
  * Hover preload Image cache (module-level, 跨组件实例 + 跨 mount 复用)
  * - 之前在 guide-map.tsx 顶层 module scope, 抽到独立文件后 module-level 状态保持
  *   同一个 cache, 行为完全不变

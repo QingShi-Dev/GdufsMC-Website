@@ -29,7 +29,7 @@ export default function Home() {
     return (
         <HomeMotion>
             {/* ============== Hero：桌面 2 列 / 移动端堆叠 ============== */}
-            <section className="relative pt-28 pb-14 sm:pt-32 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden cursor-default">
+            <section className="relative pt-28 pb-14 sm:pt-32 lg:pt-37 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden cursor-default">
                 {/* 像素方块装饰 */}
                 <div
                     aria-hidden="true"
@@ -62,7 +62,7 @@ export default function Home() {
                                 欢迎来到
                                 <a href="https://www.mualliance.cn/" target="_blank" className="inline-flex items-center gap-1.5 px-2.5 py-1 ml-2 mt-1.5 mb-2 md:mb-3 text-[14px] font-mono text-emerald-600 bg-white/60 rounded-sm">
                                     {/* eslint-disable-next-line @next/next/no-img-element -- 本地 40x20 小图标，无需 next/image 优化 */}
-                                    <img src="/icons/home/MUA图标.png" alt="" className="w-10 h-5 flex-shrink-0"/>
+                                    <img src="/icons/home/MUA图标.webp" alt="" className="w-10 h-5 flex-shrink-0"/>
                                     Minecraft 高校联盟成员
                                 </a>
                             </div>
@@ -156,7 +156,7 @@ export default function Home() {
                         </p>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:pb-5">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 px-3 sm:px-0 gap-4 md:pb-5">
                         {FEATURES.map((f) => (
                             <div
                                 key={f.title}

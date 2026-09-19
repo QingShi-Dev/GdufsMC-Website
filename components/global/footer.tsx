@@ -345,8 +345,7 @@ const SERVER_GROUPS: ServerGroup[] = [
     line: "粤高联",
     bandwidth: "联合服务器",
     servers: [
-      { host: "mc.ghm-mua.org", version: "联合门户群组" },
-      { host: "hemc.ghm-mua.org", version: "复原项目" },
+      { host: "mc.ghmmua.net", version: "联合门户群组" },
     ],
   },
 ];
@@ -361,7 +360,7 @@ function ServerGroupCard({
       <li
           className={cn(
               "flex flex-col justify-center",
-              "rounded-lg px-3 py-2 transition-colors",
+              "rounded-lg px-3.5 sm:px-4 py-3 sm:py-3.5 transition-colors",
               "bg-white/60 border border-slate-200/60",
               "hover:border-slate-300/80 hover:bg-white/80",
           )}
@@ -436,7 +435,7 @@ export function Footer() {
 
         <div
             className={cn(
-                "bg-gradient-to-b from-slate-100 via-slate-200 to-slate-300/60",
+                "bg-gradient-to-b from-slate-100 via-slate-200 to-slate-300/60 px-1.5 sm:px-0",
             )}
         >
           <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-10 pb-5 sm:pt-12 sm:pb-6">

@@ -44,6 +44,7 @@ import { toPinyin } from "@/lib/search/pinyin";
 // 几何变换 + 预加载 cache (pure functions, 2026-09-17 从 guide-map.tsx 抽出来)
 import {
   MAX_ZOOM,
+  HIGH_RES_ZOOM_THRESHOLD,
   preloadImage,
   screenToVB,
   worldToVB,
@@ -300,6 +301,89 @@ function WorldTabs({
   );
 }
 
+/* ---- Overworld 高清瓦片 (IntersectionObserver 视口 lazy load) ----
+ * SVG <image> 的 `loading="lazy"` 在各浏览器支持参差 (Chrome 早期 + Safari 限缩, Firefox 121+ 才稳定)
+ * 实测: k=10 时 78 张全部 eager fetch (SVG 不走 viewport lazy)
+ * 解法: 用 <image> 自身做 IO 观察, href 条件控制 fetch —
+ *   - 初始 href=undefined, 浏览器看不到请求 URL 不发请求
+ *   - IO 触发 isIntersecting=true → setInView(true)
+ *   - href=t.src → 浏览器开始 fetch
+ *   - onLoad → isLoaded=true → opacity 1 显示
+ *   - sticky: isLoaded 后 href 保持, 缩小到 k<10 也保留
+ *
+ * isPanning gate (关键, 修点击 label 跳变的 leak):
+ *   - 用户点 label → panToLandmark 瞬间 setK(16) (新 zoom) 但视觉还在 k=1
+ *   - 这种情况下 useEffect 立刻跑 (k 变化触发), IO 也立刻附着, 78 张全 viewport
+ *   - 必须 gate 掉 pan 期间的 IO, 等动画完再激活 — 利用已有的 isPanning state
+ *
+ * 早期版用单独的 <rect> 占位 + IO, 实测 fill="transparent" 的 <rect> 在某些浏览器
+ * 不会被 IO 触发 (paint 不计入 layout tree). 用 <image> 自身做 target 稳定
+ */
+function OverworldTileImage({
+  t,
+  common,
+  isLoaded,
+  onLoad,
+  shouldMountByZoom,
+  isPanning,
+}: {
+  t: NewMapTile;
+  common: Record<string, string | number>;
+  isLoaded: boolean;
+  onLoad: () => void;
+  /** 当前 zoom 是否达到触发懒加载的阈值 (k >= HIGH_RES_ZOOM_THRESHOLD); sticky 时不再用 */
+  shouldMountByZoom: boolean;
+  /** "点 region 跳视角" 500ms 过渡中 — true 时不激活 IO, 避免 k 跳变期间全 fetch */
+  isPanning: boolean;
+}) {
+  const [inView, setInView] = useState(false);
+  const imageRef = useRef<SVGImageElement | null>(null);
+
+  useEffect(() => {
+    // 三种情况不激活 IO:
+    // 1. k < 阈值 — 不该懒加载
+    // 2. 已经加载完 — sticky 显示, 不需要再观察
+    // 3. 正在 pan 过渡中 — k 跳变但视觉还在旧位置, 此时激活会误触发
+    if (!shouldMountByZoom || isLoaded || isPanning) return;
+    const node = imageRef.current;
+    if (!node) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            setInView(true);
+            observer.disconnect(); // 触发一次就够, 后续 sticky
+            break;
+          }
+        }
+      },
+      { rootMargin: "500px" }
+    );
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [shouldMountByZoom, isLoaded, isPanning]);
+
+  // href 条件: 三种语义:
+  //  - isLoaded=true → sticky, 始终显示 (包括 isPanning 期间, 用户已加载过的图不能丢)
+  //  - isLoaded=false + !isPanning + inView → 浏览器 fetch
+  //  - 其他 → undefined, 浏览器不发请求
+  //
+  // 关键: isPanning 只 gate "未加载"的图, 已加载的必须保留 href, 否则 pan 期间图会消失
+  // (之前 isPanning && inView 都 false 时, href=undefined → 已加载的高清图也变成空白元素)
+  const shouldSetHref = isLoaded || (!isPanning && inView);
+
+  return shouldMountByZoom && t.src ? (
+    <image
+      ref={imageRef}
+      href={shouldSetHref ? t.src : undefined}
+      {...common}
+      {...({ decoding: "async" } as Record<string, string>)}
+      style={{ opacity: isLoaded ? 1 : 0 }}
+      onLoad={onLoad}
+    />
+  ) : null;
+}
+
 /* ---- 缩放按钮 ---- */
 function ZoomBtn({
   onClick,
@@ -332,6 +416,7 @@ function MapCanvas({
   isPanning,
   transitInWorld,
   pngLoaded,
+  pngPainted,
   onPngLoaded,
 }: {
   layer: NewMapLayer;
@@ -341,22 +426,23 @@ function MapCanvas({
   isFullscreen: boolean;
   /** < sm (640px) 用 slice, 否则 meet. SSR 时默认 false (走 meet, 跟 server 一致) */
   isMobile: boolean;
-  /** 正在做"点 region 跳视角"的过渡动画 — true 时 SVG g 挂 transition,
-   *  让 transform 平滑插值; false 时 (用户拖拽/滚轮) 无 transition, 保持直接手感 */
+  /** "点 region 跳视角"状态 — true 时 SVG g 挂 transition-transform 500ms,
+   *  让点击 label 后的地图平移有平滑插值, 跟地标 label 同频道 */
   isPanning: boolean;
   /**
    * 地铁线 + 站点 (世界坐标 SVG) — 在 <g transform> 内部渲染, 跟着地图 transform 走
-   *  - 点 region 跳视角时, 跟地图内容一起走 500ms CSS transition, 跟地标 label 同频道
    *  - 不传就不渲染 (默认空)
    */
   transitInWorld?: () => ReactNode;
-  /** 已加载完 PNG 的 overworld tile key set — 这些 tile 永久显示 PNG (sticky, 缩小也不切回)
+  /** 已加载完高清 webp 的 overworld tile key set — 这些 tile 永久显示高清 (sticky, 缩小也不切回)
    *  - parent 用 setState, React 18 自动 batch 同帧多个 onLoad (单 fetch wave)
    *  - 跨 wave 的 setState 各 render 一次, 但用 prev 引用比较, 重复 setState bail out
    *  - 78 个 tile 加载完实际最多 13 次 render (HTTP/1.1 ~6 并发, 13 wave)
    *  - nether/end 没 srcThumb, 此 prop 对它们无效 (走 showHires=true 分支) */
   pngLoaded: Set<string>;
-  /** PNG tile onLoad 后调用 → 把 tileKey 加进 pngLoaded set, 触发 render 切到 PNG */
+  /** 高清已绘制 (晚 pngLoaded 一帧): 控制 thumb 何时消失 — 避免 thumb 消失瞬间 PNG 还没合成 */
+  pngPainted: Set<string>;
+  /** 高清 webp tile onLoad 后调用 → 把 tileKey 加进 pngLoaded set, 触发 render 切到高清 */
   onPngLoaded: (tileKey: string) => void;
 }) {
   // 移动端 (< sm, 640px): slice 模式 — 容器因 minHeight 比 viewBox 矮胖,
@@ -365,6 +451,7 @@ function MapCanvas({
   // 桌面 / 全屏: meet — 整图完整显示, 比例不一致时容器留灰
   // 用 prop isMobile 而不是直接读 window, 避免 SSR 时 window 不存在的报错
   const par = isFullscreen || !isMobile ? "xMidYMid meet" : "xMidYMid slice";
+
   return (
     <svg
       viewBox={`0 0 ${layer.width} ${layer.height}`}
@@ -374,21 +461,44 @@ function MapCanvas({
     >
       <g
         transform={`translate(${tx} ${ty}) scale(${k})`}
+        // "点 region 跳视角" 平移过渡 (用户要求保留): isPanning 时 500ms ease-in-out,
+        //   跟地标 label / 地铁线同步; 用户拖拽/滚轮时无 transition, 保持直接手感
         className={isPanning ? "transition-transform duration-500 ease-in-out" : ""}
         style={{ pointerEvents: "none" }}
       >
-        {/* 瓦片双层渲染 + PNG 加载完成切 (用户最新需求):
-            - PNG 在前 (z-order 底层) + webp 在后 (z-order 上层)
-            - 两个 <image> 永久 render, 用 opacity 切换, 不 remount (避免 image 偶发不显示 bug)
-            - opacity 由 pngLoadedRef.has(tileKey) 决定 (sticky, 加载一次后永久 true):
-              - 未加载 PNG: PNG opacity=0, webp opacity=1 → 用户看到 webp (秒显示)
-              - 已加载 PNG: PNG opacity=1, webp opacity=0 → 用户看到 PNG (高清, 永久)
-              - 缩小/刷新: 已经加载过的 PNG 仍显示 (pngLoadedRef 在 React ref, 跨 render 持久)
-            - thumbs 加载保证 (用户要求 "确保 thumbs 最先加载"):
-              - GuideMap useEffect 里插 <link rel="preload"> + fetchpriority='high' 预加载
-              - 浏览器 preload hint high priority, SVG <image> 自然 fetch 时已被 cache 命中
-            - opacity 瞬时切换 (无 transition, 用户要求 "不要过渡")
-            - nether/end 没 srcThumb, PNG opacity 永远 1 (一次性显示)
+        {/* 底层秒加载 sprite (256² q=60, 3328×1536, ~698KB, 1 个 HTTP 请求下完整张地图)
+            - 用途: "看起来秒加载" 背景 — 用户进 /map 立即看到完整地图 (糊但能辨方向)
+            - 上层 78 个 512² q=85 thumb 加载完后逐步盖住 sprite (透明度 0→1)
+            - 缩到 1000% 高清 lossless 加载完再盖住 thumb (现有 thumb→hires 切换逻辑不变)
+            - 仅 overworld 渲染: nether/end 没秒加载需求 (它们瓦片少, 现有 PNG 加载够快)
+            - 浏览器对相同 URL 自动去重, 多个 <image href="..."> 不会重复 fetch — 此处只有 1 个
+            - preserveAspectRatio="none" 让 sprite 拉伸到 viewBox 尺寸, 每格自动映射到对应位置
+            - 排序: 13 列 × 6 行, 按 (col, row) 数值升序 (跟 loader.ts 一致), 即 (1,7) 在左上, (13,12) 在右下 */}
+        {layer.tone === "plains" && (
+          <image
+            href="/images/maps/20260907/overworld-thumbs-fine-sprite.webp"
+            x={0}
+            y={0}
+            width={layer.width}
+            height={layer.height}
+            preserveAspectRatio="none"
+            style={{ opacity: 1 }}
+          />
+        )}
+        {/* 瓦片双层渲染 (用户最新需求):
+            - 高清 webp lossless (1024²) 在前 (z-order 底层) + thumb webp q=85 (512²) 在后 (z-order 上层)
+            - 两个 <image> 永久 render, 用 opacity 切换, 不 remount
+            - 高清懒加载触发条件 (k >= HIGH_RES_ZOOM_THRESHOLD = 10 = 1000%):
+              - k < 10 & !已加载: 只渲染 thumb (高清 <image> 完全不挂载, 零网络请求)
+              - k >= 10 | 已加载: 挂载高清 <image loading="lazy">, 浏览器视口接近时下载
+            - sticky 高清 (用户要求 "大图替换完了缩小也不要切回缩略图"):
+              - shouldRenderHires = k >= 阈值 || pngLoaded.has(tileKey)
+              - 已加载的 tile 即使缩小到 k<10 也保留高清 <image> (sticky)
+              - 已加载: 高清 opacity=1 (永久, pngLoaded 是 React setState 在 parent 持久)
+            - nether/end 没 srcThumb (用户不要 overview, 它们直接显示 PNG):
+              - showHires 永远 true (没 thumb 概念)
+              - shouldRenderHires 永远 true (没 thumb gate, 直接显示 PNG)
+              - 默认 k=1 立刻显示, 不需要 zoom 到 1000%
             - 接缝修复: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026 */}
         {layer.tiles.map((t) => {
           const tileKey = `${t.col}-${t.row}`;
@@ -399,29 +509,51 @@ function MapCanvas({
             height: 1026,
             preserveAspectRatio: "xMidYMid meet",
           };
-          // showHires = PNG 显示: 没 srcThumb (nether/end) 永远 true; 否则看 pngLoaded set
-          const showHires = !t.srcThumb || pngLoaded.has(tileKey);
+          const isLoaded = pngLoaded.has(tileKey);
+          const isPainted = pngPainted.has(tileKey);
+          // showHires 控 thumb 隐藏: 用 pngPainted (晚 pngLoaded 一帧) — 保证 PNG 真的合成后再藏 thumb
+          //   - pngLoaded=true 后 opacity:1 但可能合成层没绘, 立刻 thumb opacity:0 → 背景闪一帧
+          //   - pngPainted=true (rAF 后) 浏览器已经画过 PNG, 此时藏 thumb 安全
+          const showHires = !t.srcThumb || isPainted;
+          // shouldMountByZoom = zoom 是否达到触发阈值 (nether/end 永远 true — 它们没 thumb 不需要 lazy)
+          //   - overworld: k >= HIGH_RES_ZOOM_THRESHOLD 才进入 lazy 流程
+          //   - 已加载 (sticky): 也算 true, 让 <image> 元素保留挂载
+          const shouldMountByZoom =
+            !t.srcThumb || k >= HIGH_RES_ZOOM_THRESHOLD || isLoaded;
           return (
             <g key={tileKey}>
-              {/* 底层 PNG (高清) — 加载完成后 sticky 显示, 平时透明让 webp 透出
-                  - onLoad 触发 onPngLoaded → 加入 pngLoadedRef + forceRender → render 切到 PNG */}
-              {t.src && (
-                <image
-                  href={t.src}
-                  {...common}
-                  style={{
-                    opacity: showHires ? 1 : 0,
-                  }}
-                  onLoad={t.srcThumb ? () => onPngLoaded(tileKey) : undefined}
+              {/* 底层 webp lossless (高清)
+                  - overworld (有 thumb): OverworldTileImage 用 IntersectionObserver + 条件 href
+                    - <image> 自身做 IO 观察 (不依赖占位 rect, 避免 fill=transparent 的 layout 排除)
+                    - href=undefined 直到 IO 触发 → 浏览器不发请求 (零浪费)
+                    - 视口内: href=t.src → 浏览器 fetch
+                    - 加载完后 sticky: 即使缩小到 k<10 也保留挂载 (用户要求)
+                    - isPanning 期间 (点 region 跳视角 500ms) 不激活 IO, 避免 k 跳变期间误触发
+                  - nether/end (无 thumb): 直接挂载 <image>, eager load, 永远显示 (没 lazy 必要) */}
+              {t.srcThumb ? (
+                <OverworldTileImage
+                  t={t}
+                  common={common}
+                  isLoaded={isLoaded}
+                  shouldMountByZoom={shouldMountByZoom}
+                  isPanning={isPanning}
+                  onLoad={() => onPngLoaded(tileKey)}
                 />
+              ) : (
+                t.src && (
+                  <image
+                    href={t.src}
+                    {...common}
+                    style={{ opacity: 1 }}
+                  />
+                )
               )}
-              {/* 上层 webp (q=60 thumb, 512×512) — 秒显示, PNG 加载完切换后透明让 PNG 透出
-                  - SVG <image> href 加载失败时静默不渲染, 这时 PNG 即使 opacity=0 也不可见
-                    (但 PNG 加载完后会切到 opacity=1, 不会再依赖 webp) */}
+              {/* 上层 webp (q=85 thumb, 512²) — overworld 秒显示; nether/end 没 thumb */}
               {t.srcThumb && (
                 <image
                   href={t.srcThumb}
                   {...common}
+                  {...({ loading: "eager" } as Record<string, string>)}
                   style={{
                     opacity: showHires ? 0 : 1,
                   }}
@@ -548,6 +680,10 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //     - 实际: 78 个 tile 分 ~13 wave, 最多 13 次 render (vs 之前 78 次 setState 创建 78 个 Set)
   //   - 切维度时 pngLoaded 不重置 (粘性, 切回 overworld 仍是 PNG 状态)
   const [pngLoaded, setPngLoaded] = useState<Set<string>>(new Set());
+  // 高清已绘制 (晚 pngLoaded 几帧): 控制 thumb 是否隐藏
+  // 拆分目的: PNG opacity 跟 isLoaded 同步 (onLoad 后立刻 opacity=1), 但 thumb 必须等浏览器
+  //   把 PNG 真正画完再隐藏, 否则 thumb 消失的瞬间 PNG 还没合成, 露出背景
+  const [pngPainted, setPngPainted] = useState<Set<string>>(new Set());
   const onPngLoaded = useCallback((tileKey: string) => {
     setPngLoaded((prev) => {
       if (prev.has(tileKey)) return prev; // 同引用 → React bail out, 不 render
@@ -555,6 +691,28 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       next.add(tileKey);
       return next;
     });
+    // 双保险 — 多张大图同时加载时 1 个 rAF 不够, 浏览器合成耗时跟图片数 / GPU 相关:
+    //   - 2 个 rAF (快路径, 单图/双图常见情况, ~32ms 隐藏 thumb)
+    //   - setTimeout 100ms (兜底, 6+ 张图同时加载时 GPU 还没合成完, 等久点保险)
+    // setPngPainted 用 prev.has 幂等去重, 两个路径都触发也只会触发一次 render
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        setPngPainted((prev) => {
+          if (prev.has(tileKey)) return prev;
+          const next = new Set(prev);
+          next.add(tileKey);
+          return next;
+        });
+      });
+    });
+    setTimeout(() => {
+      setPngPainted((prev) => {
+        if (prev.has(tileKey)) return prev;
+        const next = new Set(prev);
+        next.add(tileKey);
+        return next;
+      });
+    }, 100);
   }, []);
 
   // ---- 2c. thumbs 预加载 — 移到 world useMemo 之后 (依赖 world) ----
@@ -913,6 +1071,9 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   //  - 用 wasDraggedRef 让 click handler 区分"纯点击" vs "拖动结束", 决定是否关 popup
   //  - 阈值 3px 跟 label/option drag-vs-click 一致, 避免手抖误判
   const wasDraggedRef = useRef(false);
+  // 双指缩放标记 — onTouchStart (touches.length >= 2) 置 true, onTouchEnd (touches < 2) 置 false
+  //   - onPointerDown 检查它: 双指期间不启动 map 单指 drag (用户要求 #1 双指不拖地图)
+  const pinchActiveRef = useRef(false);
   // rafRef / pendingRef / commit / schedule 已在 useMapZoom hook 内部
 
   // ---- 5. 派生当前维度 ----
@@ -1442,9 +1603,35 @@ const preloadedUrls = new Set<string>();
 
     let pinchInitialDistance = 0;
 
+    // native pointerdown capture listener — 比 React 合成 onPointerDown 早跑 (W3C event flow),
+    //   能读 e.touches.length 提前判断双指. 解决 React 合成 pointer event 不暴露 touches 的限制,
+    //   避免 pinchActiveRef 在 touchstart 才设置导致的 race (问题 #2 修).
+    //   touchstart 里也设 pinchActiveRef=true 是双保险 (幂等)
+    const onPointerDownCapture = (e: PointerEvent) => {
+      if (e.pointerType !== "touch") return;
+      // PointerEvent 类型上没 touches 属性 (TS lib.dom), 但实际浏览器 (Chrome/Firefox)
+      // 在 touch pointerType 时会带 touches. 用类型断言 + 可选链防御:
+      //   - 非触摸设备 (mouse/pen) touches 是 undefined, 跳过
+      //   - 触摸设备但只有 1 指 (单指 tap) touches.length === 1, 跳过
+      const touches = (e as PointerEvent & { touches?: TouchList }).touches;
+      if (touches && touches.length >= 2) {
+        pinchActiveRef.current = true;
+      }
+    };
+    el.addEventListener("pointerdown", onPointerDownCapture, { capture: true });
+
     const onTouchStart = (e: TouchEvent) => {
+      // 在 lightbox 打开时跳过 (用户要求 #2: lightbox 双指缩放不泄漏到地图)
+      //   - lightbox 在 map container DOM 内, touch 事件按 target 触发不会冒泡,
+      //     但 lightbox 内 touchstart 也会触发 map 这个 listener
+      //   - 检查 target 在 dialog 内就 return
+      const target = e.target as Element | null;
+      if (target?.closest('[role="dialog"][aria-modal="true"]')) return;
       if (e.touches.length !== 2) return;
       e.preventDefault();
+      // 双指期间标记 pinchActive, onPointerDown 看到后不启动单指 drag (用户要求 #1)
+      //   - 实际上 capture-phase native pointerdown 已经设过, 这里是双保险 (幂等)
+      pinchActiveRef.current = true;
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       if (!t1 || !t2) return;
@@ -1455,6 +1642,9 @@ const preloadedUrls = new Set<string>();
     };
 
     const onTouchMove = (e: TouchEvent) => {
+      // 在 lightbox 打开时跳过 (用户要求 #2: lightbox 双指缩放不泄漏到地图)
+      const target = e.target as Element | null;
+      if (target?.closest('[role="dialog"][aria-modal="true"]')) return;
       if (e.touches.length !== 2) return;
       if (pinchInitialDistance === 0) return;
       e.preventDefault();
@@ -1501,14 +1691,17 @@ const preloadedUrls = new Set<string>();
       // 少于 2 指时重置初始距离 (避免下次第 2 指时用旧距离)
       if (e.touches.length < 2) {
         pinchInitialDistance = 0;
+        pinchActiveRef.current = false;
       }
     };
 
+    el.addEventListener("pointerdown", onPointerDownCapture, { capture: true });
     el.addEventListener("touchstart", onTouchStart, { passive: false });
     el.addEventListener("touchmove", onTouchMove, { passive: false });
     el.addEventListener("touchend", onTouchEnd);
     el.addEventListener("touchcancel", onTouchEnd);
     return () => {
+      el.removeEventListener("pointerdown", onPointerDownCapture, { capture: true });
       el.removeEventListener("touchstart", onTouchStart);
       el.removeEventListener("touchmove", onTouchMove);
       el.removeEventListener("touchend", onTouchEnd);
@@ -1538,6 +1731,17 @@ const preloadedUrls = new Set<string>();
     //   - 阻止用户拖动 lightbox 图片时, 地图同时跟着拖 (双触发)
     //   - lightbox 在 map container 内 (DOM 嵌套), React 事件会冒泡到 map
     if ((e.target as HTMLElement | null)?.closest('[role="dialog"][aria-modal="true"]')) return;
+    // 双指缩放期间不启动单指 drag — 用户要求 #1: 双指 zoom 不带单指 pan
+    //   - 双指 → touches[0]/[1] 都触发 onPointerDown, 不应该启动 map drag
+    //   - pinchActiveRef 在 onTouchStart (touches.length >= 2) 置 true, onTouchEnd (touches < 2) 置 false
+    if (e.pointerType === "touch" && pinchActiveRef.current) return;
+    // 移动端 single touch 不启动 map drag — 用户要求 #4:
+    //   - 单指 tap 地图时, 让浏览器默认 page scroll (之前 setPointerCapture 把 pointer 截走,
+    //     page scroll 被冻结, 用户在地图位置 page-up / page-down 都拉不动)
+    //   - 桌面 (pointerType === "mouse" / "pen") 仍然拖动地图 (PC 主用场景)
+    //   - 移动端用户想拖动地图 → 用双指 pan (双指收拢是 zoom, 张开是 pan); 想滚动页面 → 单指滑动
+    //   - popup / search wrapper / lightbox 内的 pointerdown 已在上方早 return, 不影响
+    if (e.pointerType === "touch") return;
     // 搜索框有内容时, 在地图上按下鼠标拖动也收起搜索列表
     if (searchQueryRef.current.trim().length > 0) {
       setSearchListOpen(false);
@@ -1847,6 +2051,7 @@ const preloadedUrls = new Set<string>();
           isPanning={isPanning}
           transitInWorld={transitInWorldCb}
           pngLoaded={pngLoaded}
+          pngPainted={pngPainted}
           onPngLoaded={onPngLoaded}
         />
 
@@ -1934,17 +2139,17 @@ const preloadedUrls = new Set<string>();
             role="search"
             aria-label="搜索地标"
             className={cn(
-              "absolute top-4 left-4 z-[60]",
-              // 宽度策略 (3 个断点: 手机竖屏 / 手机横屏+平板 / 桌面):
-              //   - 默认 (<640): w-72 = 288px — 手机竖屏保持原宽度
-              //     用户要求: "竖屏的搜索栏保持原来的宽度"
-              //     竖屏 popup 是 bottom sheet (full width) 跟搜索栏不重叠, 搜索栏 288px OK
-              //   - sm (≥640): clamp(240, viewport-32, 280) — 手机横屏 / 平板 240-280px
-              //   - lg (≥1024): w-80 = 320 — 桌面 320px
-              //   - 全屏: max(280, min(25vw, 360)) — 桌面全屏后 280-360px
+              "absolute top-4 inset-x-4 z-[60]",
+              // 宽度策略 — 用户要求 #3: 竖屏直接计算, 左右到地图边框距离一致
+              //   - 用 inset-x-4 (left: 16px + right: 16px), 让 left 和 right 都固定 16px,
+              //     浏览器自动算 width = container_width - 32px, 跟地图左右边框对齐
+              //   - max-w 限制最大宽度, 避免大屏搜索栏太宽 (之前用 w-72 在 360px viewport 上
+              //     right = 360-288-16 = 56px, 跟 left=16 不对齐)
+              //   - 全屏时: 同样 inset-x-4, max-w 限制 280-360px
+              //   - 注意: 不要混用 "left-4 + w-XXX" — w 会让 right 由 width 推导, 跟 left-4 不一致
               isFullscreen
-                ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
-                : "w-72 sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
+                ? "max-w-[max(280px,min(25vw,360px))]"
+                : "max-w-[calc(100vw-32px)] sm:max-w-[clamp(240px,calc(100vw-32px),280px)] lg:max-w-sm",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",

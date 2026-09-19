@@ -103,41 +103,53 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
     };
   };
 
-  const onTouchMove = (e: RTouchEvent) => {
-    if (e.touches.length !== 1) return;
-    const touch = touchRef.current;
-    const t = e.touches[0];
-    if (!t) return;
-    const dx = t.clientX - touch.startX;
-    const dy = t.clientY - touch.startY;
-
-    if (!touch.judged) {
-      if (
-        Math.abs(dx) > DIRECTION_THRESHOLD ||
-        Math.abs(dy) > DIRECTION_THRESHOLD
-      ) {
-        touch.judged = true;
-        // 水平占优 (dx > dy * 1.2) 才算水平滑动, 阈值较松避免斜向 ~30° 误判
-        touch.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
-      }
-    }
-
-    if (touch.judged && touch.horizontal && !touch.switched) {
-      if (Math.abs(dx) > SWIPE_THRESHOLD) {
-        touch.switched = true;
-        // 左滑 (dx < 0) → 下一张 (+1), 右滑 (dx > 0) → 上一张 (-1)
-        goTo(safeActive + (dx < 0 ? 1 : -1));
-      }
-    }
-  };
 
   // touchend 立即 reset switched, 不等下次 onTouchStart
   //   - 浏览器 swipe 行为可能不合成 click → switched 一直 true 到下次触摸
   //   - 立即 reset 后, 期间用户连续快速点同一位置 (双击) 不会被误判为 swipe 后被拦截
   //   - 仍然比 browser 的 tap 判定 (~300ms timeout) 快, 用户感知不到差别
-  const onTouchEnd = () => {
+const onTouchEnd = () => {
     touchRef.current.switched = false;
   };
+
+  // native touchmove listener — React 18 移动端 onTouchMove 默认 passive, 调 preventDefault() 被浏览器忽略
+  //   - 用户要求 #6: preventDefault 必须真的生效才能阻止 iOS edge swipe history.back/forward
+  //   - 直接挂 native { passive: false } listener, preventDefault 真正起作用
+  //   - 挂在外层 div 的 ref 上 (跟 touchAction: pan-y 配合: 浏览器只处理垂直 pan, 水平 JS 全权)
+  const carouselRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const handler = (e: TouchEvent) => {
+      if (e.touches.length !== 1) return;
+      const touch = touchRef.current;
+      const t = e.touches[0];
+      if (!t) return;
+      const dx = t.clientX - touch.startX;
+      const dy = t.clientY - touch.startY;
+
+      if (!touch.judged) {
+        if (
+          Math.abs(dx) > DIRECTION_THRESHOLD ||
+          Math.abs(dy) > DIRECTION_THRESHOLD
+        ) {
+          touch.judged = true;
+          touch.horizontal = Math.abs(dx) > Math.abs(dy) * 1.2;
+        }
+      }
+
+      if (touch.judged && touch.horizontal && !touch.switched) {
+        // preventDefault 真的能阻止浏览器默认 (passive: false) — iOS edge swipe / Android Chrome pan
+        e.preventDefault();
+        if (Math.abs(dx) > SWIPE_THRESHOLD) {
+          touch.switched = true;
+          goTo(safeActive + (dx < 0 ? 1 : -1));
+        }
+      }
+    };
+    el.addEventListener("touchmove", handler, { passive: false });
+    return () => el.removeEventListener("touchmove", handler);
+  }, [goTo, safeActive]);
 
   // Link 点击拦截 — 滑动切换后阻止进入详情页 (用户要求)
   //   - capture phase 早于 React Link 自己的 handler, 能 preventDefault 阻止 history.push
@@ -184,7 +196,14 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
 
   return (
     <div
+      ref={carouselRef}
       className="group relative"
+      // touchAction: "pan-y" 让浏览器只处理垂直 pan + tap, 水平 swipe 完全交给 JS 处理
+      //   - 用户要求 #6: 移动端左右滑动 carousel 不被浏览器 edge swipe (history.back/forward) 截胡
+      //   - iOS Safari 默认在屏幕左/右边缘水平滑动触发 history.back/forward
+      //   - touchAction: "pan-y" 告诉浏览器: 水平 pan 是 app 的事, 别处理 → carousel 自己的 native touchmove (passive: false) 接管
+      //   - 垂直 pan (page scroll) 不受影响, 用户可以正常滚页面
+      style={{ touchAction: "pan-y" }}
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -193,8 +212,10 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
         href={`/news/${current.slug}`}
         onClickCapture={onLinkClickCapture}
         onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
+        // onTouchEnd 还在 React (因为 React passive 默认对 touchstart 也 passive, 但 touchend 不调 preventDefault 没事)
         onTouchEnd={onTouchEnd}
+        // 不在 <Link> 上挂 onTouchMove — React 18 移动端默认 passive listener, preventDefault() 被忽略
+        // native touchmove listener 挂在外层 carouselRef 上 (useEffect, { passive: false }), 真正能 preventDefault
         className="block relative min-h-[200px] sm:aspect-[21/7] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] cursor-pointer"
         role="region"
         aria-roledescription="carousel"
@@ -220,7 +241,7 @@ export function HeroCarousel({ items }: { items: NewsItem[] }) {
               className="absolute inset-0 w-full h-full object-cover"
             />
             {/* 渐变 overlay 让底部文字可读 */}
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-slate-900/15 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-slate-900/30 via-slate-900/8 to-transparent" />
 
             {/* 底部文字 */}
             <div className="absolute inset-x-0 bottom-0 p-4 sm:p-6 sm:p-8 sm:pb-6">

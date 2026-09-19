@@ -38,8 +38,7 @@ export const SERVERS: ServerGroup[] = [
     icon: "/icons/home/粤高联图标.svg",
     desc: "广东高校 MC 联盟联合服务器",
     items: [
-      { tag: "联合群组门户", host: "mc.ghm-mua.org", note: "- 1.21" },
-      { tag: "复原项目", host: "hemc.ghm-mua.org", note: "- 1.20.1" },
+      { tag: "联合群组门户", host: "mc.ghmmua.net", note: "- 1.21" },
     ],
   },
 ];

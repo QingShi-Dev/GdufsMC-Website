@@ -567,7 +567,7 @@ function MobilePopup({
             className="w-full py-2 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors"
           >
             <img
-              src="/icons/map/tabs/右侧箭头按钮.svg"
+              src="/icons/map/tabs/右侧箭头图标.svg"
               alt=""
               className={cn(
                 "w-5 h-5 transition-transform",
@@ -688,7 +688,7 @@ function MobileImagesGrid({
             //   - 用透明 dashed border (跟 desktop ImageThumbnails 一致)
             //   - aspect-video 跟图片 button 同尺寸, layout 完全对齐
             //   - aria-hidden 不参与 a11y tree
-            className="flex-1 aspect-video rounded-lg border border-dashed border-slate-200/60 bg-slate-50/30"
+            className="flex-1 aspect-video"
             aria-hidden="true"
           />
         ),
@@ -779,7 +779,7 @@ function ImageThumbnails({
           ) : (
             <div
               key={i}
-              className="flex-1 aspect-video rounded border border-dashed border-slate-200 bg-slate-50/30"
+              className="flex-1 aspect-video"
               aria-hidden="true"
             />
           ),

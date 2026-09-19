@@ -72,8 +72,15 @@ $installCmd = "set -e; tar -xzf /tmp/gdufsmc-deploy.tar.gz -C $RemoteDir; cd $Re
 & ssh $SshTarget $installCmd
 if ($LASTEXITCODE -ne 0) { throw "remote install failed (exit $LASTEXITCODE)" }
 
+# 同步 favicon — Next.js 16 输出到 .next/static/media/favicon.<hash>.ico
+# nginx alias 是固定路径 /opt/gdufsmc/app/favicon.ico, 必须 cp 同步, 否则 404
+Log "sync favicon (nginx alias needs fixed path)"
+$favCmd = "set -e; cd $RemoteDir; mkdir -p app; cp .next/static/media/favicon.*.ico app/favicon.ico; ls -la app/favicon.ico"
+& ssh $SshTarget $favCmd
+if ($LASTEXITCODE -ne 0) { throw "favicon sync failed (exit $LASTEXITCODE)" }
+
 Log 4 4 "PM2 restart + health check (remote)"
-$startCmd = "set -e; cd $RemoteDir; pm2 delete gdufsmc 2>/dev/null || true; pm2 start deploy/ecosystem.config.js; pm2 save; sleep 3; pm2 status; echo '---'; curl -s -o /dev/null -w 'app:    HTTP %{http_code}  %{time_total}s\n' http://127.0.0.1:3000/; curl -s -o /dev/null -w 'api:    /api/server-status HTTP %{http_code}\n' http://127.0.0.1:3000/api/server-status; rm -f /tmp/gdufsmc-deploy.tar.gz"
+$startCmd = "set -e; cd $RemoteDir; pm2 delete gdufsmc 2>/dev/null || true; pm2 start deploy/ecosystem.config.js; pm2 save; sleep 3; pm2 status; echo '---'; curl -s -o /dev/null -w 'app:    HTTP %{http_code}  %{time_total}s\n' http://127.0.0.1:3000/; curl -s -o /dev/null -w 'api:    /api/server-status HTTP %{http_code}\n' http://127.0.0.1:3000/api/server-status; curl -sI https://web-mc.top/favicon.ico 2>/dev/null | head -1; rm -f /tmp/gdufsmc-deploy.tar.gz"
 & ssh $SshTarget $startCmd
 if ($LASTEXITCODE -ne 0) { throw "remote start failed (exit $LASTEXITCODE)" }
 
