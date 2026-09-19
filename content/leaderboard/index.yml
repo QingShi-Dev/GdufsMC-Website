@@ -9,7 +9,3 @@ entries:
     player: RTXKim_jo_un
     score: 1
     change: up
-  - rank: 3
-    player: 测试数据
-    score: 10086
-    change: down
