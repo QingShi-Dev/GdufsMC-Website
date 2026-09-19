@@ -164,6 +164,15 @@ jobs:
             echo "==> pnpm install --prod"
             pnpm install --prod --frozen-lockfile
 
+            echo "==> 同步 favicon 到 nginx alias 路径"
+            # Next.js 16 build 把 favicon 输出到 .next/static/media/favicon.<hash>.ico
+            # nginx 配 alias /opt/gdufsmc/app/favicon.ico (固定路径, 不带 hash)
+            # rsync --delete 不会删 server 上的 app/ (因为 excludes 之外的文件会被同步删, 但 app 不在源码里)
+            # 这里手动 cp 同步当前 hash 的 favicon.ico, 避免 /favicon.ico 404
+            mkdir -p /opt/gdufsmc/app
+            cp /opt/gdufsmc/.next/static/media/favicon.*.ico /opt/gdufsmc/app/favicon.ico
+            ls -la /opt/gdufsmc/app/favicon.ico
+
             echo "==> PM2 重启"
             # 首次部署时可能还没 pm2 start 过, 用 start; 否则 restart
             pm2 restart gdufsmc 2>/dev/null || pm2 start deploy/ecosystem.config.js
