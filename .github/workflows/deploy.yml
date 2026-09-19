@@ -123,7 +123,7 @@ jobs:
       # 注意: artifact 里的 .next 被重命名成 next-build (避免 upload-artifact 吃内容)
       # 服务器脚本里再 mv next-build .next 还原
       - name: Rsync artifact to /opt/gdufsmc
-        uses: burnett01/rsync-deployments@6.0.0
+        uses: burnett01/rsync-deployments@9.0.1
         with:
           switches: >-
             -avz --delete
