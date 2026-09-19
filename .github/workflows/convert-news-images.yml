@@ -54,7 +54,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
-      contents: write    # 自动 commit + push 需要写权限
+      contents: write         # 自动 commit + push 需要写权限
+      pull-requests: write    # gh pr create 需要
+      issues: write           # gh label create 需要 (保留 --label 的话)
     steps:
       - uses: actions/checkout@v4
         with:
