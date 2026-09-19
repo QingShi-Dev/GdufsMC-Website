@@ -49,7 +49,8 @@ jobs:
   convert:
     name: Convert images to webp q=90
     # 跳过 Action 自己的 commit (避免无限递归)
-    if: github.event.head_commit.author.name != "github-actions[bot]"
+    # 包进 ${{ }} 让 GitHub 表达式解析器处理, 避免 YAML 把 [bot] 当 flow sequence
+    if: ${{ github.event.head_commit.author.name != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
