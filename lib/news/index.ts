@@ -66,9 +66,9 @@ export const getNewsList = cache(async (): Promise<NewsItem[]> => {
             // gray-matter 用 YAML 解析 frontmatter 时, 任何看起来像日期的字段
             // (例如 "2026-09-19") 会被解析成 Date 对象. 直接渲染到 React 会崩
             // (报 "Objects are not valid as a React child"). 强制转 YYYY-MM-DD 字符串.
-            date: fm.date instanceof Date
-              ? fm.date.toISOString().slice(0, 10)
-              : String(fm.date),
+            date: typeof fm.date === 'string'
+              ? fm.date
+              : (fm.date as Date).toISOString().slice(0, 10),
             // 优先用 frontmatter.slug (手动填写), fallback 到 slugify(title) (pinyin)
             //   - 旧 news (.md 没 slug 字段) 走 fallback
             //   - 新 news (.md 有 slug 字段) 走手动值
