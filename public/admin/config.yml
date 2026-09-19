@@ -38,6 +38,7 @@
 #    列表/详情页通过 @/lib/news 读取, slug 由 title 经 pinyin-pro 派生
 #
 # =============================================================================
+publish_mode: editorial_workflow
 
 backend:
   name: github
