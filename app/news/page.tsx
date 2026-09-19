@@ -33,7 +33,7 @@ export default async function NewsPage() {
         </div>
 
         {/* 下半部分: 主栏 (动态列表) + 侧栏 (积分榜) */}
-        <div className="mt-11 flex flex-col lg:flex-row gap-8">
+        <div className="mt-10 sm:mt-11 flex flex-col lg:flex-row gap-11.5 sm:gap-8">
           <div className="sm:hidden lg:w-72 lg:shrink-0 px-1 sm:px-0">
             <Leaderboard data={leaderboard} />
           </div>

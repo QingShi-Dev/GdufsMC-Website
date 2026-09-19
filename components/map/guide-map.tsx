@@ -388,17 +388,25 @@ function OverworldTileImage({
 function ZoomBtn({
   onClick,
   ariaLabel,
+  disabled,
   children,
 }: {
   onClick: React.MouseEventHandler<HTMLButtonElement>;
   ariaLabel: string;
+  disabled?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <button
       onClick={onClick}
       aria-label={ariaLabel}
-      className="w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-colors"
+      disabled={disabled}
+      className={cn(
+        "w-9 h-9 rounded-lg bg-white/60 border border-slate-200/80 text-slate-600 hover:text-slate-800 hover:bg-slate-50 flex items-center justify-center shadow-sm transition-all",
+        // 不可用: 半透明 + 取消 hover + 不可点击光标
+        // (用户最新要求: 用户一眼能分辨按钮当前是否可操作)
+        disabled && "opacity-50 hover:bg-white/60 hover:text-slate-600",
+      )}
     >
       {children}
     </button>
@@ -1157,9 +1165,9 @@ const preloadedUrls = new Set<string>();
   //     - writeHoverCoordFromScreen 前: 该 useCallback 的 deps 包含 isFullscreen
   //   - hook 内部 useEffect 在 commit 后才跑, 此时 computeMapScrollTarget 已初始化
   const computeMapScrollTarget = useCallback((): number => {
-    // 移动端不滚 — 用户手指控制滚动
-    if (window.innerWidth < 640) return window.scrollY;
-
+    // 之前: 移动端 < 640 直接 return window.scrollY (no-op) — 注释说"用户手指控制滚动"
+    //   - 现在: label 点击等操作需要跟桌面端一致滚到地图位置 (用户最新要求)
+    //   - 桌面端 < 640 / >= 640 都按"地图贴 header 下"算 (offsetTop 累加 + 减 headerHeight)
     const el = rootRef.current;
     if (!el) return window.scrollY;
     const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
@@ -1664,11 +1672,11 @@ const preloadedUrls = new Set<string>();
       const ratio = currentDistance / pinchInitialDistance;
 
       const maxK = MAX_ZOOM[worldRef.current?.id ?? "overworld"] ?? 8;
-      // 灵敏度调整: 用户最新要求 #3 — 双指缩放太灵敏, 改成现在的 60%
-      //   - Math.pow(ratio, 0.6): 把线性 ratio 映射成 0.6 次幂 (亚线性)
-      //   - 距离拉大 2 倍 → 缩放 ~1.5x (而不是 2x), 拉大 4 倍 → 缩放 ~2.3x (而不是 4x)
+      // 灵敏度调整: 用户最新要求 — 双指缩放太灵敏, 改成现在的 50%
+      //   - Math.pow(ratio, 0.5): sqrt 映射 — 比 0.6 还迟钝
+      //   - 距离拉大 2 倍 → 缩放 ~1.4x (而不是 2x), 拉大 4 倍 → 缩放 2.0x (而不是 4x)
       //   - ratio=1 时 unchanged; ratio>1 时变缓; ratio<1 时也变缓 (反向)
-      const adjustedRatio = Math.pow(ratio, 0.6);
+      const adjustedRatio = Math.pow(ratio, 0.5);
       const newK = clamp(kRef.current * adjustedRatio, 1, maxK);
       if (newK === kRef.current) return;
 
@@ -1784,7 +1792,10 @@ const preloadedUrls = new Set<string>();
     const w = worldRef.current;
     if (!w) return;
     const { width: vbW, height: vbH } = w.map;
-    const PAN_SPEED = 2;
+    // PAN_SPEED: 桌面 2 (跟手指移动 1:2 同步), 移动端 2 * 0.75 = 1.5 (用户最新要求 — 拖动更迟钝)
+    //   - 0.5 次幂缩放更迟钝, drag 也跟着调成 0.75x, 否则用户两根指头分别 zoom 和 pan 比例失衡
+    //   - 用 isMobile state (从 useMediaQuery 拿) 桌面端不受影响
+    const PAN_SPEED = isMobile ? 2 * 0.75 : 2;
     const dx = (e.clientX - dragRef.current.x) * (vbW / rect.width) * PAN_SPEED;
     const dy = (e.clientY - dragRef.current.y) * (vbH / rect.height) * PAN_SPEED;
     const curK = kRef.current;
@@ -2272,10 +2283,20 @@ const preloadedUrls = new Set<string>();
 
         {/* 右下: 放大 / 缩小 / 全屏 (一直显示, 跟缩放百分比独立) */}
         <div className="absolute bottom-3 right-3 z-10 flex flex-col gap-1.5">
-          <ZoomBtn onClick={() => zoomByButton(1.3)} ariaLabel="放大">
+          {/* 放大不可用 = 已到当前维度 max zoom (跟 zoomByButton clamp 一致)
+              用 0.01 epsilon 吸收浮点累计误差, 跟 zoomByButton 内 clamp 同精度 */}
+          <ZoomBtn
+            onClick={() => zoomByButton(1.3)}
+            ariaLabel="放大"
+            disabled={k >= (MAX_ZOOM[worldId] ?? 8) - 0.01}
+          >
             <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
-          <ZoomBtn onClick={() => zoomByButton(1 / 1.3)} ariaLabel="缩小">
+          <ZoomBtn
+            onClick={() => zoomByButton(1 / 1.3)}
+            ariaLabel="缩小"
+            disabled={k <= 1 + 0.01}
+          >
             <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-4 h-4" />
           </ZoomBtn>
           <ZoomBtn

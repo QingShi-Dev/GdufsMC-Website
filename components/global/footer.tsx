@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
 
@@ -213,21 +214,34 @@ function QRModal({
 }
 
 function ContactSection() {
-  const [mobileModal, setMobileModal] = useState<Exclude<QrType, null> | null>(null);
-  const closeMobileModal = useCallback(() => setMobileModal(null), []);
+  // modal 状态 + 打开时的 pathname 一起存, 渲染时校验 pathname 是否还匹配
+  //   - pathname 不匹配 → modal 不渲染 (切到其它页, modal 跟随关闭)
+  //   - 不需要 useEffect 关闭 — pathname 变化 → render 时 modalState.pathname !== pathname → 不渲染
+  //   - 避免 react-hooks/set-state-in-effect 规则 (route change 是 render 时判断, 不是 effect)
+  //   - 用户最新要求: 切换页面时 footer 联系方式要关闭
+  const [modalState, setModalState] = useState<
+    { type: Exclude<QrType, null>; pathname: string } | null
+  >(null);
+  const pathname = usePathname();
+
+  const closeMobileModal = useCallback(() => setModalState(null), []);
 
   const handleClick = (type: Exclude<QrType, null>) => {
     // 实时读 viewport: 移动端弹 modal, 桌面端 click 是 noop (hover 已控显隐)
     if (typeof window !== "undefined" && !window.matchMedia("(min-width: 768px)").matches) {
-      setMobileModal(type);
+      // 记下当前 pathname, render 时用它判定 "是否还同一页"
+      setModalState({ type, pathname });
     }
   };
+
+  // modal 仅在 pathname 跟打开时一致时渲染 — 切页后 pathname 变化, modal 跟随关闭
+  const activeModal = modalState && modalState.pathname === pathname ? modalState.type : null;
 
   return (
       <div className="flex items-center gap-2.5">
         <ContactQRButton type="wechat" onClick={() => handleClick("wechat")} />
         <ContactQRButton type="qq" onClick={() => handleClick("qq")} />
-        {mobileModal && <QRModal type={mobileModal} onClose={closeMobileModal} />}
+        {activeModal && <QRModal type={activeModal} onClose={closeMobileModal} />}
       </div>
   );
 }

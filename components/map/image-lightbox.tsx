@@ -262,6 +262,11 @@ export function ImageLightbox({
         t2.clientX - t1.clientX,
         t2.clientY - t1.clientY,
       );
+      // **关键**: 双指 down 时第一个指已经触发 onPointerDown → dragRef 设置 + setPointerCapture,
+      //   onPointerMove 用 dragRef 做 pan, 完全盖过 pinch zoom。
+      // 立刻清 dragRef, onPointerMove 看到 null 提前 return → 双指缩放才真正生效
+      // (用户最新要求: 查看大图界面双指缩放不被识别为拖动)
+      dragRef.current = null;
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || pinchInitialDistance === 0) return;

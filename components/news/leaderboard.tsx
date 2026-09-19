@@ -63,8 +63,8 @@ export function Leaderboard({ data }: { data?: LeaderboardData }) {
                 key={`${entry.rank}-${entry.player}`}
                 className={
                   isTop3
-                    ? `flex items-center gap-3.5 px-4.5 sm:px-5 py-3 sm:py-3.5 border-l-2 ${RANK_STYLE[entry.rank] ?? ""}`
-                    : "flex items-center gap-3.5 px-4.5 sm:px-5 py-3 sm:py-3.5 border-l-2 border-transparent"
+                    ? `flex items-center gap-3.5 px-4.5 sm:px-5 pt-3.5 sm:pt-4 pb-3 sm:pb-3.5 border-l-2 ${RANK_STYLE[entry.rank] ?? ""}`
+                    : "flex items-center gap-3.5 px-4.5 sm:px-5 pt-3.5 sm:pt-4 pb-3 sm:pb-3.5 border-l-2 border-transparent"
                 }
               >
                 {/* 名次 */}
@@ -93,7 +93,7 @@ export function Leaderboard({ data }: { data?: LeaderboardData }) {
 
                 {/* 玩家 + 分数 */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[17px] font-semibold text-slate-800 truncate">
+                  <div className="text-[16px] sm:text-[17px] font-semibold text-slate-800 truncate">
                     {entry.player}
                   </div>
                   <div className="flex text-center text-[13px] text-slate-700 font-mono tabular-nums">
