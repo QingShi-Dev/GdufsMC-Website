@@ -90,7 +90,7 @@ jobs:
           cp -r content build-out/content
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: gdufsmc-build
           path: build-out/
