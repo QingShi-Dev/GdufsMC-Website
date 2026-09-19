@@ -330,7 +330,9 @@ function GroupSection({
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
-                  transition={{ duration: 0.2 }}
+                  // 注意: framer-motion v12 transition 必须有顶层 type
+                  //   height: auto / height: 0 动画用 tween
+                  transition={{ type: "tween", duration: 0.2 }}
                   className="overflow-hidden"
               >
                 <div className="p-0.5 sm:p-2 pt-1 space-y-1.5">
@@ -536,7 +538,11 @@ export function StatusCard() {
             mass: 0.8,
             delay: hasInitialData ? 0 : 0.15,
             // 刷新时的高度变化用平滑 ease（不要 spring 弹跳）
-            layout: { duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+            // 注意: framer-motion v12 transition.layout 是 layout 动画的 per-property 字段,
+            //   顶层 spread 没 type 时 getDefaultTransition() 返回 undefined,
+            //   导致 motion.startTime 抛 TypeError: Cannot read properties of undefined (reading 'startTime')
+            //   显式 type: "tween" 解决
+            layout: { type: "tween", duration: 0.4, ease: [0.22, 1, 0.36, 1] },
           }}
           className="relative w-full max-w-xl mx-auto"
       >
@@ -619,7 +625,8 @@ export function StatusCard() {
                 <motion.span
                     className="inline-flex"
                     animate={{ rotate: clickCount * 360 }}
-                    transition={{ duration: ROTATION_MS / 1000, ease: "linear" }}
+                    // 注意: framer-motion v12 transition 必须有顶层 type
+                    transition={{ type: "tween", duration: ROTATION_MS / 1000, ease: "linear" }}
                 >
                   <IconRefresh className="w-4 h-4" />
                 </motion.span>

@@ -303,6 +303,15 @@ export function ImageLightbox({
 
   // 鼠标拖动平移
   const onPointerDown = (e: React.PointerEvent) => {
+    // 阻止 lightbox 内 pointerdown 冒泡到 map container (用户最新要求 #2)
+    //   - lightbox 在 React tree 上是 LabelPopup → guide-map 的后代
+    //   - React 18 event delegation: React pointer events 沿虚拟 tree 冒泡
+    //   - 不 stopPropagation → map.onPointerDown 会触发, 即使有 dialog closest 兜底,
+    //     React 合成 event 仍可能在某些边界 case 漏过去
+    //   - 用户原话: "竖屏打开大图, 拖动会泄漏到手机端 popup"
+    //     popup (label-popup) 在 lightbox 下层, 拖大图时 popup 也跟着移动 — 是因为
+    //     map 的 pointer move 同时修改 tx/ty, lightbox 没有 stopPropagation 隔离
+    e.stopPropagation();
     // 点按钮时不启动拖动 (按钮自己处理 click)
     const target = e.target as HTMLElement;
     if (target.closest("button")) return;

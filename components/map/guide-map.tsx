@@ -1632,6 +1632,11 @@ const preloadedUrls = new Set<string>();
       // 双指期间标记 pinchActive, onPointerDown 看到后不启动单指 drag (用户要求 #1)
       //   - 实际上 capture-phase native pointerdown 已经设过, 这里是双保险 (幂等)
       pinchActiveRef.current = true;
+      // **关键**: 双指 down 时, 第一个指已经触发了 onPointerDown → setPointerCapture + dragRef 启动
+      //   - 立刻把 dragRef 设为 null 取消单指 drag (onPointerMove 检测 dragRef null 提前 return)
+      //   - 解决竖屏/全屏 "双指识别成拖动" 的根因 (用户最新要求 #4)
+      //   - 单指 tap 不会触发双指分支, 不影响单指 drag
+      dragRef.current = null;
       const t1 = e.touches[0];
       const t2 = e.touches[1];
       if (!t1 || !t2) return;
@@ -1659,7 +1664,12 @@ const preloadedUrls = new Set<string>();
       const ratio = currentDistance / pinchInitialDistance;
 
       const maxK = MAX_ZOOM[worldRef.current?.id ?? "overworld"] ?? 8;
-      const newK = clamp(kRef.current * ratio, 1, maxK);
+      // 灵敏度调整: 用户最新要求 #3 — 双指缩放太灵敏, 改成现在的 60%
+      //   - Math.pow(ratio, 0.6): 把线性 ratio 映射成 0.6 次幂 (亚线性)
+      //   - 距离拉大 2 倍 → 缩放 ~1.5x (而不是 2x), 拉大 4 倍 → 缩放 ~2.3x (而不是 4x)
+      //   - ratio=1 时 unchanged; ratio>1 时变缓; ratio<1 时也变缓 (反向)
+      const adjustedRatio = Math.pow(ratio, 0.6);
+      const newK = clamp(kRef.current * adjustedRatio, 1, maxK);
       if (newK === kRef.current) return;
 
       const rect = el.getBoundingClientRect();
@@ -1732,16 +1742,16 @@ const preloadedUrls = new Set<string>();
     //   - lightbox 在 map container 内 (DOM 嵌套), React 事件会冒泡到 map
     if ((e.target as HTMLElement | null)?.closest('[role="dialog"][aria-modal="true"]')) return;
     // 双指缩放期间不启动单指 drag — 用户要求 #1: 双指 zoom 不带单指 pan
-    //   - 双指 → touches[0]/[1] 都触发 onPointerDown, 不应该启动 map drag
-    //   - pinchActiveRef 在 onTouchStart (touches.length >= 2) 置 true, onTouchEnd (touches < 2) 置 false
+    //   - 第二个指 down 时 pinchActiveRef 已经 true (native pointerdown capture 先跑), 此处 return
+    //   - 第一个指 down 时 pinchActiveRef 还是 false (touches.length === 1) → 启动 drag
+    //     但 onTouchStart 检测到 touches.length === 2 会立刻 dragRef = null 取消
+    //   - 双保险: capture listener + onTouchStart 双重取消
     if (e.pointerType === "touch" && pinchActiveRef.current) return;
-    // 移动端 single touch 不启动 map drag — 用户要求 #4:
-    //   - 单指 tap 地图时, 让浏览器默认 page scroll (之前 setPointerCapture 把 pointer 截走,
-    //     page scroll 被冻结, 用户在地图位置 page-up / page-down 都拉不动)
-    //   - 桌面 (pointerType === "mouse" / "pen") 仍然拖动地图 (PC 主用场景)
-    //   - 移动端用户想拖动地图 → 用双指 pan (双指收拢是 zoom, 张开是 pan); 想滚动页面 → 单指滑动
+    // 移动端 single touch 启动 drag — 用户最新要求 #1: 地图要能单指拖动 (之前 #4 的限制删了)
+    //   - 单指 drag 地图 vs 浏览器 page scroll 不能并存, 用户现在优先 map drag
+    //   - 双指缩放时第一个指 drag 会被 onTouchStart 双指检测 cancel (dragRef = null)
+    //   - page scroll 仍可通过浏览器原生手势条 (上/下拉刷新等) 或系统级手势
     //   - popup / search wrapper / lightbox 内的 pointerdown 已在上方早 return, 不影响
-    if (e.pointerType === "touch") return;
     // 搜索框有内容时, 在地图上按下鼠标拖动也收起搜索列表
     if (searchQueryRef.current.trim().length > 0) {
       setSearchListOpen(false);
@@ -2079,7 +2089,16 @@ const preloadedUrls = new Set<string>();
             isFullscreen,
             isMobile,
           })}
-          onSelect={(label) => setSelectedLabel(label)}
+          onSelect={(label) => {
+            setSelectedLabel(label);
+            // 用户最新要求 #6: 移动端点 label 后, 地图滚到跟网页端一样的位置
+            //   - 网页端: scrollMapIntoView 把地图滚到 header 下沿 (computeMapScrollTarget)
+            //   - 移动端: 之前没调, 用户在地图外 scroll 后点 label, 看不到地图变化 (popup 显示但地图仍在视野外)
+            //   - 现在跟 toggle 按钮 / 搜索框 onClick 行为一致 — 都滚到 header 下
+            //   - 跟 panToLandmark 不同: 这里**不动**地图视图 (tx/ty/k 不变), 只滚 page scroll
+            //     panToLandmark 会跳到 label 位置, 但用户没要求跳; 只要 page scroll 到地图位置
+            scrollMapIntoView();
+          }}
           onPan={panToLandmark}
         />
 

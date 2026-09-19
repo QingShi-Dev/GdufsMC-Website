@@ -258,14 +258,15 @@ export function HeaderNav() {
             .start({
                 scale: [1, 0.85, 1.18, 1],
                 y: [0, -12, 0, 0],
-                transition: { duration: 0.5, ease: "easeOut" },
+                // 注意: framer-motion v12 controls.start 的 transition 也必须显式 type
+                transition: { type: "tween", duration: 0.5, ease: "easeOut" },
             })
             .catch(() => {});
         textControls
             .start({
                 y: [0, -5, 1, 0],
                 scale: [1, 1.06, 0.98, 1],
-                transition: { duration: 0.5, ease: "easeOut" },
+                transition: { type: "tween", duration: 0.5, ease: "easeOut" },
             })
             .catch(() => {});
     }, [pathname, activeIndex, bonkControls, textControls]);
@@ -354,7 +355,8 @@ export function HeaderNav() {
                                     alt=""
                                     initial={{ y: 0, opacity: 0, scale: 0.5, x: h.offsetX }}
                                     animate={{ y: -55, opacity: [0, 1, 1, 0], scale: 1 }}
-                                    transition={{ duration: 1, ease: "easeOut", times: [0, 0.2, 0.7, 1] }}
+                                    // 注意: framer-motion v12 transition 必须有顶层 type, opacity 是 keyframes [0,1,1,0]
+                                    transition={{ type: "tween", duration: 1, ease: "easeOut", times: [0, 0.2, 0.7, 1] }}
                                     onAnimationComplete={() => removeHeart(h.id)}
                                     className="absolute w-5 h-5 pointer-events-none select-none"
                                     style={{ left: "50%", bottom: 0 }}
@@ -367,7 +369,8 @@ export function HeaderNav() {
                         className="hidden md:flex items-center gap-1 relative z-10"
                         initial={{ y: -20, opacity: 0 }}
                         animate={navAnimate}
-                        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+                        // 注意: framer-motion v12 transition 必须有顶层 type
+                        transition={{ type: "tween", duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
                     >
                         {NAV_ITEMS.map((item, i) => {
                             const active = i === activeIndex;
@@ -447,7 +450,8 @@ export function HeaderNav() {
                                 <motion.div
                                     className="w-full h-full"
                                     animate={{ scaleX: facingLeft ? -1 : 1 }}
-                                    transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+                                    // 注意: framer-motion v12 transition 必须有顶层 type
+                                    transition={{ type: "tween", duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
                                 >
                                     <SlimeFace className="w-full h-full drop-shadow-md" />
                                 </motion.div>
@@ -516,7 +520,14 @@ export function HeaderNav() {
                         <motion.div
                             initial={{ height: 0, opacity: 0 }}
                             animate={{ height: "auto", opacity: 1 }}
-                            exit={{ height: 0, opacity: 0 }}
+                            // 用户最新要求 #2: 手机端 header 点击跳转页面后直接消失, 不做过渡动画
+                            //   - 之前 exit 默认 framer-motion duration 0.3s, 跳转后 menu 渐出 fade-out
+                            //   - 用户要 "直接消失" — exit duration 0 立即 unmount
+                            //   - 点 X 关闭 menu 同样直接消失 (用户原话包含跳转, 没明确点 X 行为, 统一处理最简)
+                            //   - framer-motion v12 exit 类型是 TargetAndTransition,
+                            //     transition 必须嵌套在 transition 子键里 (顶层 spread 不能加 duration)
+                            //   - exit transition 也必须有顶层 type 否则 framer-motion v12 抛 startTime
+                            exit={{ height: 0, opacity: 0, transition: { type: "tween", duration: 0 } }}
                             className="md:hidden border-t border-white/20 bg-white/80 backdrop-blur-md overflow-hidden"
                         >
                             <ul className="flex flex-col p-2 max-w-7xl mx-auto">

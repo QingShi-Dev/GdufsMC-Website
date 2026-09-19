@@ -230,6 +230,10 @@ const onTouchEnd = () => {
             animate="center"
             exit="exit"
             transition={{
+              // 注意: framer-motion v12 transition 必须有顶层 type (v12 严格 transition 检查)
+              //   x 用 tween, 其它属性用 default
+              //   之前没顶层 type 在某些情况下触发 TypeError: Cannot read properties of undefined (reading 'startTime')
+              type: "tween",
               x: { type: "tween", ease: [0.32, 0.72, 0, 1], duration: 0.75 },
             }}
             className="absolute inset-0"
