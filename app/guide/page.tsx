@@ -163,12 +163,12 @@ export default function HelpPage() {
           title="如何加入我们的 MC 服务器"
           description="四个步骤，轻松入服。"
           theme="light"
-          className="mt-6 md:mt-14"
+          className="mt-6 md:mt-14 px-1 sm:px-0"
         />
 
         {/* 联系我们 — 微信群 + QQ群 二维码 (顶部, 进来就能加群) */}
         <div className="mt-10 md:mt-18">
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 bg-">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/玩家社群图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">玩家社群</span>
@@ -281,7 +281,7 @@ export default function HelpPage() {
 
         {/* 服务器地址 — 4 卡片 grid (跟首页 FEATURES 同结构) */}
         <div className="mt-16">
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/服务器列表图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">服务器列表</span>
@@ -335,7 +335,7 @@ export default function HelpPage() {
 
         {/* 推荐模组 (来自 PDF "如何加入服务器" 第三节) — 3 col 网格 */}
         <div className="mt-16">
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/推荐模组图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <div className={"flex flex-col items-start sm:flex-row sm:items-center sm:gap-2"}>
@@ -379,7 +379,7 @@ export default function HelpPage() {
 
         {/* 配套资源 — 白卡 + 浅 hover */}
         <div className="mt-16 md:mb-4">
-          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4">
+          <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/相关链接图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">相关链接</span>

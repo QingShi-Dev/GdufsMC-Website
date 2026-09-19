@@ -28,13 +28,13 @@ export default async function NewsPage() {
       <div className="mx-auto max-w-6xl px-4 relative">
 
         {/* 顶部轮播图 — 5 张精选, 大图 + dot 指示器 */}
-        <div className="mt-8">
+        <div className="mt-8 px-0.5 sm:px-0">
           <HeroCarousel items={carousel} />
         </div>
 
         {/* 下半部分: 主栏 (动态列表) + 侧栏 (积分榜) */}
         <div className="mt-11 flex flex-col lg:flex-row gap-8">
-          <div className="sm:hidden lg:w-72 lg:shrink-0 px-2 sm:px-0">
+          <div className="sm:hidden lg:w-72 lg:shrink-0 px-1 sm:px-0">
             <Leaderboard data={leaderboard} />
           </div>
           {/* 主栏: 全部动态 */}
