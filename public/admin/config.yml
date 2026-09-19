@@ -43,7 +43,11 @@ backend:
   name: github
   repo: QingShi-Dev/GdufsMC-Website # 实际仓库 (owner/repo)
   branch: main # 实际发布分支
-
+  # PAT 模式 + Editorial Workflow: 隐藏 GitHub OAuth 按钮, 保存走 PR 流程跟 Branch Protection 兼容
+  auth_methods: [token]
+  # 不要 base_url / app_id — 走 PAT 模式, 登录页直接粘贴 token
+  # PAT 在 https://github.com/settings/tokens/new 生成, 勾 repo scope
+  
 # 编辑界面本地化 (中文)
 locale: zh-Hans
 
@@ -62,8 +66,8 @@ collections:
   - name: news
     label: 新闻动态
     label_singular: 一条新闻
-    workflow: editoria
     description: 网站首页 / /news 页展示的新闻文章, Markdown 格式
+    workflow: editorial
     folder: content/news
     create: true
     delete: true
@@ -130,8 +134,8 @@ collections:
   # 小游戏积分榜 — 单文件 collection, 整个榜单存一个 YAML
   - name: leaderboard
     label: 小游戏积分榜
-    workflow: editoria
     description: 网站 /news 页右侧的积分榜, 单文件结构, 修改后即时生效
+    workflow: editorial
     files:
       - name: data
         label: 榜单数据
