@@ -1,11 +1,11 @@
 ---
-slug: "welcome-to-alpha-test"
-title: "欢迎来到：云城像素社网站 Alpha 内测版本"
-date: "2026-07-31"
-category: "更新"
-summary: "经过约一周的开发，云城像素社网站迎来了首次内部测试！建立起的这个网站，不仅是对我们过去奋斗的记录，更是对外展现组织风貌的重要窗口，诚邀大家一同探索、体验，并帮助我们做得更好。"
-cover: "/content/news/images/87901f68.webp"
-badge: "最新"
+slug: welcome-to-alpha-test
+title: 欢迎来到：云城像素社网站 Alpha 内测版本
+date: 2026-07-31
+category: 更新
+summary: 经过约一周的开发，云城像素社网站迎来了首次内部测试！建立起的这个网站，不仅是对我们过去奋斗的记录，更是对外展现组织风貌的重要窗口，诚邀大家一同探索、体验，并帮助我们做得更好。
+cover: /content/news/images/87901f68.webp
+badge: ''
 pinned: true
 ---
 
