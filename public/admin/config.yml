@@ -43,8 +43,6 @@ backend:
   name: github
   repo: QingShi-Dev/GdufsMC-Website # 实际仓库 (owner/repo)
   branch: main # 实际发布分支
-  base_url: https://api.github.com # GitHub API base URL (GitHub Enterprise 才改成自托管域名)
-  app_id: Ov23li3Cwhpjgypm6xAz # ← GitHub OAuth App 的 Client ID, 见顶部注释步骤 6
 
 # 编辑界面本地化 (中文)
 locale: zh-Hans
