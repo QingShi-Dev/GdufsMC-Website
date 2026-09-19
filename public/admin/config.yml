@@ -4,18 +4,30 @@
 #
 # ⚠️  首次使用前必读:
 #
-# 1. 后端 (backend):
-#    当前使用 GitHub, 需要在 GitHub 后台创建 OAuth App:
-#      - Settings → Developer settings → OAuth apps → New OAuth App
-#      - Homepage URL: https://<your-domain>
-#      - Authorization callback URL: https://<your-domain>/admin/
-#    然后把 client_id / client_secret 填到下面 backend 节
+# 1. 后端 (backend) — 必须用 GitHub OAuth App, 不要用 PAT:
+#    为什么不用 PAT: PAT 长期有效, 浏览器 localStorage 一旦泄露 = 永久仓库写权限.
+#    OAuth 用短期 access token (数小时) + 一键撤销, 爆炸半径小得多.
 #
-#    或者用 Personal Access Token (PAT):
-#      - GitHub → Settings → Developer settings → Personal access tokens
-#      - 勾选 `repo` scope
-#      - 在 Sveltia 登录界面选 "Use a personal access token", 粘贴进去
-#    (PAT 方式配置简单, 适合单管理员; OAuth 适合多人协作)
+#    注册 OAuth App 步骤 (5 min):
+#      1. 打开 https://github.com/settings/applications/new
+#      2. Application name: GdufsMC CMS (随便填)
+#      3. Homepage URL: https://<your-domain>     ← 跟下面 base_url 一致
+#      4. Authorization callback URL: https://<your-domain>/admin/
+#         ⚠️ callback 末尾必须有 /, 跟 Sveltia redirect_uri 一致
+#      5. 点 "Register application"
+#      6. 复制 "Client ID" → 填到下面 backend.app_id
+#      7. (不要填 Client Secret — Sveltia 用 PKCE 公开客户端, 不需要 secret)
+#
+#    ⚠️ 注册后一定要在 GitHub repo 上配 branch protection on `main`:
+#      Settings → Branches → Add rule → 选 main
+#      勾: Require a pull request before merging (1 approver)
+#           Require status checks (CI typecheck + lint + build)
+#           Include administrators
+#      即使 token 泄露, 攻击者也只能开 PR, admin review 拦截.
+#
+#    Sveltia 用 PKCE 公开客户端模式 (RFC 7636), 不需要 Client Secret:
+#      - 不在服务器存 secret, 整个 OAuth flow 在浏览器完成
+#      - GitHub 端拿不到 Client Secret 也能跑 (OAuth App 默认公开客户端)
 #
 # 2. CSP 兼容性:
 #    next.config.ts 已经把 unpkg.com / api.github.com / avatars.githubusercontent.com
@@ -29,9 +41,10 @@
 
 backend:
   name: github
-  repo: QingShi-Dev/GdufsMC-Website # TODO: 改成实际仓库 (owner/repo)
-  branch: main # TODO: 改成实际发布分支
-  base_url: http://localhost:3000/admin # 本地开发填 http://localhost:3000/admin
+  repo: QingShi-Dev/GdufsMC-Website # 实际仓库 (owner/repo)
+  branch: main # 实际发布分支
+  base_url: https://web-mc.top/admin/ # ⚠️ OAuth callback 必须用 HTTPS, 跟 GitHub OAuth App 的 Authorization callback URL 完全一致 (含末尾 /)
+  app_id: Ov23li3Cwhpjgypm6xAz # ← GitHub OAuth App 的 Client ID, 见顶部注释步骤 6
 
 # 编辑界面本地化 (中文)
 locale: zh-Hans

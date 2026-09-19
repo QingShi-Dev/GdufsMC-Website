@@ -20,7 +20,21 @@ export function MarkdownContent({ children }: { children: string }) {
     <div className="px-1.5 sm:px-0 text-slate-700">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
-        rehypePlugins={[rehypeSanitize]}
+        rehypePlugins={[
+          // 嵌套数组 = [plugin, options] — react-markdown 协议
+          // 显式声明 protocols 白名单 (http/https/mailto), 禁 data:/javascript:
+          //   - rehype-sanitize 默认 schema (GitHub-style) 已禁, 这是双保险
+          //   - 防止未来依赖升级放宽默认, 第一时间被这里拦截
+          [
+            rehypeSanitize,
+            {
+              protocols: {
+                href: ["http", "https", "mailto"],
+                src: ["http", "https"],
+              },
+            },
+          ],
+        ]}
         components={{
           p: ({ children }) => <p className="mb-4 leading-relaxed text-base">{children}</p>,
           h1: ({ children }) => (

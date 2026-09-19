@@ -331,9 +331,8 @@ function MapCanvas({
   isMobile,
   isPanning,
   transitInWorld,
-  loadedHires,
-  onTileThumbLoaded,
-  markHiresLoaded,
+  pngLoaded,
+  onPngLoaded,
 }: {
   layer: NewMapLayer;
   tx: number;
@@ -351,14 +350,14 @@ function MapCanvas({
    *  - 不传就不渲染 (默认空)
    */
   transitInWorld?: () => ReactNode;
-  /** 已加载完 PNG 的 overworld tile key set — 这些 tile 永远用 src (不再切回 srcThumb)
-   *  - 跨 zoom 切换、切维度、刷新页面、走 SW 缓存命中都保留 (持久化在 parent 的 localStorage)
-   *  - nether/end 没 srcThumb, 此 prop 对它们无效 */
-  loadedHires: Set<string>;
-  /** 当前显示的是 srcThumb 时, onLoad 后调用 — 后台 fetch src, 加载完 markHiresLoaded */
-  onTileThumbLoaded: (tileKey: string, srcUrl: string) => void;
-  /** 当前显示的就是 src 时, onLoad 后调用 — 直接 mark (无需后台 fetch) */
-  markHiresLoaded: (tileKey: string) => void;
+  /** 已加载完 PNG 的 overworld tile key set — 这些 tile 永久显示 PNG (sticky, 缩小也不切回)
+   *  - parent 用 setState, React 18 自动 batch 同帧多个 onLoad (单 fetch wave)
+   *  - 跨 wave 的 setState 各 render 一次, 但用 prev 引用比较, 重复 setState bail out
+   *  - 78 个 tile 加载完实际最多 13 次 render (HTTP/1.1 ~6 并发, 13 wave)
+   *  - nether/end 没 srcThumb, 此 prop 对它们无效 (走 showHires=true 分支) */
+  pngLoaded: Set<string>;
+  /** PNG tile onLoad 后调用 → 把 tileKey 加进 pngLoaded set, 触发 render 切到 PNG */
+  onPngLoaded: (tileKey: string) => void;
 }) {
   // 移动端 (< sm, 640px): slice 模式 — 容器因 minHeight 比 viewBox 矮胖,
   //   meet 会留上下大量 slate-900 背景; slice 让 viewBox 填满容器
@@ -378,44 +377,57 @@ function MapCanvas({
         className={isPanning ? "transition-transform duration-500 ease-in-out" : ""}
         style={{ pointerEvents: "none" }}
       >
-        {/* 瓦片 src 按 loadedHires 锁定 (sticky):
-            - 未在 loadedHires: 用 srcThumb (q=75 webp, 秒显示)
-              → onLoad 后 onTileThumbLoaded 后台 fetch src, 加载完 mark
-            - 已在 loadedHires: 用 src (原 PNG, 高清)
-              → onLoad 后 markHiresLoaded (其实此时已在 set 里, 幂等)
-            用户设计:
-              1. 缩略图只在首次加载出现
-              2. PNG 加载后永远不再切回 (zoom 阈值取消)
-              3. 跨刷新/切维度/SW 命中走 localStorage 的 loadedHires, 直接 PNG
-            key 包含 "h"/"t" 后缀, src 切换时强制 remount <image>
-            nether/end 没 srcThumb, 永远走 "h" 分支
-            SVG <image> 元素 onLoad 在 URL 完全解码后才 fire (webp/png 都支持) */}
+        {/* 瓦片双层渲染 + PNG 加载完成切 (用户最新需求):
+            - PNG 在前 (z-order 底层) + webp 在后 (z-order 上层)
+            - 两个 <image> 永久 render, 用 opacity 切换, 不 remount (避免 image 偶发不显示 bug)
+            - opacity 由 pngLoadedRef.has(tileKey) 决定 (sticky, 加载一次后永久 true):
+              - 未加载 PNG: PNG opacity=0, webp opacity=1 → 用户看到 webp (秒显示)
+              - 已加载 PNG: PNG opacity=1, webp opacity=0 → 用户看到 PNG (高清, 永久)
+              - 缩小/刷新: 已经加载过的 PNG 仍显示 (pngLoadedRef 在 React ref, 跨 render 持久)
+            - thumbs 加载保证 (用户要求 "确保 thumbs 最先加载"):
+              - GuideMap useEffect 里插 <link rel="preload"> + fetchpriority='high' 预加载
+              - 浏览器 preload hint high priority, SVG <image> 自然 fetch 时已被 cache 命中
+            - opacity 瞬时切换 (无 transition, 用户要求 "不要过渡")
+            - nether/end 没 srcThumb, PNG opacity 永远 1 (一次性显示)
+            - 接缝修复: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026 */}
         {layer.tiles.map((t) => {
           const tileKey = `${t.col}-${t.row}`;
-          const showHires = loadedHires.has(tileKey) || !t.srcThumb;
-          const href = showHires ? t.src : t.srcThumb!;
+          const common = {
+            x: t.vbX - 1,
+            y: t.vbY - 1,
+            width: 1026,
+            height: 1026,
+            preserveAspectRatio: "xMidYMid meet",
+          };
+          // showHires = PNG 显示: 没 srcThumb (nether/end) 永远 true; 否则看 pngLoaded set
+          const showHires = !t.srcThumb || pngLoaded.has(tileKey);
           return (
-            <image
-              key={`${tileKey}-${showHires ? "h" : "t"}`}
-              href={href}
-              // 修接缝: 每张瓦片向左上各偏 1px, 尺寸 +2 = 1026
-              //   → 相邻瓦片重叠 2px, 盖住 SVG sub-pixel 渲染的 1px 白缝
-              //   (原来 width=1024 没 overlap, 浮点坐标会留 1px 缝)
-              x={t.vbX - 1}
-              y={t.vbY - 1}
-              width={1026}
-              height={1026}
-              preserveAspectRatio="xMidYMid meet"
-              onLoad={() => {
-                if (showHires) {
-                  // 直接是 PNG (nether/end, 或刷新后已加载的 overworld tile) — 无需操作
-                  markHiresLoaded(tileKey);
-                } else {
-                  // 缩略图加载完, 后台 fetch PNG, 加载完 mark → 下次渲染切 src
-                  onTileThumbLoaded(tileKey, t.src);
-                }
-              }}
-            />
+            <g key={tileKey}>
+              {/* 底层 PNG (高清) — 加载完成后 sticky 显示, 平时透明让 webp 透出
+                  - onLoad 触发 onPngLoaded → 加入 pngLoadedRef + forceRender → render 切到 PNG */}
+              {t.src && (
+                <image
+                  href={t.src}
+                  {...common}
+                  style={{
+                    opacity: showHires ? 1 : 0,
+                  }}
+                  onLoad={t.srcThumb ? () => onPngLoaded(tileKey) : undefined}
+                />
+              )}
+              {/* 上层 webp (q=60 thumb, 512×512) — 秒显示, PNG 加载完切换后透明让 PNG 透出
+                  - SVG <image> href 加载失败时静默不渲染, 这时 PNG 即使 opacity=0 也不可见
+                    (但 PNG 加载完后会切到 opacity=1, 不会再依赖 webp) */}
+              {t.srcThumb && (
+                <image
+                  href={t.srcThumb}
+                  {...common}
+                  style={{
+                    opacity: showHires ? 0 : 1,
+                  }}
+                />
+              )}
+            </g>
           );
         })}
         {/* 白框高亮 — 标记特殊区块 (主世界右下角的两个拼接区) */}
@@ -522,72 +534,31 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const { tx, ty, k, setTx, setTy, setK, txRef, tyRef, kRef, schedule } = zoom;
   // commitImmediate 见下面 (跟 writeHover 一起调)
 
-  // ---- 2b. overworld 高清 tile 加载状态 ----
-  // 思路 (用户要求):
-  //   - 首次加载: 显示 q=75 webp 缩略图 (srcThumb) → 秒显示
-  //   - PNG 在后台 fetch 完成后 → 切到 src, 加入 set 标记
-  //   - 切到 src 后永远不再切回 (不管 zoom 多少、切维度、刷新、走 SW)
-  // 持久化: localStorage 存已加载 tile key 列表, 刷新后已加载的直接 PNG
-  //  - **初始永远空 Set**: 必须让 SSR + 客户端首帧完全一致 (都用 srcThumb),
-  //    否则 hydration mismatch (server 没 localStorage 渲染 webp, client 有 localStorage 渲染 PNG)
-  //  - mount 后 useEffect 才读 localStorage: client re-render 切到 PNG
-  //    (webp→PNG 切换有微小 flash, 但 webp 已缓存所以瞬时, 避免 hydration 警告)
-  //  - useEffect 在 set 变化时持久化
-  const HIRES_LOADED_KEY = "map.overworld.hiresTilesLoaded.v1";
-  const [loadedHires, setLoadedHires] = useState<Set<string>>(new Set());
-  // mount 后才读 localStorage → 避免 SSR/client 首帧分歧
-  useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem(HIRES_LOADED_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as string[];
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          // 这里必须同步 setState (mount 时读 localStorage 一次性同步, 没有合适的"懒"时机)
-          // 触发 cascading render = re-render with PNG (一次性, 用户几乎无感)
-          // eslint-disable-next-line react-hooks/set-state-in-effect
-          setLoadedHires(new Set(parsed));
-        }
-      }
-    } catch {
-      // 忽略 quota / JSON parse 错误
-    }
-  }, []);
-  useEffect(() => {
-    if (loadedHires.size === 0) return;
-    try {
-      window.localStorage.setItem(
-        HIRES_LOADED_KEY,
-        JSON.stringify([...loadedHires]),
-      );
-    } catch {
-      // quota / privacy mode — 忽略, 接受本次会话不持久化
-    }
-  }, [loadedHires]);
-  /**
-   * tile 的 src (PNG) 加载完后调用 → 加入 loadedHires, 下次渲染切到 src
-   * 用 callback ref 而非 state setter, 避免闭包 stale
-   */
-  const markHiresLoaded = useCallback((tileKey: string) => {
-    setLoadedHires((prev) => {
-      if (prev.has(tileKey)) return prev;
+  // ---- 2b. overworld PNG 加载状态 — 决定 PNG/webp opacity 切换 ----
+  // 用户需求 (最新):
+  //   - thumbs (q=60 512×512 webp) 秒显示 → 用户先看到 webp
+  //   - PNG 加载完成 → 切到 PNG, webp 永久隐藏 (sticky, 缩小不回切)
+  //   - 加载模式: thumbs 必须最先加载 (用 fetchPriority='high' 预加载, 不然失去加载意义)
+  //   - 只对 overworld 生效 (有 srcThumb 的 tile); nether/end 单 PNG 图不变
+  // 实现:
+  //   - pngLoaded Set 记录已加载的 overworld tile key (sticky, 不清空)
+  //   - 78 个 tile 的 SVG <image> onLoad 各自 setState, 但 React 18 自动 batch:
+  //     - 同帧多个 onLoad (HTTP/1.1 ~6 并发 fetch wave 内) → batch → 1 render
+  //     - 跨帧多个 onLoad (不同 wave 间) → 各 1 render, 但用 prev 引用比较, 同引用 bail out
+  //     - 实际: 78 个 tile 分 ~13 wave, 最多 13 次 render (vs 之前 78 次 setState 创建 78 个 Set)
+  //   - 切维度时 pngLoaded 不重置 (粘性, 切回 overworld 仍是 PNG 状态)
+  const [pngLoaded, setPngLoaded] = useState<Set<string>>(new Set());
+  const onPngLoaded = useCallback((tileKey: string) => {
+    setPngLoaded((prev) => {
+      if (prev.has(tileKey)) return prev; // 同引用 → React bail out, 不 render
       const next = new Set(prev);
       next.add(tileKey);
       return next;
     });
   }, []);
-  /**
-   * srcThumb 加载完后调用 → 后台 fetch src (PNG), 加载完 markHiresLoaded
-   * - 浏览器自己 rate-limit 并发 (HTTP/1.1 ~6/host, HTTP/2 更多)
-   * - 不在 onLoad 直接 mark, 因为 onLoad 触发的是 srcThumb 加载完成, 不是 PNG
-   */
-  const onTileThumbLoaded = useCallback(
-    (tileKey: string, srcUrl: string) => {
-      const img = new Image();
-      img.onload = () => markHiresLoaded(tileKey);
-      img.src = srcUrl;
-    },
-    [markHiresLoaded],
-  );
+
+  // ---- 2c. thumbs 预加载 — 移到 world useMemo 之后 (依赖 world) ----
+  // 详见 world 声明后的 useEffect
 
   // ---- 3. 全屏 + 竖屏提示 + 视口宽度 (是否移动端) ----
   // isFullscreen + toggleFullscreen 在 useFullscreen hook (文件底部), 同文件内定义
@@ -953,6 +924,65 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     worldRef.current = world;
   }, [world]);
 
+  // module-level Set: 跟踪已 preload 的 URL, 跨 mount/切维度不重复插入
+//   - 不用 React state (state 不需要 re-render)
+//   - 不用 useRef (ref 在 unmount 后被清空, 跨 mount 不保留)
+//   - module-level 单例, 整个应用生命周期内跟踪
+//   - 隐式副作用: 整个客户端 bundle 共享, 多 GuideMap 实例不重复
+//   - 必须在 useEffect 之前声明 (ESLint no-use-before-define)
+const preloadedUrls = new Set<string>();
+
+// ---- 5b. thumbs 预加载 — 用 <link rel="preload"> 真 high-priority fetch ----
+  // 用户要求: "确保 thumbs 最先加载, 不然失去加载意义"
+  //
+  // 之前用 new Image() + fetchPriority='high' 失败原因:
+  //   - SVG <image> 在 React commit 后立即触发 fetch (low priority 默认)
+  //   - useEffect 在 commit 之后跑, 第二次 fetch (new Image) 实际晚于 SVG image
+  //   - 浏览器对相同 URL 的 second fetch 通常命中缓存, 但首次 fetch 已经在跑
+  //
+  // 现在用 <link rel="preload" as="image">:
+  //   - 在 layout 阶段 hint 浏览器立即 high-priority fetch 这个 URL
+  //   - 浏览器对 preloaded 资源 high priority 调度, SVG <image> 自然 fetch 时已被缓存
+  //   - insert 到 document.head, cleanup 时移除 (避免组件 unmount 后残留)
+  //   - 用 module-level Set 跟踪已插入 URL, 避免重复插入 (切维度回来时跳过已存在的)
+  //
+  // 注意: 只对有 srcThumb 的 tile 生效 (overworld); nether/end 跳过.
+  // 切维度 (world.id 变) 时重新跑 — 切回 overworld 时也 prefetch 一遍
+  //   (但 module-level Set 保证不重复插入 DOM)
+  // 必须放在 world useMemo 之后 (依赖 world.map.tiles)
+
+  /* eslint-disable react-hooks/immutability, react-hooks/exhaustive-deps -- module-level 单例 Set 是合理 LRU/cache 模式 (跨 mount 持久, 跨 GuideMap 实例共享), useEffect 修改它不算 anti-pattern */
+  useEffect(() => {
+    if (!world) return;
+    const inserted = new Set<string>();
+    for (const t of world.map.tiles) {
+      if (!t.srcThumb) continue;
+      if (preloadedUrls.has(t.srcThumb)) continue;
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = t.srcThumb;
+      // fetchpriority 是 hint, 浏览器支持度高 (Chrome 102+, Firefox 间接支持)
+      // 现代 TS lib.dom.d.ts 已支持 fetchPriority 属性, 无需 ts-expect-error
+      link.fetchPriority = "high";
+      document.head.appendChild(link);
+      preloadedUrls.add(t.srcThumb);
+      inserted.add(t.srcThumb);
+    }
+    return () => {
+      // cleanup: 只移除本次 useEffect 跑时插入的 (避免误删其他 effect 的 link)
+      for (const url of inserted) {
+        const link = document.querySelector<HTMLLinkElement>(
+          `link[rel="preload"][href="${url}"]`,
+        );
+        if (link?.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+        preloadedUrls.delete(url);
+      }
+    };
+  }, [world]);
+
   /**
    * 切维度时是否跳过 "自动重置到中央 100%" — 搜索结果点击会自己 panToLandmark,
    * 此时 reset 一下会闪中央再跳过去, 难看。搜索调用 setWorldId 前先把这个 ref 置 true,
@@ -1125,7 +1155,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       }
     },
     // kRef/txRef/tyRef 是 refs (不变引用 + 读 .current 取最新值), 不放 deps 是正确的
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [tileMap, isFullscreen, isMobile],
   );
   // 同步 ref, 让更早定义的 commitImmediate 能调到最新 writeHoverCoordFromScreen
@@ -1259,7 +1288,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     },
     // commitImmediate / setK / setTx / setTy 都是 useMapZoom 暴露的稳定引用
     //   - useState setter 和 useCallback 引用稳定, 加 deps 是冗余
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [scrollMapIntoView, isFullscreen],
   );
 
@@ -1348,7 +1376,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     queueMicrotask(() => commitImmediate(0, 0, 1));
     scrollMapIntoView();
     // commitImmediate 是 useMapZoom 暴露的 useCallback, 引用稳定
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [worldId, scrollMapIntoView]);
 
   // 全屏 + 滚地图逻辑已搬到 useFullscreen hook (上面 scrollMapIntoView 之后调)
@@ -1399,7 +1426,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     //   - 加进 deps 会让 callback 在 ref 变化时重建 (但 ref 引用不变, 永远不会)
     //   - 或者让 callback 在 setter 引用变化时重建 (useState setter 永远不变)
     //   - 当前 deps 是真实依赖 (schedule 等会变化的 useCallback), 保留
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schedule, scheduleScrollAfterWheel, writeHoverCoordFromScreen, isFullscreen]);
 
   /**
@@ -1489,7 +1515,6 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
       el.removeEventListener("touchcancel", onTouchEnd);
     };
     // kRef/txRef/tyRef 是 refs, 不放 deps 是正确的 (引用稳定 + 读 .current 取最新值)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [schedule, writeHoverCoordFromScreen, isFullscreen]);
 
   const onPointerDown = (e: React.PointerEvent) => {
@@ -1693,7 +1718,7 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           searchVisible={searchVisible}
           onToggleSearch={() => {
             // 关闭分支: 在 setState 同步阶段清掉 query + 收起 list (避免下次开启残留)
-            //   - 不能放 useEffect 里, react-hooks/set-state-in-effect 规则会报 error
+            //   - 不能放 useEffect 里 (同步 setState 规则会报)
             //   - React 18+ 自动批处理把 3 个 setState 合并到一次 render
             if (searchVisible) {
               setSearchQuery("");
@@ -1821,9 +1846,8 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
           isMobile={isMobile}
           isPanning={isPanning}
           transitInWorld={transitInWorldCb}
-          loadedHires={loadedHires}
-          onTileThumbLoaded={onTileThumbLoaded}
-          markHiresLoaded={markHiresLoaded}
+          pngLoaded={pngLoaded}
+          onPngLoaded={onPngLoaded}
         />
 
         {/* 标签层 — 永远渲染, 内部按 visibleWhen 过滤
@@ -2185,7 +2209,7 @@ function useSearchState() {
       return () => cancelAnimationFrame(id);
     }
     // 关闭搜索时清空 query + 收起 list 的清理, 不在这里做 —
-    //   - 写在 effect 里 setState 会触发 react-hooks/set-state-in-effect error
+    //   - 写在 effect 里 setState 会触发 cascading-render 规则 error
     //   - 改为在两个关闭点直接调 setSearchQuery("") + setSearchListOpen(false),
     //     React 18+ 自动批处理合并到一次 render, 行为完全等价
     //   - 关闭点: 1680 (toggle 关闭) / 1938 (ESC 关闭)

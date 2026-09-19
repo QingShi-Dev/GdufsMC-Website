@@ -28,12 +28,16 @@ export interface NewMapTile {
   /** 默认 src — overworld = 原 PNG (无压缩), nether/end = 原 PNG */
   src: string;
   /**
-   * 缩略图 src — overworld = q=90 webp (同目录 overworld-thumbs/), 其他维度无
-   * 客户端按当前 zoom (k) 阈值切换:
-   *   - k < 2.5: 用 srcThumb (省流量, 视觉够用)
-   *   - k >= 2.5: 用 src (高清, 放大清晰)
+   * 缩略图 src — overworld = q=60 512×512 webp (同目录 overworld-thumbs/), 其他维度无
+   * 客户端 (GuideMap → MapCanvas) 双层渲染 + PNG 加载完成切:
+   *   - 两个 <image> 永远 render (PNG 底层 + webp 上层), opacity 切换不 remount
+   *   - 初始: webp opacity=1, PNG opacity=0 → 用户看到 webp (秒显示)
+   *   - PNG onLoad → pngLoaded Set 加入 tileKey → opacity 切到 PNG, 永久显示
+   *   - 不依赖 zoom 阈值, 加载完成即切 (缩小/刷新不影响 sticky 状态)
    * 用户实测 overworld 瓦片全用 webp q=95 视觉损失明显 (细节密集, 压缩 artifact),
-   * 改成两阶段加载 — 缩略图阶段省带宽, 放大阶段切原 PNG
+   * 用缩略图阶段省带宽, 加载完后切原 PNG 保持高清.
+   * 注: 早期实现是按 k 阈值切 (k<2.5 用 webp, k>=2.5 用 src), 后来改为 PNG 加载完成切
+   * (更可靠 — 避免单一 <image> remount 触发的 webp 永久丢失 bug).
    */
   srcThumb?: string;
 }

@@ -13,7 +13,7 @@ import { CATEGORY_BADGE_CLASS } from "@/lib/news/types";
 import type { NewsItem } from "@/lib/news/types";
 
 /** 最新 1 条: featured 大卡 (16:10 cover + 右侧文字) */
-function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
+function NewsCardFeatured({ item }: { item: NewsItem }) {
   return (
     <Link
       href={`/news/${item.slug}`}
@@ -21,9 +21,9 @@ function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
     >
       <div
         aria-hidden="true"
+        // 单段 cn(): bg-gradient + opacity + transition + blur 一次性, 避免多段覆盖丢 duration
         className={cn(
-          "absolute -right-16 -top-16 w-48 h-48 rounded-full bg-gradient-to-br blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
-          "bg-gradient-to-br from-emerald-100/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity blur-3xl"
+          "absolute -right-16 -top-16 w-48 h-48 rounded-full bg-gradient-to-br from-emerald-100/60 to-transparent blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
         )}
       />
       <div className="relative grid sm:grid-cols-[1.4fr_1fr] gap-0">
@@ -74,7 +74,7 @@ function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
 }
 
 /** 后续: 3 列小卡 (aspect-video cover + 文字下) */
-function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
+function NewsCardDefault({ item }: { item: NewsItem }) {
   return (
     <Link
       href={`/news/${item.slug}`}
@@ -125,20 +125,21 @@ function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
 export function NewsList({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null;
 
-  const [featured, ...rest] = items;
-  // items.length === 0 上面已守门, featured 一定存在
+  const featured = items[0];
+  const rest = items.slice(1);
+  // featured 一定存在 (items.length > 0 上行守门), 但 noUncheckedIndexedAccess 要求显式守门
   if (!featured) return null;
 
   return (
     <div className="space-y-4">
       {/* 最新 1 条: featured 大卡 */}
-      <NewsCardFeatured item={featured} index={0} />
+      <NewsCardFeatured item={featured} />
 
       {/* 后续: 3 列 grid (sm 以下单列) */}
       {rest.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rest.map((it, i) => (
-            <NewsCardDefault key={it.slug} item={it} index={i + 1} />
+          {rest.map((it) => (
+            <NewsCardDefault key={it.slug} item={it} />
           ))}
         </div>
       )}

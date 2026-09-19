@@ -37,6 +37,10 @@ server {
     listen [::]:443 ssl http2;
     server_name $DOMAIN;
 
+    # 隐藏 nginx 版本 (Server 头 + 错误页 footer)
+    #   - conf.d/gdufsmc-security.conf 也设了, 这里是 server 块级别 double-check
+    server_tokens off;
+
     # SSL 证书 (install-cert.sh 之后才有)
     ssl_certificate     /etc/letsencrypt/live/$DOMAIN/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/$DOMAIN/privkey.pem;
@@ -73,6 +77,62 @@ server {
 
     # 上传大小限制 (proxy 给 Node)
     client_max_body_size 10M;
+
+    # ---------- /admin 保护: basic auth + IP 白名单 + 限流 (三层防护) ----------
+    # 设计目标: 用户 IP 变了也能登 (basic auth 是主防线, 不依赖 IP)
+    #
+    # 三层防护 (任何一层失效另两层兜底):
+    #   1. basic auth: 用户密码 (.htpasswd, bcrypt 加密, setup 时随机生成 + 一次性显示)
+    #   2. IP 白名单: 用户取消下面两行注释填自己的 IP/网段; 没填默认 deny all
+    #   3. nginx limit_req: 10r/s + burst 20, 防爆破 (fail2ban 看 nginx access.log 兜底 ban 24h)
+    #
+    # 为什么不改路径 (/admin → /xxx):
+    #   - 改路径要同时改 Sveltia base_url + GitHub OAuth App callback URL, 连锁改动
+    #   - 三层防护已经足够挡住自动化扫描, 不需要路径改名
+    location /admin/ {
+        # 第 1 道: basic auth
+        auth_basic "Admin Access";
+        auth_basic_user_file /etc/nginx/.htpasswd;
+
+        # 第 2 道: IP 白名单 (默认 deny all, 用户按需开启)
+        # 取消下面注释填自己的 IP 来放宽 IP 限制 (IP 变了密码仍然有效):
+        # allow 1.2.3.4;        # 你的家庭宽带公网 IP (curl ifconfig.me 查)
+        # allow 192.168.1.0/24; # 局域网
+        deny all;
+
+        # 第 3 道: 限流 (fail2ban 兜底 ban)
+        limit_req zone=admin burst=20 nodelay;
+        limit_req_status 429;
+
+        # 反代到 Node (跟主 location / 一样的 proxy 配置)
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_buffering off;
+    }
+
+    # ---------- /api 限流 (防刷 server-status 等 endpoint) ----------
+    location /api/ {
+        limit_req zone=api burst=60 nodelay;
+        limit_req_status 429;
+
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_read_timeout 30s;
+        proxy_send_timeout 30s;
+        proxy_buffering off;
+    }
 
     # ---------- 静态资源: nginx 直接发, 不走 Node ----------
     # /public/images/* — 改图极不频繁, 长缓存

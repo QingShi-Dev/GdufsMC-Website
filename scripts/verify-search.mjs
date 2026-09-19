@@ -158,8 +158,6 @@ async function main() {
   console.log("PASS: list collapsed, query preserved");
 
   // 测试 wrapper wheel listener 是否挂上 — 用真实 mouse wheel (wrapper 现在 fixed, 在 (12,12))
-  const wrapperCenterX = 12 + 320 / 2;
-  const wrapperCenterY = 12 + 38 / 2;
   // 重新查 wrapper 实际位置 (list 收起后可能在 (12,12), 但 scroll 后可能变)
   const wrapperBoxNow = await (await page.$('[role="search"]')).boundingBox();
   console.log("wrapper box (after collapse):", wrapperBoxNow);

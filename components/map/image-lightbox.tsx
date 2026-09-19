@@ -180,7 +180,6 @@ export function ImageLightbox({
   //   - 用 useEffect 跟踪 currentIndex 变化, 触发频率低 (用户主动翻图)
   //   - 不用 React key 会丢失组件内部状态, 用 useEffect 是合适的方式
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     reset();
     // 故意只依赖 currentIndex — 翻图时 reset
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,7 +252,6 @@ export function ImageLightbox({
     const el = containerRef.current;
     if (!el) return;
     let pinchInitialDistance = 0;
-    let pinchInitialK = 1;
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
       const t1 = e.touches[0];
@@ -264,7 +262,6 @@ export function ImageLightbox({
         t2.clientX - t1.clientX,
         t2.clientY - t1.clientY,
       );
-      pinchInitialK = k;
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || pinchInitialDistance === 0) return;

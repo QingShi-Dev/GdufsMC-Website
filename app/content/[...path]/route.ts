@@ -17,7 +17,7 @@
  */
 
 import { readFile, stat } from "node:fs/promises";
-import { join, resolve, extname, relative, isAbsolute } from "node:path";
+import { resolve, extname, relative, isAbsolute } from "node:path";
 import { NextResponse } from "next/server";
 
 const CONTENT_ROOT = resolve(process.cwd(), "content");
