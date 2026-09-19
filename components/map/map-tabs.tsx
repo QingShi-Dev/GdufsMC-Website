@@ -138,7 +138,7 @@ function MapViewTabsContent() {
                       <span
                           className={cn(
                               "text-[17px] font-bold tracking-tight flex-shrink-0",
-                              active ? "text-slate-900" : "text-slate-700 group-hover:text-blue-500",
+                              active ? "text-slate-800" : "text-slate-600 group-hover:text-blue-500",
                           )}
                       >
                       {t.label}
@@ -146,7 +146,7 @@ function MapViewTabsContent() {
                       {/* 群系地图 tab: 标题右边放网址文字 (短版, 完整 URL 走 title tooltip) */}
                       {t.id === "block" && (
                           <span
-                              className="inline text-[11px] sm:text-[14px] text-slate-500/80 font-mono truncate min-w-0 flex-1 sm:ml-1"
+                              className="inline text-[11px] sm:text-[14px] text-slate-500 font-mono truncate min-w-0 flex-1 sm:ml-1"
                           >
                           {BIOME_MAP_SHORT_URL}
                         </span>

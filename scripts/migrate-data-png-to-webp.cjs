@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-require-imports -- standalone Node script, CommonJS 是合理的 */
 /**
  * 一次性脚本: 把 data/map/labels 里 PNG 图片路径批量替换成 thumbs/ webp
  * 一次性脚本: 把 data/map/labels 里 PNG 图片路径批量替换成 thumbs/ webp

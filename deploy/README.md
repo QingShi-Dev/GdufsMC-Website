@@ -61,6 +61,68 @@ bash deploy/app-deploy.sh ubuntu@<server-ip> /opt/gdufsmc
 ### proxy 走 IP 而非域名
 rate limit 用 `x-forwarded-for`，nginx 一定要把这个 header 传上去（已在 nginx.conf 配置里）。
 
+## 安全（按层防御）
+
+### Layer 1: GitHub 仓库
+- **公开仓库 + branch protection on main**（强制 PR + 1 reviewer + status checks + admin 也遵守）
+- OAuth App（短期 token，不存 PAT）
+- 即使 token 泄露也只能开 PR，admin review 拦截
+
+### Layer 2: /admin 路径（nginx 三层防护）
+`/admin/` 是 CMS 后台入口，配置在 `nginx.conf.template`：
+
+| 层 | 措施 | 防什么 |
+|---|------|------|
+| 1 | **basic auth**（`.htpasswd`，bcrypt） | 密码不知道直接 401 |
+| 2 | **IP 白名单**（默认 `deny all`，用户手动填 `allow <IP>` 放开） | 用户 IP 限定 |
+| 3 | **limit_req** 10r/s + burst 20 | 暴力爆破失败 |
+| + | **fail2ban** `[nginx-admin-auth]` jail | 401 超过 10 次 ban 1h |
+
+**用户 IP 变了怎么办**：用密码登录（basic auth 是主防线，不依赖 IP）。
+**admin 凭据**：setup.sh 自动生成 32 字节随机密码 + bcrypt，仅显示一次。后续 `sudo htpasswd -B /etc/nginx/.htpasswd admin` 重置。
+
+### Layer 3: SSH 防护
+- **fail2ban `[sshd]` jail**：5 次失败 ban 24h
+- **SSH key-only**：`PasswordAuthentication no`（setup.sh 自动改），只允许密钥登录
+- **ufw 防火墙**：仅开 22/80/443
+
+### Layer 4: 响应头（Next.js 配置）
+`next.config.ts` 的 `SECURITY_HEADERS` 数组应用到 `:path*`（全站）：
+
+- `Content-Security-Policy`：`default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; ...`（防 XSS 偷 token）
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`（强制 HTTPS）
+- `X-Frame-Options: DENY`（防 clickjacking）
+- `X-Content-Type-Options: nosniff`
+- `Referrer-Policy: strict-origin-when-cross-origin`
+- `Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`
+
+nginx 也加同样头（defense in depth）+ `server_tokens off`（隐藏 nginx 版本）。
+
+### 完整的 `/admin` 访问流程
+```
+1. 用户访问 https://your-domain.com/admin/
+2. nginx 看到路径 /admin/, 走 location 块:
+   a. basic auth: 弹窗要用户名密码 → 用户输
+   b. IP 白名单: 用户 IP 不在 allow 列表 → 403 (默认 deny all)
+   c. limit_req: 401 失败 10 次 → fail2ban ban IP 1h
+3. basic auth + IP 通过 → 反代到 Node → Sveltia CMS UI
+4. Sveltia 跳 GitHub OAuth → 用户在 github.com 登录授权
+5. GitHub 跳回 /admin/?code=... → Sveltia 用 PKCE 换短期 token (数小时)
+6. Sveltia 写内容 → 通过 OAuth token 调 GitHub API
+7. GitHub 创建 PR (因为 main 分支 protected) → admin review → merge → Action 部署
+```
+
+**任何一层失效，下一层兜底**。攻击者需要同时攻破 basic auth + IP 白名单 + GitHub OAuth + branch protection 才能写入仓库。
+
+### 上线前 checklist
+- [ ] GitHub repo 转 public + branch protection on main
+- [ ] OAuth App 注册 + Client ID 填到 `public/admin/config.yml`
+- [ ] 服务器跑 `setup.sh`，保存打印出来的凭据
+- [ ] `curl -I https://your-domain.com` 看响应头（CSP/HSTS/Permissions-Policy 应在）
+- [ ] `curl -I https://your-domain.com/admin/` 应返回 401（basic auth 弹窗）
+- [ ] 用凭据登录 /admin/，看到 Sveltia CMS
+- [ ] 测一次 Sveltia 编辑 → GitHub 创建 PR → Action build → 上线生效
+
 ## 监控与排错
 
 ```bash

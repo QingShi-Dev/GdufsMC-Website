@@ -380,8 +380,8 @@ export function HeaderNav() {
                                     className={cn(
                                         "relative px-4 py-2 text-lg font-semibold rounded-lg transition-colors",
                                         active
-                                            ? "text-emerald-500 text-shadow-2xs"
-                                            : "text-slate-700 text-shadow-2xs hover:text-slate-950 hover:bg-white/40"
+                                            ? "text-emerald-500 text-shadow-3xs"
+                                            : "text-slate-700 text-shadow-2xs hover:text-slate-800 hover:bg-white/40"
                                     )}
                                 >
                                     {active ? (

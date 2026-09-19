@@ -12,27 +12,18 @@ import { cn } from "@/lib/utils";
 import { CATEGORY_BADGE_CLASS } from "@/lib/news/types";
 import type { NewsItem } from "@/lib/news/types";
 
-const DECO_GRADIENTS = [
-  "from-amber-400/20 to-orange-400/0",
-  "from-pink-400/20 to-rose-400/0",
-  "from-sky-400/20 to-blue-400/0",
-  "from-emerald-400/20 to-teal-400/0",
-  "from-violet-400/20 to-purple-400/0",
-  "from-yellow-400/20 to-amber-400/0",
-];
-
 /** 最新 1 条: featured 大卡 (16:10 cover + 右侧文字) */
-function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
+function NewsCardFeatured({ item }: { item: NewsItem }) {
   return (
     <Link
       href={`/news/${item.slug}`}
-      className="group relative block rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] hover:shadow-lg hover:border-slate-300/80 transition-all duration-300 overflow-hidden"
+      className="group relative block rounded-2xl bg-white/70 border border-slate-200/70 hover:border-emerald-300/90 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-250 overflow-hidden"
     >
       <div
         aria-hidden="true"
+        // 单段 cn(): bg-gradient + opacity + transition + blur 一次性, 避免多段覆盖丢 duration
         className={cn(
-          "absolute -right-16 -top-16 w-48 h-48 rounded-full bg-gradient-to-br blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
-          DECO_GRADIENTS[index % DECO_GRADIENTS.length],
+          "absolute -right-16 -top-16 w-48 h-48 rounded-full bg-gradient-to-br from-emerald-100/60 to-transparent blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
         )}
       />
       <div className="relative grid sm:grid-cols-[1.4fr_1fr] gap-0">
@@ -45,31 +36,31 @@ function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
             className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
           />
           {item.badge && (
-            <div className="absolute top-3 left-3">
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded-md bg-rose-500 text-white">
+            <div className="absolute top-4 left-6">
+              <span className="text-[13px] font-semibold px-2 py-1 rounded-md bg-rose-500 text-white">
                 {item.badge}
               </span>
             </div>
           )}
         </div>
         {/* 右侧文字 */}
-        <div className="p-6 sm:p-7 flex flex-col justify-center">
+        <div className="p-5 sm:p-7 pb-4 sm:pb-6 flex flex-col justify-center">
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span
               className={cn(
-                "text-[10px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
+                "text-[12px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
                 CATEGORY_BADGE_CLASS[item.category] ?? CATEGORY_BADGE_CLASS["公告"],
               )}
             >
               {item.category}
             </span>
-            <time className="text-xs text-slate-500 font-mono tabular-nums">{item.date}</time>
+            <time className="text-[14px] text-slate-600 font-mono tabular-nums ml-0.5">{item.date}</time>
           </div>
-          <h3 className="text-xl sm:text-2xl font-bold text-slate-900 leading-tight mb-3 group-hover:text-brand-600 transition-colors">
+          <h3 className="text-xl sm:text-2xl font-bold text-slate-800 leading-tight mb-2 sm:mb-3 group-hover:text-brand-600 transition-colors">
             {item.title}
           </h3>
           <p className="text-sm text-slate-600 leading-relaxed line-clamp-3 mb-4">{item.summary}</p>
-          <div className="flex items-center gap-1.5 text-sm text-brand-600 font-medium">
+          <div className="flex items-center gap-1 text-sm text-brand-600 font-medium">
             阅读全文
             <IconArrowRight
               aria-hidden="true"
@@ -83,17 +74,16 @@ function NewsCardFeatured({ item, index }: { item: NewsItem; index: number }) {
 }
 
 /** 后续: 3 列小卡 (aspect-video cover + 文字下) */
-function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
+function NewsCardDefault({ item }: { item: NewsItem }) {
   return (
     <Link
       href={`/news/${item.slug}`}
-      className="group relative block rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] hover:shadow-lg hover:border-slate-300/80 transition-all duration-300 overflow-hidden"
+      className="group relative block rounded-2xl bg-white/70 border border-slate-200/70 hover:border-emerald-300/90 hover:shadow-lg hover:shadow-emerald-500/10 transition-all duration-250 overflow-hidden"
     >
       <div
         aria-hidden="true"
         className={cn(
           "absolute -right-16 -top-16 w-40 h-40 rounded-full bg-gradient-to-br blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none",
-          DECO_GRADIENTS[index % DECO_GRADIENTS.length],
         )}
       />
       <div className="relative aspect-video overflow-hidden bg-slate-100">
@@ -104,8 +94,8 @@ function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
         />
         {item.badge && (
-          <div className="absolute top-2.5 left-2.5">
-            <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-rose-500 text-white">
+          <div className="absolute top-2.5 left-3.5">
+            <span className="text-[11px] font-semibold px-1.5 py-1 rounded bg-rose-500 text-white">
               {item.badge}
             </span>
           </div>
@@ -115,18 +105,18 @@ function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span
             className={cn(
-              "text-[9px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider",
+              "text-[12px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider",
               CATEGORY_BADGE_CLASS[item.category] ?? CATEGORY_BADGE_CLASS["公告"],
             )}
           >
             {item.category}
           </span>
-          <time className="text-[10px] text-slate-500 font-mono tabular-nums">{item.date}</time>
+          <time className="text-[13px] text-slate-600 font-mono tabular-nums">{item.date}</time>
         </div>
-        <h3 className="text-sm font-bold text-slate-900 leading-snug mb-2 line-clamp-2 group-hover:text-brand-600 transition-colors">
+        <h3 className="text-[16px] font-bold text-slate-800 leading-snug mb-1 sm:mb-2 line-clamp-2 group-hover:text-brand-600 transition-colors">
           {item.title}
         </h3>
-        <p className="text-xs text-slate-600 leading-relaxed line-clamp-2">{item.summary}</p>
+        <p className="text-[13px] text-slate-600 leading-relaxed line-clamp-2">{item.summary}</p>
       </div>
     </Link>
   );
@@ -135,20 +125,21 @@ function NewsCardDefault({ item, index }: { item: NewsItem; index: number }) {
 export function NewsList({ items }: { items: NewsItem[] }) {
   if (items.length === 0) return null;
 
-  const [featured, ...rest] = items;
-  // items.length === 0 上面已守门, featured 一定存在
+  const featured = items[0];
+  const rest = items.slice(1);
+  // featured 一定存在 (items.length > 0 上行守门), 但 noUncheckedIndexedAccess 要求显式守门
   if (!featured) return null;
 
   return (
     <div className="space-y-4">
       {/* 最新 1 条: featured 大卡 */}
-      <NewsCardFeatured item={featured} index={0} />
+      <NewsCardFeatured item={featured} />
 
       {/* 后续: 3 列 grid (sm 以下单列) */}
       {rest.length > 0 && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {rest.map((it, i) => (
-            <NewsCardDefault key={it.slug} item={it} index={i + 1} />
+          {rest.map((it) => (
+            <NewsCardDefault key={it.slug} item={it} />
           ))}
         </div>
       )}

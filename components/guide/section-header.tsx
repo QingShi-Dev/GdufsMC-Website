@@ -44,7 +44,7 @@ export function SectionHeader({
       <h2
         className={cn(
           "text-3xl sm:text-[38px] font-bold tracking-tight text-balance",
-          isLight ? "text-slate-900" : "text-white"
+          isLight ? "text-slate-800" : "text-white"
         )}
       >
         {title}

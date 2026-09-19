@@ -20,7 +20,6 @@ import type {
   NewLine,
   NewTransitStation,
   NewTransitStyleDefaults,
-  NewTransitLabelFields,
   NewTransitLabelConfig,
   NewPearlLine,
 } from "@/lib/map/transit";

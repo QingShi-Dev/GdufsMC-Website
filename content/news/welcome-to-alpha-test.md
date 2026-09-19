@@ -1,4 +1,5 @@
 ---
+slug: "welcome-to-alpha-test"
 title: "欢迎来到：云城像素社网站 Alpha 内测版本"
 date: "2026-07-31"
 category: "更新"

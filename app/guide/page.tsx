@@ -132,11 +132,11 @@ const STEPS = [
         <br />
         <span className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-slate-500">
           <span className="inline-flex items-center gap-1.5">
-            <span className="text-[13px] text-slate-500">校园网</span>
+            <span className="text-[14px] text-slate-600">校园网</span>
             <CopyHost host="mc.gdufscraft.top" />
           </span>
           <span className="inline-flex items-center gap-1.5 sm:pl-2">
-            <span className="text-[13px] text-slate-500">公网主线</span>
+            <span className="text-[14px] text-slate-600">公网主线</span>
             <CopyHost host="mc2.gdufscraft.top" />
           </span>
         </span>
@@ -157,7 +157,7 @@ const STEPS = [
 
 export default function HelpPage() {
   return (
-    <div className="pt-24 pb-12 sm:pb-20 relative overflow-hidden">
+    <div className="pt-24 pb-12 sm:pb-20 relative overflow-hidden cursor-default">
       <div className="mx-auto max-w-6xl px-4 relative">
         <SectionHeader
           title="如何加入我们的 MC 服务器"
@@ -202,14 +202,14 @@ export default function HelpPage() {
                         className="w-5 h-5"
                       />
                     </div>
-                    <div className="font-semibold text-base sm:text-[17px] text-slate-900">微信小助手</div>
+                    <div className="font-semibold text-base sm:text-[17px] text-slate-800">微信小助手</div>
                   </div>
                   <p className="text-[14px] sm:text-[15px] text-slate-600 leading-relaxed">
                     添加好友后，小助手会将你拉入群聊
                     <br />
                     群公告包含重要信息，入群后请及时阅读
                   </p>
-                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-500">
+                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-600">
                     <span className="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       推荐
@@ -246,14 +246,14 @@ export default function HelpPage() {
                         className="w-5 h-5"
                       />
                     </div>
-                    <div className="font-semibold text-base sm:text-[17px] text-slate-900">QQ 群</div>
+                    <div className="font-semibold text-base sm:text-[17px] text-slate-800">QQ 群</div>
                   </div>
                   <p className="text-[14px] sm:text-[15px] text-slate-600 leading-relaxed">
                     主要用于存放文件
                     <br />
                     交流推荐微信群
                   </p>
-                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-500">
+                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-600">
                     <span className="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                       <span className="w-2 h-2 rounded-full bg-sky-500" />
                       备选
@@ -315,12 +315,12 @@ export default function HelpPage() {
                         />
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="text-[14px] sm:text-[15px] font-semibold text-slate-600 tracking-wide">
+                            <span className="text-[14px] sm:text-[15px] font-semibold text-slate-700 tracking-wide">
                               {it.tag}
                             </span>
                             <CopyHost host={it.host} />
                           </div>
-                          <div className="text-[12px] sm:text-[13px] text-slate-400 mt-0.5 leading-snug">
+                          <div className="text-[12px] sm:text-[13px] text-slate-500 mt-0.5 leading-snug">
                             {it.note}
                           </div>
                         </div>

@@ -180,7 +180,6 @@ export function ImageLightbox({
   //   - 用 useEffect 跟踪 currentIndex 变化, 触发频率低 (用户主动翻图)
   //   - 不用 React key 会丢失组件内部状态, 用 useEffect 是合适的方式
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     reset();
     // 故意只依赖 currentIndex — 翻图时 reset
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -253,7 +252,6 @@ export function ImageLightbox({
     const el = containerRef.current;
     if (!el) return;
     let pinchInitialDistance = 0;
-    let pinchInitialK = 1;
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
       const t1 = e.touches[0];
@@ -264,7 +262,6 @@ export function ImageLightbox({
         t2.clientX - t1.clientX,
         t2.clientY - t1.clientY,
       );
-      pinchInitialK = k;
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || pinchInitialDistance === 0) return;
@@ -380,7 +377,15 @@ export function ImageLightbox({
           ref={containerRef}
           // 注意: 这里**不加** data-lightbox-control, 否则 onPointerDown 检查 closest 时
           // 会找到容器自己 (target.img → container), 永远 return early, drag 永远不启动
-          className="relative pointer-events-auto select-none cursor-grab active:cursor-grabbing w-[90vw] h-[90vh] max-w-[1400px] max-h-[900px]"
+          className={cn(
+            "relative pointer-events-auto select-none",
+            // k = MIN_K (即未放大) 时图片铺满, 拖动无意义 → cursor default
+            // k > MIN_K 时图片超出视图, 拖动有意义 → cursor grab
+            k > MIN_K
+              ? "cursor-grab active:cursor-grabbing"
+              : "cursor-default",
+            "w-[90vw] h-[90vh] max-w-[1400px] max-h-[900px]",
+          )}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -418,7 +423,7 @@ export function ImageLightbox({
           hiResImages[currentIndex].split("/").pop()?.split(/[?#]/)[0] ?? "";
         const stem = filename.replace(/\.[^.]+$/, "");
         return stem ? (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-6 py-2 rounded-full bg-white/90 text-slate-700 text-[16px] font-medium backdrop-blur-md pointer-events-none whitespace-nowrap">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-6.5 py-2.5 rounded-full bg-white/90 text-slate-700 text-[16px] font-semibold backdrop-blur-md pointer-events-none whitespace-nowrap">
             {stem}
           </div>
         ) : null;
@@ -430,7 +435,7 @@ export function ImageLightbox({
         onClick={onClose}
         data-lightbox-control
         aria-label="关闭"
-        className="absolute top-8 right-4 sm:right-8 z-10 w-10 h-10 rounded-full border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+        className="absolute top-8 right-4 sm:right-8 z-10 w-10 h-10 rounded-full border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
       >
         <img src="/icons/map/tabs/关闭图标.svg" alt="" className="w-5.5 h-5.5" />
       </button>
@@ -443,7 +448,7 @@ export function ImageLightbox({
             onClick={goPrev}
             data-lightbox-control
             aria-label="上一张"
-            className="absolute top-1/2 left-3 sm:left-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 left-3 sm:left-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-200 flex items-center justify-center transition-colors  cursor-pointer"
           >
             <img
               src="/icons/map/tabs/右侧箭头图标.svg"
@@ -456,7 +461,7 @@ export function ImageLightbox({
             onClick={goNext}
             data-lightbox-control
             aria-label="下一张"
-            className="absolute top-1/2 right-3 sm:right-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-100 flex items-center justify-center transition-colors"
+            className="absolute top-1/2 right-3 sm:right-6 -translate-y-1/2 rounded-lg z-10 w-9 h-12 border border-slate-200/90 text-white bg-white/90 hover:text-slate-200 hover:bg-slate-200 flex items-center justify-center transition-colors cursor-pointer"
           >
             <img
               src="/icons/map/tabs/右侧箭头图标.svg"
@@ -480,7 +485,7 @@ export function ImageLightbox({
             schedule(tx, ty, newK);
           }}
           aria-label="放大"
-          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-200 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30 cursor-pointer"
           disabled={k >= MAX_K}
         >
           <img src="/icons/map/tabs/放大图标.svg" alt="" className="w-5 h-5" />
@@ -492,7 +497,7 @@ export function ImageLightbox({
             schedule(tx, ty, newK);
           }}
           aria-label="缩小"
-          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30"
+          className="w-11 h-11 rounded-lg border border-slate-200/90 bg-white/90 text-slate-600 hover:text-slate-800 hover:bg-slate-200 flex items-center justify-center shadow-sm transition-colors disabled:opacity-30 cursor-pointer disabled:cursor-default"
           disabled={k <= MIN_K}
         >
           <img src="/icons/map/tabs/缩小图标.svg" alt="" className="w-5 h-5" />
@@ -521,7 +526,7 @@ export function ImageLightbox({
                   "shrink-0 w-16 h-16 rounded overflow-hidden ring-2 transition-all",
                   active
                     ? "ring-white opacity-100"
-                    : "ring-transparent opacity-60 hover:opacity-100",
+                    : "ring-transparent opacity-60 hover:opacity-100 cursor-pointer",
                 )}
               >
                 <img

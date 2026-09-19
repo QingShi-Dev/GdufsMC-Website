@@ -1,0 +1,87 @@
+# =============================================================================
+# GitHub Actions — CMS 上传 news 图片自动转 webp q=90
+# =============================================================================
+#
+# 触发: push 到 main 且改动在 content/news/images/ 或 content/news/*.md
+#       (Sveltia CMS 编辑完提交也算, 它直连 GitHub API commit + push)
+#
+# 流程:
+#   1. 跑 scripts/convert-news-images.mjs
+#      - sharp 检测 png/jpg/jpeg 转 webp q=90
+#      - 更新 .md 里图片路径引用
+#   2. 检测 git diff, 有改动就 commit + push
+#
+# 循环防护 (重要):
+#   - workflow 用 `if: github.event.head_commit.author.name != 'github-actions[bot]'`
+#     跳过自己 commit 触发的下一轮 (否则会无限递归)
+#   - concurrency cancel-in-progress=true 让多次连发 push 不会堆积
+#
+# 需要的 GitHub 配置:
+#   Settings → Actions → General → Workflow permissions:
+#     勾 "Read and write permissions"
+#   否则 GITHUB_TOKEN 没有写权限, commit + push 会失败 (403)
+#
+# 工作流延迟:
+#   用户在 Sveltia 编辑 → commit → push → Action 跑 → 再 commit
+#   总延迟 1-3 分钟, 期间 web 页面引用的是上传原图
+#   Action commit 后下次部署会替换
+#
+# 设计取舍:
+#   - 只处理 png/jpg/jpeg, 不动已存在的 webp (避免双重压缩损失质量)
+#   - Sveltia image widget 的 transform 选项不支持上传时格式转换, 只能 push 后处理
+# =============================================================================
+
+name: Convert CMS news images to webp
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "content/news/images/**"
+      - "content/news/*.md"
+
+# 不要并发 (用户连续编辑可能触发多个 push)
+concurrency:
+  group: convert-news-images
+  cancel-in-progress: true    # 新 push 取消旧的, 避免 race condition
+
+jobs:
+  convert:
+    name: Convert images to webp q=90
+    # 跳过 Action 自己的 commit (避免无限递归)
+    if: github.event.head_commit.author.name != "github-actions[bot]"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write    # 自动 commit + push 需要写权限
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1    # 不需要 history, git diff --cached 够用
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      # 只装 sharp (项目 devDep 里有), 避免 pnpm install 全项目拖慢
+      # npm install --no-save 不修改 package.json / package-lock.json
+      - name: Install sharp
+        run: npm install sharp@^0.35 --no-save --prefer-offline --no-audit --no-fund
+
+      - name: Run conversion script
+        run: node scripts/convert-news-images.mjs
+
+      - name: Commit and push converted images
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A content/
+
+          # 没有改动就直接退出 (避免空 commit 触发递归)
+          if git diff --cached --quiet; then
+            echo "No changes to commit (already webp q=90)"
+            exit 0
+          fi
+
+          git commit -m "chore(cms): convert uploaded news images to webp q=90"
+          git push
