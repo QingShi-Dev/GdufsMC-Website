@@ -4,7 +4,7 @@ title: 小游戏派对现已常驻，欢迎参加！
 date: 2026-09-18
 category: 活动
 summary: 精选20+小游戏，即刻加入，享受每周2小时的欢乐时光。
-cover: /content/news/images/game-3rd-group-photo.png
+cover: /content/news/images/game-3rd-group-photo.webp
 badge: ''
 pinned: false
 ---
@@ -13,7 +13,7 @@ pinned: false
 
 为了能让更多人体验到多人游戏的乐趣，小游戏派对应运而生。派对涵盖了游戏技巧、团队作战、跑酷等在内的20+款小游戏，项目会根据玩家反馈不断优化，目前，我们已经举办了三次小游戏派对，并且还会按每周一次的频率继续举办下去
 
-![活动截图](/content/news/images/activity-screenshot.jpg)
+![活动截图](/content/news/images/activity-screenshot.webp)
 
 ### 二、如何参加
 
