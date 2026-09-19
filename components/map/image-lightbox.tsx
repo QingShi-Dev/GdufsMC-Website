@@ -264,6 +264,9 @@ export function ImageLightbox({
     const el = containerRef.current;
     if (!el) return;
     let pinchInitialDistance = 0;
+    // 双指防抖时间戳 — 跟 map 同款, 节流 16ms (≈60fps), 防止高频 touchmove 触发
+    //   多余计算 + 用户感知"缩放太快"
+    let lastPinchMoveTime = 0;
     const onTouchStart = (e: TouchEvent) => {
       if (e.touches.length !== 2) return;
       const t1 = e.touches[0];
@@ -282,6 +285,11 @@ export function ImageLightbox({
     };
     const onTouchMove = (e: TouchEvent) => {
       if (e.touches.length !== 2 || pinchInitialDistance === 0) return;
+      // 防抖/节流: 双指 touchmove 高频触发 (~60-120Hz), 跟 map 同款 — 节流到 60fps
+      // (用户最新要求: map 和 lightbox 双指都加防抖)
+      const now = performance.now();
+      if (now - lastPinchMoveTime < 16) return;
+      lastPinchMoveTime = now;
       e.preventDefault();
       const t1 = e.touches[0];
       const t2 = e.touches[1];
@@ -291,11 +299,10 @@ export function ImageLightbox({
         t2.clientY - t1.clientY,
       );
       const ratioRaw = currentDistance / pinchInitialDistance;
-      // 灵敏度调整: 用户最新要求 — 双指缩放 0.5 次幂 (sqrt, 比 map 的 0.36 灵敏)
-      //   - map 用 0.36 (用户要"地图缩放更迟钝"), lightbox 用 0.5 (用户要求)
-      //   - 0.5 sqrt: distance 拉大 2 倍 → 缩放 ~1.41x (vs raw 2x)
+      // 灵敏度调整: 用户最新要求 — 双指缩放 0.36 次幂 (跟 map 同款)
+      //   - 0.36 比 0.5 (sqrt) 还迟钝 — distance 拉大 2 倍 → 缩放 ~1.31x
       //   - ratio=1 unchanged; >1 时变缓; <1 时也变缓 (反向一致)
-      const ratio = Math.pow(ratioRaw, 0.5);
+      const ratio = Math.pow(ratioRaw, 0.36);
       // 中心 = 两指中点
       const centerX = (t1.clientX + t2.clientX) / 2;
       const centerY = (t1.clientY + t2.clientY) / 2;
@@ -317,6 +324,9 @@ export function ImageLightbox({
     };
     const onTouchEnd = () => {
       if (pinchInitialDistance !== 0) pinchInitialDistance = 0;
+      // 重置节流时间戳: 下次 pinch 第一帧不会被节流窗口误判跳过
+      // (跟 map 同款 fix, 详见 guide-map.tsx onTouchEnd)
+      lastPinchMoveTime = 0;
     };
     el.addEventListener("touchstart", onTouchStart, { passive: false });
     el.addEventListener("touchmove", onTouchMove, { passive: false });

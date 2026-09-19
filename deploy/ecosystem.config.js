@@ -47,9 +47,14 @@ module.exports = {
       // 合并日志: 单文件, 按天 logrotate
       merge_logs: true,
       // 自动重启策略
+      //   - min_uptime 30s: 启动 30s 内崩溃算"启动失败", 直接停掉不再重试
+      //     (防止应用 bug 导致每秒重启一次刷 PM2 日志)
+      //   - max_restarts 10: 总共 10 次启动失败才停 (防止无限重启循环)
+      //   - restart_delay 2s: 两次重启间隔, 给系统喘息
       autorestart: true,
       restart_delay: 2000,
       max_restarts: 10,
+      min_uptime: 30000,
       // 崩溃时 dump 内存, 方便排查
       kill_timeout: 5000,
       listen_timeout: 8000,

@@ -31,12 +31,22 @@ const buckets = new Map<string, Bucket>();
 let seqCounter = 0;
 
 function getClientIp(req: NextRequest): string {
-  // 优先取首个 x-forwarded-for (CDN/反代会追加)
+  // 安全: 不直接信 x-forwarded-for / x-real-ip (可被任意请求伪造)
+  //   只信任**最右边**的 IP (即最近一层反代注入的, 不是客户端构造的)
+  //   链: 客户端 (可能伪造 XFF) → CDN/反代 (注入真实 client IP, append) → nginx → Next.js
+  //   - 客户端在头部加 "X-Forwarded-For: 1.1.1.1", nginx 会在末尾追加 ", <real-client-ip>"
+  //   - 取最后一个就是 nginx 看到的真实 client IP (中间任何都是客户端伪造的)
+  //   - 前提: nginx 配置 `set_real_ip_from <trusted>; real_ip_header X-Forwarded-For;`
+  //     只信任 CDN/反代的 IP, 不信 client 直发的 (setup.sh 已配)
   const xff = req.headers.get("x-forwarded-for");
   if (xff) {
-    const first = xff.split(",")[0]?.trim();
-    if (first) return first;
+    // 拆分, 反向取最后一个非空 IP
+    const parts = xff.split(",").map((s) => s.trim()).filter(Boolean);
+    const last = parts[parts.length - 1];
+    if (last) return last;
   }
+  // x-real-ip 通常由 nginx 设置, 但同样不直接信 (可能被 CDN 透传)
+  // 这里作为 xff 缺失时的次选
   const real = req.headers.get("x-real-ip")?.trim();
   if (real) return real;
   // 兜底 (本机直连 dev 场景)

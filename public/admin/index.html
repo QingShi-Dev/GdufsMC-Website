@@ -54,7 +54,113 @@
       - 配置在 ./config.yml, 支持 GitHub / GitLab / 本地等多种 backend
       - 首次使用需要在 GitHub 后台配 OAuth (或填入 PAT)
       - 文档: https://github.com/sveltia/sveltia-cms
+
+      隐藏"使用本地仓库"(Work with Local Repository) 按钮 + 禁用 File System Access API
+      - 用户最新要求: 生产 /admin 不需要本地仓库选项 (项目强制走 GitHub backend)
+      - Sveltia 0.215+ 忽略了 local_backend 配置字段, 没有官方开关关闭
+      - 用 CSS + MutationObserver 隐藏按钮 (Svelte UI 可能在加载后动态插入)
+      - 同时 monkey-patch showDirectoryPicker, 即使按钮被绕过也不能触发文件选择
+        (Sveltia 用 File System Access API 让用户选"项目根目录", patch 掉就无文件选择 UI)
     -->
+    <script>
+      (function() {
+        var BUTTON_KEYWORDS = ['work with local repository', 'local repository', '本地仓库', 'use local repo', 'select.*root directory', 'select the project'];
+        var HIDDEN_STYLE = 'display:none!important;visibility:hidden!important;pointer-events:none!important;';
+
+        function isLocalRelated(el) {
+          if (!el || !el.textContent) return false;
+          var text = (el.textContent || '').toLowerCase().trim();
+          if (!text) return false;
+          return BUTTON_KEYWORDS.some(function(kw) { return text.includes(kw); });
+        }
+
+        function hideLocalElements(root) {
+          if (!root || !root.querySelectorAll) return;
+          // 按钮 / 链接 / menuitem / 含这些文字的容器
+          var candidates = root.querySelectorAll('button, a, [role="button"], [role="menuitem"], li, div');
+          for (var i = 0; i < candidates.length; i++) {
+            var el = candidates[i];
+            // 跳过脚本/样式元素
+            if (el.tagName === 'SCRIPT' || el.tagName === 'STYLE') continue;
+            // 已经隐藏过跳过
+            if (el.dataset && el.dataset.localHidden === '1') continue;
+            if (!isLocalRelated(el)) continue;
+            // 隐藏 + 标记 (避免反复 setStyle 干扰 Svelte 渲染)
+            el.setAttribute('style', (el.getAttribute('style') || '') + ';' + HIDDEN_STYLE);
+            if (el.dataset) el.dataset.localHidden = '1';
+            // 如果父容器是 menu/list, 也隐藏整个容器 — 防止按钮藏了但容器还在空白占位
+            var parent = el.parentElement;
+            for (var p = 0; p < 3 && parent; p++) {
+              if (parent.dataset && parent.dataset.localContainerHidden === '1') break;
+              var ptext = (parent.textContent || '').toLowerCase();
+              if (BUTTON_KEYWORDS.some(function(kw) { return ptext.includes(kw); }) && parent.children.length <= 5) {
+                parent.setAttribute('style', (parent.getAttribute('style') || '') + ';' + HIDDEN_STYLE);
+                if (parent.dataset) parent.dataset.localContainerHidden = '1';
+              }
+              parent = parent.parentElement;
+            }
+          }
+        }
+
+        // Svelte 渲染后再检查 (Sveltia 用 Svelte 5, mount 时机不固定)
+        function scheduleHide() {
+          hideLocalElements(document.body);
+          // 连续 5s 每 200ms 检查 (覆盖 Svelte 异步 mount + 路由切换)
+          var n = 0;
+          var interval = setInterval(function() {
+            hideLocalElements(document.body);
+            if (++n > 25) clearInterval(interval);
+          }, 200);
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', scheduleHide);
+        } else {
+          scheduleHide();
+        }
+        // 兜底 — script 是 module 加载完后跑, Svelte 5 mount 可能更晚
+        setTimeout(scheduleHide, 0);
+        setTimeout(scheduleHide, 500);
+        setTimeout(scheduleHide, 1500);
+
+        // 兜底 #2: MutationObserver 持续盯着, 任何新插入的 local 相关元素立刻隐藏
+        var observer = new MutationObserver(function(mutations) {
+          for (var i = 0; i < mutations.length; i++) {
+            var added = mutations[i].addedNodes;
+            for (var j = 0; j < added.length; j++) {
+              var node = added[j];
+              if (node.nodeType !== 1) continue;
+              hideLocalElements(node);
+            }
+          }
+        });
+        // body 出现就 observe
+        var observeBody = function() {
+          if (document.body) {
+            observer.observe(document.body, { childList: true, subtree: true });
+          } else {
+            setTimeout(observeBody, 50);
+          }
+        };
+        observeBody();
+
+        // 兜底 #3: 拦截 File System Access API, 防止 button 被绕过时弹出文件选择器
+        //   - Sveltia 用 window.showDirectoryPicker 让用户选"项目根目录"
+        //   - patch 掉后即使按钮还在, 点击也直接抛错 → 文件选择 UI 永不出现
+        //   - 注意: 这是 admin 路径专用的, 主页面没影响 (此 script 只在 /admin 加载)
+        if (typeof window.showDirectoryPicker === 'function') {
+          window.showDirectoryPicker = function() {
+            throw new DOMException('本地仓库选项已被禁用, 请使用 GitHub PAT 登录', 'NotAllowedError');
+          };
+        }
+        // Safari 用 webkitShowDirectoryPicker, 一起 patch
+        if (typeof window.webkitShowDirectoryPicker === 'function') {
+          window.webkitShowDirectoryPicker = function() {
+            throw new DOMException('本地仓库选项已被禁用, 请使用 GitHub PAT 登录', 'NotAllowedError');
+          };
+        }
+      })();
+    </script>
     <script src="https://unpkg.com/@sveltia/cms/dist/sveltia-cms.js" type="module"></script>
   </body>
 </html>

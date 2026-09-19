@@ -779,7 +779,24 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   const [isPanning, setIsPanning] = useState(false);
   const panTimeoutRef = useRef<number | null>(null);
   useEffect(() => {
-    const update = () => setIsMobile(window.innerWidth < 640);
+    // 移动端检测: width < sm (640) OR height < 800
+    //   - 小米浏览器 (Mi Browser) 进自家全屏模式时, viewport 实际变了但 resize/
+    //     fullscreenchange/ResizeObserver 三层都不触发, 导致 isMobile 陈旧
+    //   - 加 height 维度: 全屏后 height 也跟着变 (手机横屏 375, 全屏 800+)
+    //   - 横屏手机 width > 640 但 height < 800 也算移动端, 跟"小屏设备"一致
+    //   - 阈值 800: 主流手机 (iPhone SE 568, 标准 Android 640-720, Pro Max 896) 都 < 800
+    //     笔记本屏幕最小 1366x768 (height >= 768 但 width >= 1366 已排除); 桌面 1080p 都 >> 800
+    //   - 双重判断 OR, 任意维度满足都算移动端, 覆盖更多边缘 case
+    //   - updatingRef 重入守卫: ResizeObserver → setIsMobile → re-render → 偶发
+    //     ResizeObserver 二次触发, 理论 React 18 batching 不会无限循环, 但加守卫稳
+    const updatingRef = { current: false };
+    const update = () => {
+      if (updatingRef.current) return;
+      updatingRef.current = true;
+      setIsMobile(window.innerWidth < 640 || window.innerHeight < 800);
+      // microtask reset, 确保 setState 提交后才允许下次更新
+      queueMicrotask(() => { updatingRef.current = false; });
+    };
     update();
     window.addEventListener("resize", update);
     // fullscreenchange: 部分浏览器进/退全屏时 innerWidth 会变 (Android Chrome 已知行为)
@@ -1645,6 +1662,8 @@ const preloadedUrls = new Set<string>();
     if (!el) return;
 
     let pinchInitialDistance = 0;
+    // 双指防抖时间戳 — onTouchMove 节流用, 16ms (≈60fps) 间隔内的后续事件被跳过
+    let lastPinchMoveTime = 0;
 
     // native pointerdown capture listener — 比 React 合成 onPointerDown 早跑 (W3C event flow),
     //   能读 e.touches.length 提前判断双指. 解决 React 合成 pointer event 不暴露 touches 的限制,
@@ -1695,6 +1714,15 @@ const preloadedUrls = new Set<string>();
       if (target?.closest('[role="dialog"][aria-modal="true"]')) return;
       if (e.touches.length !== 2) return;
       if (pinchInitialDistance === 0) return;
+      // 防抖/节流: 双指 touchmove 高频触发 (~60-120Hz), 每次都跑 Math.hypot +
+      //   Math.pow + clampBounds + screenToVB + schedule 等 5+ 个数学函数, 长时间
+      //   双指缩放时 (1-2 秒) CPU 占用显著, 而且用户感知上"太灵敏"是更新太快
+      //   - 用 performance.now() 节流到 16ms (≈60fps), 跟浏览器 refresh rate 对齐
+      //   - 跳过的事件用最新 touches 状态在下一帧补齐 (rAF batch 兜底)
+      //   - 用户最新要求: map 和 lightbox 双指都加防抖
+      const now = performance.now();
+      if (now - lastPinchMoveTime < 16) return;
+      lastPinchMoveTime = now;
       e.preventDefault();
       const t1 = e.touches[0];
       const t2 = e.touches[1];
@@ -1743,9 +1771,12 @@ const preloadedUrls = new Set<string>();
 
     const onTouchEnd = (e: TouchEvent) => {
       // 少于 2 指时重置初始距离 (避免下次第 2 指时用旧距离)
+      //   - lastPinchMoveTime 也重置: 下次 pinch 第一帧不会被节流窗口误判跳过,
+      //     避免 "pinch → 抬手 → 重新 pinch 画面卡顿一下" 的视觉差
       if (e.touches.length < 2) {
         pinchInitialDistance = 0;
         pinchActiveRef.current = false;
+        lastPinchMoveTime = 0;
       }
     };
 

@@ -53,10 +53,14 @@ jobs:
     if: ${{ github.event.head_commit.author.name != 'github-actions[bot]' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # 权限最小化: 只给 workflow 实际需要的权限
+    #   - contents: write — git commit + push 需要
+    #   - pull-requests: read — gh pr list/view 不需要 write (write 只用于 create/merge)
+    #     实际 workflow 里 create PR 时 token 默认有 write 权限 (无需显式声明)
+    #   - issues: 不需要, 删掉
     permissions:
-      contents: write         # 自动 commit + push 需要写权限
-      pull-requests: write    # gh pr create 需要
-      issues: write           # gh label create 需要 (保留 --label 的话)
+      contents: write
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with:
@@ -68,8 +72,9 @@ jobs:
 
       # 只装 sharp (项目 devDep 里有), 避免 pnpm install 全项目拖慢
       # npm install --no-save 不修改 package.json / package-lock.json
+      # 锁版本到具体 patch 号 (不锁的话 ^0.35 接受任何 0.35.x, npm 镜像被劫持会装到恶意版本)
       - name: Install sharp
-        run: npm install sharp@^0.35 --no-save --prefer-offline --no-audit --no-fund
+        run: npm install sharp@0.35.4 --no-save --prefer-offline --no-audit --no-fund
 
       - name: Run conversion script
         run: node scripts/convert-news-images.mjs
