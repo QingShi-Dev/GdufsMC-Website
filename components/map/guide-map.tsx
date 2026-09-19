@@ -196,7 +196,7 @@ function WorldTabs({
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
     // w-full: 跟下方地图同宽 (地图也是 100% 宽)
-    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-0.5 pb-1 sm:p-1.5 pl-3 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:gap-y-0 shadow-sm shadow-slate-900/10">
+    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-0.5 pb-1.5 sm:p-1.5 pl-3 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:gap-y-0 shadow-sm shadow-slate-900/10">
       {worlds.map((w) => {
         const active = value === w.id;
         return (
@@ -782,13 +782,19 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     const update = () => setIsMobile(window.innerWidth < 640);
     update();
     window.addEventListener("resize", update);
-    // fullscreenchange: 部分浏览器进/退全屏时 innerWidth 会变 (Android Chrome 已知行为),
-    // 监听后保证 isMobile 反映当前 viewport, 全屏状态下的 -2px label 字号正确生效
-    // (用户最新要求: -2px 在手机全屏状态下也要有)
+    // fullscreenchange: 部分浏览器进/退全屏时 innerWidth 会变 (Android Chrome 已知行为)
     document.addEventListener("fullscreenchange", update);
+    // ResizeObserver: 小米浏览器 (Mi Browser) 全屏不进 fullscreenchange/resize,
+    //   但 viewport 实际变了 — 用 ResizeObserver 监听 document.documentElement
+    //   尺寸变化兜底 (用户最新反馈: 小米浏览器进全屏 -2px 不生效)
+    //   - documentElement (html) 在 viewport 变时 size 跟着变 (默认 block 撑满)
+    //   - ResizeObserver 是标准 API, 小米浏览器 / Chrome / Safari 都支持
+    const ro = new ResizeObserver(() => update());
+    ro.observe(document.documentElement);
     return () => {
       window.removeEventListener("resize", update);
       document.removeEventListener("fullscreenchange", update);
+      ro.disconnect();
     };
   }, []);
   // (showRotateHint + isPortrait 已删除 — 之前想加"全屏时竖屏提示旋转"但没实际渲染, 死代码)

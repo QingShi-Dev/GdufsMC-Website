@@ -290,7 +290,12 @@ export function ImageLightbox({
         t2.clientX - t1.clientX,
         t2.clientY - t1.clientY,
       );
-      const ratio = currentDistance / pinchInitialDistance;
+      const ratioRaw = currentDistance / pinchInitialDistance;
+      // 灵敏度调整: 用户最新要求 — 双指缩放 0.5 次幂 (sqrt, 比 map 的 0.36 灵敏)
+      //   - map 用 0.36 (用户要"地图缩放更迟钝"), lightbox 用 0.5 (用户要求)
+      //   - 0.5 sqrt: distance 拉大 2 倍 → 缩放 ~1.41x (vs raw 2x)
+      //   - ratio=1 unchanged; >1 时变缓; <1 时也变缓 (反向一致)
+      const ratio = Math.pow(ratioRaw, 0.5);
       // 中心 = 两指中点
       const centerX = (t1.clientX + t2.clientX) / 2;
       const centerY = (t1.clientY + t2.clientY) / 2;
