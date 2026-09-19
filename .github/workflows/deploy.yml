@@ -107,7 +107,7 @@ jobs:
       url: https://${{ env.SERVER_HOST }}    # 显示在 GitHub Actions 摘要里
     steps:
       - name: Download build artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: gdufsmc-build
           path: ./artifacts
