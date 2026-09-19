@@ -85,6 +85,9 @@ jobs:
           cp -r public build-out/public
           cp package.json pnpm-lock.yaml next.config.ts proxy.ts build-out/
           cp -r deploy build-out/deploy
+          # content/ 是 markdown + 新闻图片, Next.js 运行时读 (gray-matter),
+          # 不打包到 .next, 必须单独同步
+          cp -r content build-out/content
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
