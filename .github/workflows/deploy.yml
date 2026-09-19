@@ -93,14 +93,18 @@ jobs:
   # Job 2: deploy (只在 push 触发时跑, manual workflow_dispatch 只跑 build)
   # ---------------------------------------------------------------------------
   deploy:
-    name: Deploy to ${{ secrets.SERVER_HOST }}
+    # job.name 不能用 secrets (GitHub Actions 限制, secrets 上下文在那个位置不可用)
+    name: Deploy to production
     needs: build
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     timeout-minutes: 5
+    # secrets → env, 后续 steps 用 ${{ env.SERVER_HOST }} (包括 environment.url)
+    env:
+      SERVER_HOST: ${{ secrets.SERVER_HOST }}
     environment:
       name: production
-      url: https://${{ secrets.SERVER_HOST }}    # 显示在 GitHub Actions 摘要里
+      url: https://${{ env.SERVER_HOST }}    # 显示在 GitHub Actions 摘要里
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
