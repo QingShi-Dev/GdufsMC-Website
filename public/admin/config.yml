@@ -62,6 +62,7 @@ collections:
   - name: news
     label: 新闻动态
     label_singular: 一条新闻
+    workflow: editoria
     description: 网站首页 / /news 页展示的新闻文章, Markdown 格式
     folder: content/news
     create: true
@@ -129,6 +130,7 @@ collections:
   # 小游戏积分榜 — 单文件 collection, 整个榜单存一个 YAML
   - name: leaderboard
     label: 小游戏积分榜
+    workflow: editoria
     description: 网站 /news 页右侧的积分榜, 单文件结构, 修改后即时生效
     files:
       - name: data
