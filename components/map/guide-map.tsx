@@ -196,7 +196,7 @@ function WorldTabs({
   return (
     // 还原成浅色系 (跟之前一致) — 跟深色地图形成对比
     // w-full: 跟下方地图同宽 (地图也是 100% 宽)
-    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-1.5 pl-3 flex flex-wrap items-center gap-x-2.5 shadow-sm shadow-slate-900/10">
+    <div className="w-full bg-white/60 backdrop-blur-md border border-slate-200/85 rounded-t-2xl p-0.5 pb-1 sm:p-1.5 pl-3 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 sm:gap-y-0 shadow-sm shadow-slate-900/10">
       {worlds.map((w) => {
         const active = value === w.id;
         return (
@@ -208,7 +208,7 @@ function WorldTabs({
             onFocus={() => preloadWorld(w.id)}
             onTouchStart={() => preloadWorld(w.id)}
             className={cn(
-              "px-3 sm:px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center text-center gap-1.5 cursor-pointer",
+              "px-3 sm:px-3.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all flex items-center text-center gap-1.5 cursor-pointer",
               active
                 ? "bg-white text-slate-800"
                 : "text-slate-500 hover:text-slate-700 hover:bg-white/40",
@@ -230,73 +230,77 @@ function WorldTabs({
       })}
       {/* 顺序: 3 1 2 — 搜索 / 标签文字 / 交通信息
             搜索排第一 (默认全开), 标签紧跟, 交通最右 (lg+ 给坐标预留空间) */}
-      {/* 搜索开关 — 紧贴末地 tab 右边, ml-2 sm:ml-4 跟原"标签文字"一致, 不挤坐标
-          默认全开 (searchVisible=true): 按钮显示"隐藏搜索"; 关闭后: 还原并下移 popup */}
-      <button
-        type="button"
-        onClick={onToggleSearch}
-        aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
-        aria-pressed={searchVisible}
-        className={cn(
-          "sm:ml-3.5",
-          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center text-center gap-2 cursor-pointer",
-          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
-        )}
-      >
-        {searchVisible ? (
-          <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4" />
-        ) : (
-          <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
-        )}
-        <span className="inline">
-          搜索
-        </span>
-      </button>
-      {/* 标签文字开关 — 紧贴搜索开关右边, 同样不挤坐标 */}
-      <button
-        type="button"
-        onClick={onToggleLabels}
-        aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
-        aria-pressed={labelsVisible}
-        className={cn(
-          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center gap-2 cursor-pointer",
-          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
-        )}
-      >
-        {labelsVisible ? (
-          <img src="/icons/map/tabs/显示地名图标.svg" alt="" className="w-4 h-4" />
-        ) : (
-          <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
-        )}
-        <span className="inline">
-          地名
-        </span>
-      </button>
-      {/* 交通信息开关 — 现排第三 (最右), 桌面端给坐标预留 ~280px (lg+ 才显示坐标)
-          移动端不预留 — 跟其他开关一致 */}
-      <button
-        type="button"
-        onClick={onToggleTransit}
-        aria-label={transitVisible ? "隐藏交通" : "显示交通"}
-        aria-pressed={transitVisible}
-        className={cn(
-          "lg:mr-72",
-          "px-2.5 py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
-          "transition-all flex items-center gap-2 cursor-pointer",
-          "text-slate-500 hover:text-slate-700 hover:bg-white/40",
-        )}
-      >
-        {transitVisible ? (
-          <img src="/icons/map/tabs/显示交通图标.svg" alt="" className="w-4 h-4" />
-        ) : (
-          <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
-        )}
-        <span className="inline">
-          交通
-        </span>
-      </button>
+      {/* 三个开关按钮用 div 包裹成一组, 让 flex-wrap 把它们当作一个单元一起换行
+          (用户最新要求 — 之前各按钮是独立 flex item, 容器不够宽时它们分散到多行, 视觉散乱)
+          div 本身 flex, gap-x-2.5 跟原间距一致; sm:ml-3.5 留给"末地 tab → 第一个开关" */}
+      <div className="flex items-center gap-x-2.5 sm:ml-3.5">
+        {/* 搜索开关 — 紧贴末地 tab 右边, ml-2 sm:ml-4 跟原"标签文字"一致, 不挤坐标
+            默认全开 (searchVisible=true): 按钮显示"隐藏搜索"; 关闭后: 还原并下移 popup */}
+        <button
+          type="button"
+          onClick={onToggleSearch}
+          aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
+          aria-pressed={searchVisible}
+          className={cn(
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "transition-all flex items-center text-center gap-2 cursor-pointer",
+            "text-slate-500 hover:text-slate-700 hover:bg-white/40",
+          )}
+        >
+          {searchVisible ? (
+            <img src="/icons/map/tabs/显示搜索图标.svg" alt="" className="w-4 h-4" />
+          ) : (
+            <img src="/icons/map/tabs/隐藏搜索图标.svg" alt="" className="w-4 h-4" />
+          )}
+          <span className="inline">
+            搜索
+          </span>
+        </button>
+        {/* 标签文字开关 — 紧贴搜索开关右边, 同样不挤坐标 */}
+        <button
+          type="button"
+          onClick={onToggleLabels}
+          aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
+          aria-pressed={labelsVisible}
+          className={cn(
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "transition-all flex items-center gap-2 cursor-pointer",
+            "text-slate-500 hover:text-slate-700 hover:bg-white/40",
+          )}
+        >
+          {labelsVisible ? (
+            <img src="/icons/map/tabs/显示地名图标.svg" alt="" className="w-4 h-4" />
+          ) : (
+            <img src="/icons/map/tabs/隐藏地名图标.svg" alt="" className="w-4 h-4" />
+          )}
+          <span className="inline">
+            地名
+          </span>
+        </button>
+        {/* 交通信息开关 — 现排第三 (最右), 桌面端给坐标预留 ~280px (lg+ 才显示坐标)
+            移动端不预留 — 跟其他开关一致 */}
+        <button
+          type="button"
+          onClick={onToggleTransit}
+          aria-label={transitVisible ? "隐藏交通" : "显示交通"}
+          aria-pressed={transitVisible}
+          className={cn(
+            "lg:mr-72",
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "transition-all flex items-center gap-2 cursor-pointer",
+            "text-slate-500 hover:text-slate-700 hover:bg-white/40",
+          )}
+        >
+          {transitVisible ? (
+            <img src="/icons/map/tabs/显示交通图标.svg" alt="" className="w-4 h-4" />
+          ) : (
+            <img src="/icons/map/tabs/隐藏交通图标.svg" alt="" className="w-4 h-4" />
+          )}
+          <span className="inline">
+            交通
+          </span>
+        </button>
+      </div>
     </div>
   );
 }
@@ -778,7 +782,14 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
     const update = () => setIsMobile(window.innerWidth < 640);
     update();
     window.addEventListener("resize", update);
-    return () => window.removeEventListener("resize", update);
+    // fullscreenchange: 部分浏览器进/退全屏时 innerWidth 会变 (Android Chrome 已知行为),
+    // 监听后保证 isMobile 反映当前 viewport, 全屏状态下的 -2px label 字号正确生效
+    // (用户最新要求: -2px 在手机全屏状态下也要有)
+    document.addEventListener("fullscreenchange", update);
+    return () => {
+      window.removeEventListener("resize", update);
+      document.removeEventListener("fullscreenchange", update);
+    };
   }, []);
   // (showRotateHint + isPortrait 已删除 — 之前想加"全屏时竖屏提示旋转"但没实际渲染, 死代码)
 
@@ -1124,6 +1135,23 @@ const preloadedUrls = new Set<string>();
   useEffect(() => {
     if (!world) return;
     const inserted = new Set<string>();
+    // **关键**: overworld 秒加载 sprite 必须最先加载 — 用户要求"看起来秒加载"
+    //   - 之前只对 thumb 用 <link rel="preload">, sprite 跟 thumbs 一起进, sprite 可能被
+    //     78 个 thumb 的并发 fetch 挤到后面
+    //   - 现在把 sprite 也加 preload, 而且**插在 thumb 之前** — DOM 顺序决定浏览器 fetch 顺序
+    //     (同一 priority hint 下, 浏览器按 DOM 顺序发起请求)
+    //   - 只对 overworld (plains tone) 加, nether/end 没秒加载需求
+    const SPRITE_URL = "/images/maps/20260907/overworld-thumbs-fine-sprite.webp";
+    if (world.id === "overworld" && !preloadedUrls.has(SPRITE_URL)) {
+      const link = document.createElement("link");
+      link.rel = "preload";
+      link.as = "image";
+      link.href = SPRITE_URL;
+      link.fetchPriority = "high";
+      document.head.appendChild(link);
+      preloadedUrls.add(SPRITE_URL);
+      inserted.add(SPRITE_URL);
+    }
     for (const t of world.map.tiles) {
       if (!t.srcThumb) continue;
       if (preloadedUrls.has(t.srcThumb)) continue;
@@ -1168,11 +1196,12 @@ const preloadedUrls = new Set<string>();
     // 之前: 移动端 < 640 直接 return window.scrollY (no-op) — 注释说"用户手指控制滚动"
     //   - 现在: label 点击等操作需要跟桌面端一致滚到地图位置 (用户最新要求)
     //   - 桌面端 < 640 / >= 640 都按"地图贴 header 下"算 (offsetTop 累加 + 减 headerHeight)
+    //   - 移动端 TOP_GAP 从 14 改成 1.5 (用户最新要求 — 滚动 target 稍微小一点, 地图更贴 header)
     const el = rootRef.current;
     if (!el) return window.scrollY;
     const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
     const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
-    const TOP_GAP = window.innerWidth >= 640 ? 8 : 14;
+    const TOP_GAP = window.innerWidth >= 640 ? 8 : 1.5;
     // 累加 offsetTop 算地图到 page 顶部的 naturalTop, 减去 header + gap
     let top = 0;
     let node: HTMLElement | null = el;
@@ -1672,11 +1701,12 @@ const preloadedUrls = new Set<string>();
       const ratio = currentDistance / pinchInitialDistance;
 
       const maxK = MAX_ZOOM[worldRef.current?.id ?? "overworld"] ?? 8;
-      // 灵敏度调整: 用户最新要求 — 双指缩放太灵敏, 改成现在的 50%
-      //   - Math.pow(ratio, 0.5): sqrt 映射 — 比 0.6 还迟钝
-      //   - 距离拉大 2 倍 → 缩放 ~1.4x (而不是 2x), 拉大 4 倍 → 缩放 2.0x (而不是 4x)
-      //   - ratio=1 时 unchanged; ratio>1 时变缓; ratio<1 时也变缓 (反向)
-      const adjustedRatio = Math.pow(ratio, 0.5);
+      // 灵敏度调整: 用户最新要求 — 双指缩放 0.36 次幂 (亚线性迟钝)
+      //   - 比之前的 0.5 (sqrt) 还迟钝 — 用户反馈 0.5 仍太灵敏
+      //   - ratio=2 (距离翻倍) → ~1.31x (vs 之前 1.41x)
+      //   - ratio=4 → ~1.74x (vs 之前 2.0x)
+      //   - ratio=1 unchanged; >1 时变缓; <1 时也变缓 (反向一致)
+      const adjustedRatio = Math.pow(ratio, 0.36);
       const newK = clamp(kRef.current * adjustedRatio, 1, maxK);
       if (newK === kRef.current) return;
 
@@ -2088,6 +2118,7 @@ const preloadedUrls = new Set<string>();
           isPanning={isPanning}
           labelsVisible={labelsVisible}
           transitVisible={transitVisible}
+          isMobile={isMobile}
           toScreen={worldToScreenFactory({
             containerRect,
             // 用 React state 的 world (不是 worldRef.current),

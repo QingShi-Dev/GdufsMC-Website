@@ -248,6 +248,18 @@ export function ImageLightbox({
   }, [k, tx, ty, schedule, portalTarget]);
 
   // 双指缩放 (移动端)
+  //   **关键**: 不能用 [k, tx, ty] 作 deps — 每次 zoom 状态变化 useEffect 都 tear down
+  //     + 重新挂监听, 持续 pinch 期间的 touchmove 事件在切换间隙丢失, 表现为 "每次只能缩一点"
+  //   - 改用 kRef/txRef/tyRef 在 listener 内读最新值, deps 只剩 [schedule, portalTarget]
+  //   - schedule / portalTarget 引用稳定 (useCallback), useEffect 只在 portal 切换时重建
+  //   - dragRef 的清空 (在 touchstart 里) 仍然依赖 dragRef.current, 这是 ref 永远最新, 不需要 deps
+  const kRefForPinch = useRef(k);
+  const txRefForPinch = useRef(tx);
+  const tyRefForPinch = useRef(ty);
+  useEffect(() => { kRefForPinch.current = k; }, [k]);
+  useEffect(() => { txRefForPinch.current = tx; }, [tx]);
+  useEffect(() => { tyRefForPinch.current = ty; }, [ty]);
+
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -285,8 +297,16 @@ export function ImageLightbox({
       const rect = el.getBoundingClientRect();
       const cursorX = centerX - rect.left - rect.width / 2;
       const cursorY = centerY - rect.top - rect.height / 2;
-      // 共享 zoomAtPoint: 跟滚轮共用同一份 zoom 公式
-      const next = zoomAtPoint(tx, ty, k, ratio, cursorX, cursorY);
+      // 读 ref 而非闭包变量 — 持续 pinch 期间每次 touchmove 拿最新 tx/ty/k
+      // (用户最新要求: 双指缩放能连续, 之前闭包用旧 k 导致每帧从基线 1.0 算 ratio)
+      const next = zoomAtPoint(
+        txRefForPinch.current,
+        tyRefForPinch.current,
+        kRefForPinch.current,
+        ratio,
+        cursorX,
+        cursorY,
+      );
       if (!next) return;
       schedule(next.tx, next.ty, next.k);
     };
@@ -303,8 +323,8 @@ export function ImageLightbox({
       el.removeEventListener("touchend", onTouchEnd);
       el.removeEventListener("touchcancel", onTouchEnd);
     };
-    // portalTarget 也在 deps: 同 wheel, portal 切换时重新挂监听
-  }, [k, tx, ty, schedule, portalTarget]);
+    // deps 只剩 [schedule, portalTarget] — k/tx/ty 走 ref 拿最新值, 避免 listener 重建丢事件
+  }, [schedule, portalTarget]);
 
   // 鼠标拖动平移
   const onPointerDown = (e: React.PointerEvent) => {
