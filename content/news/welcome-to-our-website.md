@@ -4,7 +4,7 @@ title: 欢迎来到：云城像素社网站
 date: 2026-09-19
 category: 公告
 summary: 经过几周的开发，云城像素社网站正式上线！诚邀大家一同探索、体验，并帮助我们做得更好。
-cover: /content/news/images/website-home-page.png
+cover: /content/news/images/website-home-page.webp
 badge: ''
 pinned: true
 ---
@@ -27,7 +27,7 @@ pinned: true
 - 浏览建筑高清图片
 - 切换全屏模式
 
-![website-map-page](/content/news/images/website-map-page.png)
+![website-map-page](/content/news/images/website-map-page.webp)
 
 ### 3. CMS更新的动态页面
 
@@ -42,7 +42,7 @@ pinned: true
 - 对链接进行特别优化，显示突出
 - 底部配有页数，可随时了解当前进度
 
-![website-guide-page](/content/news/images/website-guide-page.png)
+![website-guide-page](/content/news/images/website-guide-page.webp)
 
 ### 如您发现 Bug、体验问题或有改进建议，请及时与我联系。
 
