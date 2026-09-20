@@ -36,8 +36,10 @@ export interface MapLabelsProps {
   labelsVisible: boolean;
   /** 交通开关 — 控制 visibleWhen: "transit" 的标签 (站名/珍珠站) */
   transitVisible: boolean;
-  /** 移动端 (< sm): label 字号 -1px (用户最新要求) */
-  isMobile: boolean;
+  /** 独立紧凑字号策略: 标签字号 -2px, 不随全屏横屏的布局断点改变 */
+  compactLabels: boolean;
+  /** 全屏时紧凑标签再减 1px */
+  isFullscreen: boolean;
   /** viewBox (vbX, vbY) → 容器内 CSS 像素 (left, top) */
   toScreen: (vbX: number, vbY: number) => { x: number; y: number } | null;
   /** 点标签: 视角跳到该坐标 + 缩放到 targetZoom (百分比) */
@@ -93,7 +95,8 @@ export function MapLabels({
   toScreen,
   labelsVisible,
   transitVisible,
-  isMobile,
+  compactLabels,
+  isFullscreen,
   onPan,
   onSelect,
 }: MapLabelsProps) {
@@ -126,10 +129,10 @@ export function MapLabels({
 
         // fontSize 解析 + 显隐区间合一
         let fontSizePx: string | undefined;
-        // 移动端 label 字号 -2px (用户最新要求 — 移动端地图标注更紧凑, 视觉更明显)
-        //   - 桌面端: text-xs (12px) → sm:text-sm (14px)
-        //   - 移动端: text-[10px] (10px) → sm:text-sm (14px) — sm 以上不受影响
-        let sizeClass = isMobile ? "text-[10px] sm:text-sm" : "text-xs sm:text-sm";
+        // 紧凑模式默认 10px, 全屏再减 1px; 不带 sm 覆盖。
+        let sizeClass = compactLabels
+          ? (isFullscreen ? "text-[9px]" : "text-[10px]")
+          : "text-xs sm:text-sm";
         let inRange = true;
         const fontSizeConfig = resolved.fontSize;
         if (fontSizeConfig !== undefined) {
@@ -190,11 +193,11 @@ export function MapLabels({
             }
           }
           sizeClass = "";
-          // 移动端 fontSize -2px (用户最新要求)
-          //   - parseFloat 解出数字 -2, 用 max(8, ...) 保底避免极端 label 看不清
-          if (isMobile && fontSizePx) {
+          // 紧凑模式减 2px, 全屏总共减 3px; 保留 8px 下限。
+          if (compactLabels && fontSizePx) {
             const n = parseFloat(fontSizePx);
-            if (Number.isFinite(n)) fontSizePx = `${Math.max(8, n - 2)}px`;
+            const reduction = isFullscreen ? 3 : 2;
+            if (Number.isFinite(n)) fontSizePx = `${Math.max(8, n - reduction)}px`;
           }
         }
         return (

@@ -1241,7 +1241,7 @@ const preloadedUrls = new Set<string>();
     }
     return Math.max(0, top - headerHeight - TOP_GAP);
   }, []);
-  const { isFullscreen, toggleFullscreen } = useFullscreen({
+  const { isFullscreen, toggleFullscreen, compactLabels } = useFullscreen({
     containerRef,
     computeMapScrollTarget,
   });
@@ -2162,7 +2162,8 @@ const preloadedUrls = new Set<string>();
           isPanning={isPanning}
           labelsVisible={labelsVisible}
           transitVisible={transitVisible}
-          isMobile={isMobile}
+          compactLabels={compactLabels}
+          isFullscreen={isFullscreen}
           toScreen={worldToScreenFactory({
             containerRect,
             // 用 React state 的 world (不是 worldRef.current),
@@ -2428,31 +2429,80 @@ function useFullscreen(opts: {
 }) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const { containerRef, computeMapScrollTarget } = opts;
+  const [compactLabels, setCompactLabels] = useState(false);
+  // null 表示未锁定; false 同样是有效快照。申请期间也锁定, 避免先 resize 后 fullscreenchange。
+  const compactSnapshotRef = useRef<boolean | null>(null);
+  const fullscreenPendingRef = useRef(false);
 
-  const toggleFullscreen = useCallback(() => {
-    const el = containerRef.current;
-    if (!document.fullscreenElement) {
-      const tryFullscreen = (target: Element) => {
-        const req = target.requestFullscreen?.();
-        if (req && typeof req.then === "function") {
-          return req.catch((err: unknown) => {
-            logger.warn("[fullscreen] failed", err);
-            return null;
-          });
-        }
-        return Promise.resolve(null);
-      };
-      if (el) {
-        tryFullscreen(el).then((err) => {
-          if (err !== null) tryFullscreen(document.documentElement);
-        });
+  const detectCompactLabels = useCallback(() => {
+    const shortSide = Math.min(window.screen.width, window.screen.height);
+    const touchLike = window.matchMedia("(pointer: coarse)").matches ||
+      navigator.maxTouchPoints > 0;
+    return window.innerWidth < 640 || (touchLike && shortSide > 0 && shortSide < 640);
+  }, []);
+
+  useEffect(() => {
+    const update = () => {
+      setCompactLabels(compactSnapshotRef.current ?? detectCompactLabels());
+    };
+    const onFullscreenChange = () => {
+      if (document.fullscreenElement) {
+        compactSnapshotRef.current ??= detectCompactLabels();
       } else {
-        tryFullscreen(document.documentElement);
+        compactSnapshotRef.current = null;
       }
-    } else {
-      document.exitFullscreen().catch(() => {});
+      update();
+    };
+    update();
+    const pointerQuery = window.matchMedia("(pointer: coarse)");
+    const viewport = window.visualViewport;
+    window.addEventListener("resize", update);
+    window.addEventListener("orientationchange", update);
+    viewport?.addEventListener("resize", update);
+    pointerQuery.addEventListener("change", update);
+    document.addEventListener("fullscreenchange", onFullscreenChange);
+    return () => {
+      window.removeEventListener("resize", update);
+      window.removeEventListener("orientationchange", update);
+      viewport?.removeEventListener("resize", update);
+      pointerQuery.removeEventListener("change", update);
+      document.removeEventListener("fullscreenchange", onFullscreenChange);
+    };
+  }, [detectCompactLabels]);
+
+  const toggleFullscreen = useCallback(async () => {
+    if (fullscreenPendingRef.current) return;
+    if (document.fullscreenElement) {
+      await document.exitFullscreen().catch(() => {});
+      return;
     }
-  }, [containerRef]);
+    fullscreenPendingRef.current = true;
+    compactSnapshotRef.current = detectCompactLabels();
+    setCompactLabels(compactSnapshotRef.current);
+    const tryFullscreen = async (target: Element): Promise<boolean> => {
+      if (!target.requestFullscreen) return false;
+      try {
+        await target.requestFullscreen();
+        return !!document.fullscreenElement;
+      } catch (err: unknown) {
+        logger.warn("[fullscreen] failed", err);
+        return false;
+      }
+    };
+    try {
+      const target = containerRef.current ?? document.documentElement;
+      const entered = await tryFullscreen(target);
+      if (!entered && target !== document.documentElement) {
+        await tryFullscreen(document.documentElement);
+      }
+    } finally {
+      fullscreenPendingRef.current = false;
+      if (!document.fullscreenElement) {
+        compactSnapshotRef.current = null;
+        setCompactLabels(detectCompactLabels());
+      }
+    }
+  }, [containerRef, detectCompactLabels]);
 
   // 主路径: fullscreenchange listener — 退出时同步滚到地图位置
   //   - fullscreenchange 是同步事件, 在 listener 回调里直接 scrollTo, 浏览器还没 paint 中间帧
@@ -2482,7 +2532,7 @@ function useFullscreen(opts: {
     }
   }, [isFullscreen, computeMapScrollTarget]);
 
-  return { isFullscreen, toggleFullscreen };
+  return { isFullscreen, toggleFullscreen, compactLabels };
 }
 
 /**
