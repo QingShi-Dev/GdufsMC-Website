@@ -1,22 +1,20 @@
 # =============================================================================
-# GitHub Actions — 自动部署到阿里云香港 ECS
+# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy)
 # =============================================================================
+# 架构变更 (vs. 旧 ECS + rsync + nginx):
+#   旧: GitHub-hosted runner build → rsync 到服务器 → SSH 重启 PM2
+#   新: Self-hosted runner (装在校园服务器上) build + 重启都在本机
+#       - 无需 inbound SSH (GitHub Runner 走 outbound 443 出站)
+#       - 校园网 NAT 友好, 不依赖公网 SSH 端口
+#       - 取消 SSH secrets (SERVER_HOST / SERVER_USER / SSH_PRIVATE_KEY)
+#       - 文件在 runner 本机直接访问, 不需 upload-artifact 中转
 #
-# 触发: push 到 main 时 (Sveltia CMS 编辑完提交也算)
-# 流程:
-#   1. runner 上 build (避免 0.5g 服务器 OOM)
-#   2. rsync 产物到 /opt/gdufsmc
-#   3. 服务器 pnpm install --prod + pm2 restart
-#   4. 健康检查 (主页 + API)
+# Runner 配置: Settings → Actions → Runners → New self-hosted runner
+#   - 标签: self-hosted, windows, gdufsmc
+#   - 装到校园服务器 C:\actions-runner\
+#   - 装成 Windows 服务 (deploy\setup.ps1 自动做)
 #
-# 跟现有 deploy/app-deploy.sh 一致, 只是 runner 替代本地
-#
-# 需要的 Secrets (在 GitHub repo → Settings → Secrets → Actions 里配):
-#   SERVER_HOST         服务器 IP 或域名 (例: 1.2.3.4)
-#   SERVER_USER         SSH 用户名 (例: ubuntu)
-#   SSH_PRIVATE_KEY     SSH 私钥全文 (配对的公钥加到服务器的 ~/.ssh/authorized_keys)
-#
-# 安全: 用专用 deploy key, 不要用主登录 key
+# 触发: push 到 main (Sveltia CMS 编辑完提交也算)
 # =============================================================================
 
 name: Deploy to production
@@ -43,6 +41,8 @@ jobs:
   # ---------------------------------------------------------------------------
   build:
     name: Build & validate
+    # GitHub-hosted runner, 跟项目其他 CI 一致 (build 验证 + 校验)
+    # 校园服务器跑 deploy 时不再 build, 用 artifact 下载 — build 失败就不到 deploy
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -69,24 +69,18 @@ jobs:
       - name: Build Next.js
         run: pnpm build
         env:
-          # 构建时不需要真实 GH token, 用 dummy 就行
           NEXT_TELEMETRY_DISABLED: '1'
 
-      # build 产物 + 配置文件打成包, 传到下一 job
+      # build 产物打成包, 传到下一 job
       # 不含 node_modules / .git / .next/cache — 服务器自己装 prod 依赖
-      #
-      # 关键: .next 是点目录, actions/upload-artifact@v4 有 bug 会吃掉内容
-      # (artifact 显示 182MB 但解压后 .next/ 几乎空)
-      # 解决: 复制到非点目录 next-build 再上传, 服务器端再重命名回 .next
-      - name: Stage Next.js build (workaround .next dotfile upload bug)
+      - name: Stage build for transfer
         run: |
           mkdir -p build-out
           cp -r .next build-out/next-build
           cp -r public build-out/public
           cp package.json pnpm-lock.yaml next.config.ts proxy.ts build-out/
           cp -r deploy build-out/deploy
-          # content/ 是 markdown + 新闻图片, Next.js 运行时读 (gray-matter),
-          # 不打包到 .next, 必须单独同步
+          cp Caddyfile build-out/Caddyfile
           cp -r content build-out/content
 
       - name: Upload build artifact
@@ -98,100 +92,138 @@ jobs:
           if-no-files-found: error
 
   # ---------------------------------------------------------------------------
-  # Job 2: deploy (只在 push 触发时跑, manual workflow_dispatch 只跑 build)
+  # Job 2: deploy — self-hosted runner 直接在校园服务器跑
   # ---------------------------------------------------------------------------
   deploy:
-    # job.name 不能用 secrets (GitHub Actions 限制, secrets 上下文在那个位置不可用)
     name: Deploy to production
     needs: build
-    runs-on: ubuntu-latest
+    # 关键变更: 改 self-hosted, 校园服务器上的 runner
+    runs-on: [self-hosted, windows, gdufsmc]
     if: github.event_name == 'push'
-    timeout-minutes: 5
-    # secrets → env, 后续 steps 用 ${{ env.SERVER_HOST }} (包括 environment.url)
-    env:
-      SERVER_HOST: ${{ secrets.SERVER_HOST }}
+    timeout-minutes: 15
     environment:
       name: production
-      url: https://${{ env.SERVER_HOST }}    # 显示在 GitHub Actions 摘要里
+      # 显示在 Actions 摘要里 (域名硬编码, runner 在校园服务器本地访问不需要 secrets)
+      url: https://gdufscraft.top
+
     steps:
       - name: Download build artifact
         uses: actions/download-artifact@v4
         with:
           name: gdufsmc-build
-          path: ./artifacts
+          path: ${{ github.workspace }}\artifacts
 
-      # 同步到服务器
-      # --delete: 删目标里有但 artifact 没有的 (但 excludes 里的路径不参与)
-      # --exclude=node_modules / logs: 服务器上已有, 不要碰
-      # 注意: artifact 里的 .next 被重命名成 next-build (避免 upload-artifact 吃内容)
-      # 服务器脚本里再 mv next-build .next 还原
-      - name: Rsync artifact to /opt/gdufsmc
-        uses: burnett01/rsync-deployments@6.0.0
-        with:
-          switches: >-
-            -avz --delete
-            --exclude=.git
-            --exclude=node_modules
-            --exclude=logs
-            --exclude=next-build/cache
-            --exclude=next-build/dev
-            --exclude=next-build/types
-          # actions/upload-artifact@v4 strip 了 build-out/ 前缀, artifact 是 flat 结构
-          # (next-build/, public/, package.json 等直接放在 artifact 根)
-          path: ./artifacts/
-          remote_path: /opt/gdufsmc/
-          remote_host: ${{ secrets.SERVER_HOST }}
-          remote_user: ${{ secrets.SERVER_USER }}
-          remote_key: ${{ secrets.SSH_PRIVATE_KEY }}
+      - name: Deploy build output to project root
+        shell: pwsh
+        run: |
+          $ProjectDir = 'H:\GDUFSMC-web'
+          $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
-      # 服务器端: 重命名 next-build → .next, 装 prod 依赖, 重启 PM2, 健康检查
-      - name: Install prod deps & restart PM2
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          script: |
-            set -e
-            cd /opt/gdufsmc
+          # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
+          if (Test-Path (Join-Path $ArtifactsDir 'next-build')) {
+              if (Test-Path (Join-Path $ProjectDir '.next')) {
+                  Remove-Item -Recurse -Force (Join-Path $ProjectDir '.next')
+              }
+              Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
+              Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
+          } else {
+              throw "❌ artifacts/next-build 不存在, build 可能失败"
+          }
 
-            echo "==> 重命名 next-build → .next"
-            rm -rf .next
-            mv next-build .next
-            test -f .next/BUILD_ID || { echo "❌ .next/BUILD_ID 缺失, 部署失败"; exit 1; }
-            echo "✅ BUILD_ID: $(cat .next/BUILD_ID)"
+          # 同步 public / content / package.json / config / deploy / Caddyfile
+          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'public') $ProjectDir
+          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'content') $ProjectDir
+          Copy-Item -Force (Join-Path $ArtifactsDir 'package.json') $ProjectDir
+          Copy-Item -Force (Join-Path $ArtifactsDir 'pnpm-lock.yaml') $ProjectDir
+          Copy-Item -Force (Join-Path $ArtifactsDir 'next.config.ts') $ProjectDir
+          Copy-Item -Force (Join-Path $ArtifactsDir 'proxy.ts') $ProjectDir
+          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'deploy') $ProjectDir
+          Copy-Item -Force (Join-Path $ArtifactsDir 'Caddyfile') $ProjectDir
+          # NOTE: secrets.caddy (basic auth 密码哈希) 在 .gitignore, 不会被 artifact 打包,
+          #       也不会被覆盖 — 服务器本地维护, 永不进 git
+          Write-Host "✅ public / content / configs / deploy / Caddyfile 同步完成"
 
-            echo "==> pnpm install --prod"
-            pnpm install --prod --frozen-lockfile
+      - name: Install production dependencies
+        shell: pwsh
+        working-directory: H:\GDUFSMC-web
+        run: pnpm install --prod --frozen-lockfile
 
-            echo "==> 同步 favicon 到 nginx alias 路径"
-            # Next.js 16 build 把 favicon 输出到 .next/static/media/favicon.<hash>.ico
-            # nginx 配 alias /opt/gdufsmc/app/favicon.ico (固定路径, 不带 hash)
-            # rsync --delete 不会删 server 上的 app/ (因为 excludes 之外的文件会被同步删, 但 app 不在源码里)
-            # 这里手动 cp 同步当前 hash 的 favicon.ico, 避免 /favicon.ico 404
-            mkdir -p /opt/gdufsmc/app
-            cp /opt/gdufsmc/.next/static/media/favicon.*.ico /opt/gdufsmc/app/favicon.ico
-            ls -la /opt/gdufsmc/app/favicon.ico
+      - name: Sync favicon to static path (Caddy /favicon.ico 固定路径)
+        shell: pwsh
+        run: |
+          $ProjectDir = 'H:\GDUFSMC-web'
+          $favicon = Get-ChildItem -Path "$ProjectDir\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($favicon) {
+              New-Item -ItemType Directory -Path "$ProjectDir\app" -Force | Out-Null
+              Copy-Item -Force $favicon.FullName "$ProjectDir\app\favicon.ico"
+              Write-Host "✅ favicon 同步: $($favicon.Name) → app/favicon.ico"
+          } else {
+              Write-Warning "⚠️ 找不到 favicon, /favicon.ico 可能 404"
+          }
 
-            echo "==> PM2 重启"
-            # 首次部署时可能还没 pm2 start 过, 用 start; 否则 restart
-            pm2 restart gdufsmc 2>/dev/null || pm2 start deploy/ecosystem.config.js
-            pm2 save
+      - name: Restart PM2 (Next.js)
+        shell: pwsh
+        run: |
+            $ErrorActionPreference = 'Continue'
+            pm2 delete gdufsmc 2>$null
+            pm2 start deploy/ecosystem.config.js
+            pm2 save | Out-Null
 
-            echo ""
-            echo "==> 等待 Next.js bind 端口 (最多 30s)"
-            for i in 1 2 3 4 5 6 7 8 9 10; do
-              sleep 3
-              CODE=$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ 2>/dev/null || echo 000)
-              if [ "$CODE" = "200" ]; then
-                echo "✅ 主页就绪 (等了 ${i} × 3s)"
-                break
-              fi
-              if [ "$i" = "10" ]; then
-                echo "❌ 主页 30s 内未就绪 (HTTP $CODE)"
-                pm2 logs gdufsmc --lines 30 --nostream --raw
-                exit 1
-              fi
-            done
+      - name: Health check (wait for Next.js bind port 3000)
+        shell: pwsh
+        run: |
+          $ok = $false
+          for ($i = 1; $i -le 10; $i++) {
+              Start-Sleep -Seconds 3
+              try {
+                  $r = Invoke-WebRequest -Uri 'http://127.0.0.1:3000/' -UseBasicParsing -TimeoutSec 5
+                  if ($r.StatusCode -eq 200) {
+                      Write-Host "✅ 主页就绪 (等了 $($i * 3)s)"
+                      $ok = $true
+                      break
+                  }
+              } catch {
+                  # 服务器还没起来, 继续等
+              }
+          }
+          if (-not $ok) {
+              Write-Error "❌ 主页 30s 内未就绪"
+              pm2 logs gdufsmc --lines 50 --nostream --raw
+              exit 1
+          }
 
-            curl -s -o /dev/null -w 'API 状态:    HTTP %{http_code}\n' http://127.0.0.1:3000/api/server-status
+          try {
+              $api = Invoke-WebRequest -Uri 'http://127.0.0.1:3000/api/server-status' -UseBasicParsing -TimeoutSec 5
+              Write-Host "✅ API 状态: HTTP $($api.StatusCode)"
+          } catch {
+              Write-Warning "⚠️ API 健康检查失败, 但主页正常"
+          }
+
+      - name: Reload Caddy (only if Caddyfile changed)
+        shell: pwsh
+        run: |
+          # git log 在 actions workspace 里执行不是项目目录, 用 Push-Location 切到 H:\GDUFSMC-web
+          Push-Location H:\GDUFSMC-web
+          $changed = (git diff HEAD~1 HEAD --name-only 2>$null) | Where-Object { $_ -eq 'Caddyfile' }
+          Pop-Location
+
+          if ($changed -and (Get-Service -Name 'Caddy' -ErrorAction SilentlyContinue)) {
+              # 自动检测 Caddy 路径 (支持 winget / scoop / choco / 手动安装)
+              $caddy = Get-Command caddy -ErrorAction SilentlyContinue
+              if (-not $caddy) {
+                  $candidates = @(
+                      'C:\Program Files\Caddy\caddy.exe',
+                      "$env:USERPROFILE\scoop\apps\caddy\current\caddy.exe"
+                  )
+                  $caddyExe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+                  if ($caddyExe) { $caddy = @{ Source = $caddyExe } }
+              }
+              if ($caddy) {
+                  & $caddy.Source reload --config 'H:\GDUFSMC-web\Caddyfile'
+                  Write-Host "✅ Caddy 重载 (Caddyfile 变更)"
+              } else {
+                  Write-Warning "⚠️ 找不到 caddy.exe, 跳过 reload"
+              }
+          } else {
+              Write-Host "⏭️ 跳过 Caddy reload (Caddyfile 未变 或服务未启动)"
+          }
