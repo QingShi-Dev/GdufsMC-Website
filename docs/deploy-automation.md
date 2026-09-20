@@ -68,15 +68,15 @@ chmod 600 ~/.ssh/authorized_keys
 
 | 检查项 | 怎么验 |
 |--------|--------|
-| 服务器 `/opt/gdufsmc` 存在 | `ssh ubuntu@<ip> 'ls /opt/gdufsmc'` |
+| 服务器 `H:\GDUFSMC-web` 存在 | `ssh ubuntu@<ip> 'ls H:\GDUFSMC-web'` |
 | 服务器已装 pnpm + pm2 | `ssh ubuntu@<ip> 'pnpm -v; pm2 -v'` |
 | 服务器有 deploy/ecosystem.config.js | 跟着代码 rsync 一起传过去 |
 | nginx 已配反代 3000 → 443 | 跟现有部署一样 |
 
-如果服务器上**还没** `/opt/gdufsmc`，需要先跑一次手动部署：
+如果服务器上**还没** `H:\GDUFSMC-web`，需要先跑一次手动部署：
 
 ```bash
-bash deploy/app-deploy.sh ubuntu@<ip> /opt/gdufsmc
+bash deploy/app-deploy.sh ubuntu@<ip> H:\GDUFSMC-web
 ```
 
 让初始目录、依赖、PM2 进程都就位，再启用 GH Actions 自动部署。
