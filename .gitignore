@@ -39,3 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# 本地笔记 / 工作产物 (不入 git)
+/.workbuddy/
