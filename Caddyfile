@@ -15,9 +15,10 @@
 # =============================================================================
 
 {
-    # 全局: 禁 admin API, 自动 HTTPS 强制 443
+    # 全局: 禁 admin API, 自动 HTTPS (默认就是自动, 不需要写 on)
+    #   auto_https 合法值: off | disable_redirects | disable_certs | ignore_loaded_certs
+    #   默认行为 = 自动签证书 + HTTP→HTTPS 重定向, 这正是我们要的
     admin off
-    auto_https on
     email admin@gdufscraft.top  # Let's Encrypt 证书到期通知邮箱
 }
 
