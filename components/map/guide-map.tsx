@@ -778,42 +778,49 @@ export function GuideMap({ worlds, labels, transit }: GuideMapProps) {
   // 用户拖拽 / 滚轮缩放时不挂 transition, 保持直接手感
   const [isPanning, setIsPanning] = useState(false);
   const panTimeoutRef = useRef<number | null>(null);
-  useEffect(() => {
-    // 移动端检测: width < sm (640) OR height < 800
-    //   - 小米浏览器 (Mi Browser) 进自家全屏模式时, viewport 实际变了但 resize/
-    //     fullscreenchange/ResizeObserver 三层都不触发, 导致 isMobile 陈旧
-    //   - 加 height 维度: 全屏后 height 也跟着变 (手机横屏 375, 全屏 800+)
-    //   - 横屏手机 width > 640 但 height < 800 也算移动端, 跟"小屏设备"一致
-    //   - 阈值 800: 主流手机 (iPhone SE 568, 标准 Android 640-720, Pro Max 896) 都 < 800
-    //     笔记本屏幕最小 1366x768 (height >= 768 但 width >= 1366 已排除); 桌面 1080p 都 >> 800
-    //   - 双重判断 OR, 任意维度满足都算移动端, 覆盖更多边缘 case
-    //   - updatingRef 重入守卫: ResizeObserver → setIsMobile → re-render → 偶发
-    //     ResizeObserver 二次触发, 理论 React 18 batching 不会无限循环, 但加守卫稳
-    const updatingRef = { current: false };
-    const update = () => {
-      if (updatingRef.current) return;
+  // isMobile 检测 — 移到 component 顶层, 让全屏按钮能直接调 update() 不通过事件循环
+  //   - 之前在 useEffect 里 setState + 不可达的全屏回调, 改为可手动调用
+  //   - 全屏按钮 onClick: toggleFullscreen() 后立即 update() + schedule 多个时间点的 update()
+  //     (覆盖小米浏览器自家全屏不触发任何标准事件的场景)
+  const updatingRef = useRef(false);
+  const lastIsMobileRef = useRef(false);
+  const updateIsMobile = useCallback(() => {
+    if (updatingRef.current) return;
+    const next = window.innerWidth < 640;
+    if (next !== lastIsMobileRef.current) {
       updatingRef.current = true;
-      setIsMobile(window.innerWidth < 640 || window.innerHeight < 800);
-      // microtask reset, 确保 setState 提交后才允许下次更新
+      lastIsMobileRef.current = next;
+      setIsMobile(next);
       queueMicrotask(() => { updatingRef.current = false; });
-    };
-    update();
-    window.addEventListener("resize", update);
-    // fullscreenchange: 部分浏览器进/退全屏时 innerWidth 会变 (Android Chrome 已知行为)
-    document.addEventListener("fullscreenchange", update);
-    // ResizeObserver: 小米浏览器 (Mi Browser) 全屏不进 fullscreenchange/resize,
-    //   但 viewport 实际变了 — 用 ResizeObserver 监听 document.documentElement
-    //   尺寸变化兜底 (用户最新反馈: 小米浏览器进全屏 -2px 不生效)
-    //   - documentElement (html) 在 viewport 变时 size 跟着变 (默认 block 撑满)
-    //   - ResizeObserver 是标准 API, 小米浏览器 / Chrome / Safari 都支持
-    const ro = new ResizeObserver(() => update());
-    ro.observe(document.documentElement);
-    return () => {
-      window.removeEventListener("resize", update);
-      document.removeEventListener("fullscreenchange", update);
-      ro.disconnect();
-    };
+    }
   }, []);
+
+  useEffect(() => {
+    updateIsMobile();
+    // 主路径事件监听 — 大部分场景够用
+    window.addEventListener("resize", updateIsMobile);
+    document.addEventListener("fullscreenchange", updateIsMobile);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener("resize", updateIsMobile);
+    }
+    // matchMedia('(max-width: 640px)') 的 change 事件:
+    //   - 用户反馈 Chrome DevTools 模拟移动端时 window.resize 不一定触发
+    //     (尤其是切设备型号 + 切横竖屏时)
+    //   - 但 MediaQueryList 的 change 事件专门跟踪媒体查询匹配状态变化,
+    //     浏览器引擎层一定会 fire — Chrome / Firefox / Safari / 小米都支持
+    //   - 触发场景: 模拟切换设备 / 横竖屏切换 / 窗口跨过 640px 阈值
+    //   - 不触发全屏按钮点击那种 (那时直接走 onClick 主动 update)
+    const mql = window.matchMedia("(max-width: 640px)");
+    mql.addEventListener("change", updateIsMobile);
+    return () => {
+      window.removeEventListener("resize", updateIsMobile);
+      document.removeEventListener("fullscreenchange", updateIsMobile);
+      if (window.visualViewport) {
+        window.visualViewport.removeEventListener("resize", updateIsMobile);
+      }
+      mql.removeEventListener("change", updateIsMobile);
+    };
+  }, [updateIsMobile]);
   // (showRotateHint + isPortrait 已删除 — 之前想加"全屏时竖屏提示旋转"但没实际渲染, 死代码)
 
   // 搜索开关切换 effect 已搬到 useSearchState hook (内部)
@@ -2372,6 +2379,15 @@ const preloadedUrls = new Set<string>();
               // 不让 click 冒泡到 map.onClick 关 popup (用户要求: 全屏前后 popup 保留)
               e.stopPropagation();
               toggleFullscreen();
+              // 点击瞬间主动检查 viewport — 不依赖 resize/fullscreenchange 事件
+              //   - 部分浏览器 (小米浏览器 Mi Browser 自家全屏) 不触发任何事件,
+              //     之前用 setInterval(500) 轮询浪费 CPU
+              //   - 全屏切换 viewport 实际变化在 0~300ms 之间, 立即检查 + 多时间点检查覆盖
+              //   - 100ms / 500ms / 1500ms 三个 setTimeout 兜底 (退出全屏后再点也覆盖)
+              updateIsMobile();
+              setTimeout(updateIsMobile, 100);
+              setTimeout(updateIsMobile, 500);
+              setTimeout(updateIsMobile, 1500);
             }}
             ariaLabel={isFullscreen ? "退出全屏" : "进入全屏"}
           >
