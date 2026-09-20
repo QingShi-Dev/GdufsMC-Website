@@ -129,9 +129,10 @@ export function MapLabels({
 
         // fontSize 解析 + 显隐区间合一
         let fontSizePx: string | undefined;
-        // 紧凑模式默认 10px, 全屏再减 1px; 不带 sm 覆盖。
+        // 紧凑模式默认 10px, 全屏再减 2px; 不带 sm 覆盖。
+        //   用户最新反馈: 全屏状态还能再小 1px → 默认 9 → 8 (减 2 而不是 1)
         let sizeClass = compactLabels
-          ? (isFullscreen ? "text-[9px]" : "text-[10px]")
+          ? (isFullscreen ? "text-[8px]" : "text-[10px]")
           : "text-xs sm:text-sm";
         let inRange = true;
         const fontSizeConfig = resolved.fontSize;
@@ -193,10 +194,10 @@ export function MapLabels({
             }
           }
           sizeClass = "";
-          // 紧凑模式减 2px, 全屏总共减 3px; 保留 8px 下限。
+          // 紧凑模式减 2px, 全屏总共减 4px (用户最新要求 -1px); 保留 8px 下限。
           if (compactLabels && fontSizePx) {
             const n = parseFloat(fontSizePx);
-            const reduction = isFullscreen ? 3 : 2;
+            const reduction = isFullscreen ? 4 : 2;
             if (Number.isFinite(n)) fontSizePx = `${Math.max(8, n - reduction)}px`;
           }
         }
