@@ -42,3 +42,6 @@ next-env.d.ts
 
 # 本地笔记 / 工作产物 (不入 git)
 /.workbuddy/
+
+# 本地 Caddy 密钥 (basic auth 密码哈希, 服务器本地维护)
+/secrets.caddy

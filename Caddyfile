@@ -1,0 +1,76 @@
+# =============================================================================
+# Caddyfile — gdufsmc 反代 + 自动 HTTPS
+# =============================================================================
+# 替代 deploy/nginx.conf.template + deploy/nginx-security.conf
+# Caddy 自动从 Let's Encrypt 申请 + 续期 HTTPS 证书, 无需 certbot
+# 安全头在 next.config.ts 已设, 这里补 Caddy 层冗余头 (避免 next.js 配置被覆盖)
+#
+# 部署: caddy run --config Caddyfile
+#      或 `nssm` 装成 Windows 服务
+#
+# !! 密码 / 密钥不在此文件 !!
+#   - /admin/* 的 basicauth 密码哈希在 ./secrets.caddy (本地维护, .gitignore)
+#   - 首次部署从 ./secrets.caddy.example 复制并填入真实 bcrypt 哈希
+#   - secrets.caddy 在 site block 内 import, 引用外层 @adminPath matcher
+# =============================================================================
+
+{
+    # 全局: 禁 admin API, 自动 HTTPS 强制 443
+    admin off
+    auto_https on
+    email admin@gdufscraft.top  # Let's Encrypt 证书到期通知邮箱
+}
+
+# -----------------------------------------------------------------------------
+# www → 主域重定向 (避免重复内容 SEO 惩罚)
+# -----------------------------------------------------------------------------
+www.gdufscraft.top {
+    redir https://gdufscraft.top{uri} permanent
+}
+
+# -----------------------------------------------------------------------------
+# 主域
+# -----------------------------------------------------------------------------
+gdufscraft.top {
+    # favicon 静态服务 (替代 nginx 的 alias /favicon.ico → H:\GDUFSMC-web\app\favicon.ico)
+    # GitHub Actions deploy workflow 会同步 .next/static/media/favicon.<hash>.ico 到 app/favicon.ico
+    handle /favicon.ico {
+        root * H:\GDUFSMC-web\app
+        file_server
+    }
+
+    # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入
+    #   secrets.caddy 在 .gitignore, 服务器本地维护, 部署时不会从 git 同步进来
+    #   首次部署: Copy-Item secrets.caddy.example secrets.caddy + 填入真密码哈希
+    @adminPath path /admin/*
+    import secrets.caddy
+
+    # 反代到 PM2 启动的 Next.js (端口 3000)
+    #   X-Forwarded-* 透传真实客户端 IP (proxy.ts 用 XFF 最右)
+    handle {
+        reverse_proxy 127.0.0.1:3000 {
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+
+    # 安全头冗余 (next.config.ts 也设了, 这里防 next.js 配置被覆盖)
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        Permissions-Policy "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    }
+
+    # 压缩响应
+    encode zstd gzip
+
+    # 访问日志 (单独文件, 方便 logrotate / 备份)
+    log {
+        output file H:\GDUFSMC-web\logs\caddy-access.log {
+            roll_size 10MiB
+            roll_keep 5
+        }
+    }
+}

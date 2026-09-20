@@ -1,165 +1,163 @@
 # gdufsmc-site 部署手册
 
-针对 **阿里云香港 ECS / Ubuntu 22.04 / 2c0.5g / Let's Encrypt** 优化。
+针对 **Windows Server 2019+ / 校园网 / GitHub Actions self-hosted Runner / Caddy** 优化。
 
 ## 文件清单
 
 | 文件 | 作用 | 跑在哪 |
 |------|------|--------|
-| `setup.sh` | 一次性初始化（装包 + 加 swap + 防火墙） | **服务器** |
-| `install-cert.sh` | 拿 Let's Encrypt 证书 | **服务器** |
-| `nginx.conf.template` | nginx 配置（用 `$DOMAIN` 占位） | setup 时复制到 `/etc/nginx/sites-available/gdufsmc` |
-| `ecosystem.config.js` | PM2 启动配置 | 服务器 `/opt/gdufsmc/deploy/` |
-| `app-deploy.sh` | 部署代码（本地 build + rsync） | **本地** |
+| `Caddyfile` (项目根) | Caddy 反代 + 自动 HTTPS + basic auth | 部署时复制到 `H:\GDUFSMC-web\` |
+| `ecosystem.config.js` | PM2 配置 (cwd 自动按 OS 切换) | runner 本机 / 服务器 `H:\GDUFSMC-web/deploy/` |
+| `setup.ps1` | Windows 校园服务器一次性初始化 | 服务器 (Administrator) |
+| `setup-caddy-service.ps1` | 把 Caddy 装成 Windows 服务 (NSSM) | 服务器 (Administrator) |
+| `WINDOWS-SERVER-SETUP.md` | 完整 Windows 服务器迁移指南 | 文档 |
 
 ## 一次性流程
 
-```bash
-# 1. 本地: 把 deploy/ 整个目录 scp 到服务器临时目录
-scp -r deploy/ ubuntu@<server-ip>:/tmp/gdufsmc-deploy/
+```powershell
+# 1. 在 GitHub 仓库 Settings → Actions → Runners 创建 self-hosted runner, 拿 token
+#    标签: self-hosted, windows, gdufsmc
 
-# 2. 服务器: 跑初始化
-ssh ubuntu@<server-ip>
-sudo bash /tmp/gdufsmc-deploy/setup.sh your-domain.com
+# 2. 在校园服务器 (Administrator PowerShell) 跑:
+cd C:\
+Invoke-WebRequest -Uri https://github.com/.../releases/latest/.../actions-runner-win-x64.zip -OutFile runner.zip
+Expand-Archive runner.zip -DestinationPath C:\actions-runner
+cd C:\actions-runner
+.\config.cmd --url https://github.com/QingShi-Dev/GdufsMC-Website --token <TOKEN> --labels "self-hosted,windows,gdufsmc"
 
-# 3. 把域名 A 记录指到服务器公网 IP（去 DNS 厂商控制台）
+# 3. 在服务器上跑 deploy/setup.ps1 (装 Node/Caddy/PM2 + 防火墙 + Runner 服务)
+.\deploy\setup.ps1 -Domain gdufscraft.top -RunnerToken "<TOKEN>"
+
+# 4. DNS A 记录: gdufscraft.top → 校园服务器公网 IP, www → CNAME gdufscraft.top
 #    等 1-5 分钟 DNS 生效
 
-# 4. 服务器: 拿证书
-sudo bash /tmp/gdufsmc-deploy/install-cert.sh your-domain.com
+# 5. 冷启动: clone 代码 + build + 启动
+cd H:\GDUFSMC-web
+git clone https://github.com/QingShi-Dev/GdufsMC-Website.git .
+pnpm install --frozen-lockfile --prod
+pnpm run build
+pm2 start deploy/ecosystem.config.js
+pm2 save
+& 'C:\Program Files\Caddy\caddy.exe' run --config H:\GDUFSMC-web\Caddyfile  # 首次前台跑, 看到证书申请成功
+.\deploy\setup-caddy-service.ps1  # 装成 Windows 服务
 
-# 5. 本地: 部署代码
-bash deploy/app-deploy.sh ubuntu@<server-ip> /opt/gdufsmc
+# 6. 浏览器访问:
+#    https://gdufscraft.top/                ← 应该返回 Next.js 主页
+#    https://gdufscraft.top/admin/          ← 应该弹 basic auth
 ```
 
 ## 之后再部署
 
-代码改了之后:
-
-```bash
-# 本地
-bash deploy/app-deploy.sh ubuntu@<server-ip> /opt/gdufsmc
+```powershell
+# 开发机: 改完代码直接 git push
+git push origin main
+# GitHub Actions 自动跑 → self-hosted runner 在服务器 build + 重启 PM2 + 健康检查
 ```
 
 ## 关键设计
 
-### 为什么本地 build
-0.5g 机器 build Next.js 必 OOM（V8 默认堆上 1.5g）。**本地 build + rsync 产物** 是唯一稳的方案。
+### 为什么 GitHub Actions self-hosted runner
+校园网 NAT 没公网 SSH 端口，让 GitHub Runner 跑在服务器上：
+- Runner 走 outbound 443 出站 → 校园 NAT 友好
+- 不依赖公网 IP / 域名 / SSH
+- 直接访问本地文件 (`H:\GDUFSMC-web\`) → build 速度最快
+- 取消 SSH secrets (`SERVER_HOST` / `SERVER_USER` / `SSH_PRIVATE_KEY`)
 
-### 为什么 2GB swap
-不只是给 build 兜底——npm install、git clone 大仓库、甚至 `pnpm audit` 都会瞬时吃内存。swap 是低内存机器的标配。
+### 为什么 Caddy 替代 nginx
+- **自动 HTTPS**: Caddy 内置 ACME 客户端, 无需 certbot + 手动续期
+- **零配置反代**: 一行 `reverse_proxy` 替代 nginx 多行 `location`
+- **跨平台**: 配置文件 (npm init.d 同步, Windows / Linux 同语法
 
-### 为什么 nginx 直接发静态资源
-- `/images/*`（地图照片） + `/icons/*`（图标） + `/_next/static/*`（hash 文件名）都是 immutable，nginx 直接发省 Node 一层
-- `/sw.js` 必须 `no-cache`（service worker 更新机制）
-- CSP 等响应头由 Next.js 决定，nginx 不重复加（避免和 next.config.ts 冲突）
+### 为什么配置都放进项目目录 (`H:\GDUFSMC-web\`)
+- **单一目录管理**: 代码 + 配置 + 日志 + 证书备份 都在一处
+- **git 跟踪**: Caddyfile / ecosystem.config.js 跟代码一起 versioned
+- **迁移简单**: `git clone` 整套, 不用单独 rsync `/etc/`
 
-### PM2 单实例 fork
-- 0.5g 内存撑不起 cluster 多实例
-- fork + max_memory_restart 350M 是这个规格的甜点
-
-### proxy 走 IP 而非域名
-rate limit 用 `x-forwarded-for`，nginx 一定要把这个 header 传上去（已在 nginx.conf 配置里）。
+### PM2 跨平台 (`ecosystem.config.js`)
+- 用 `process.platform === 'win32'` 自动选路径
+- Linux: `cwd: "/opt/gdufsmc"`, `log_file: "/opt/gdufsmc/logs/..."`
+- Windows: `cwd: "H:\\GDUFSMC-web"`, `log_file: "H:\\GDUFSMC-web\\logs\\..."`
+- 一份配置, 两套系统都能跑
 
 ## 安全（按层防御）
 
 ### Layer 1: GitHub 仓库
-- **公开仓库 + branch protection on main**（强制 PR + 1 reviewer + status checks + admin 也遵守）
-- OAuth App（短期 token，不存 PAT）
-- 即使 token 泄露也只能开 PR，admin review 拦截
+- 公开仓库 + branch protection on main
+- PAT 模式: Sveltia 用户在浏览器粘贴 PAT, 不存仓库
+- 即使 token 泄露也只能 commit (PR 模式需审核)
 
-### Layer 2: /admin 路径（nginx 三层防护）
-`/admin/` 是 CMS 后台入口，配置在 `nginx.conf.template`：
+### Layer 2: `/admin` 路径 (Caddy 三层防护)
+
+Caddyfile 配置:
+```caddyfile
+@adminPath path /admin/*
+basicauth @adminPath {
+    admin $2a$14$BCRYPT_HASH
+}
+```
 
 | 层 | 措施 | 防什么 |
 |---|------|------|
-| 1 | **basic auth**（`.htpasswd`，bcrypt） | 密码不知道直接 401 |
-| 2 | **IP 白名单**（默认 `deny all`，用户手动填 `allow <IP>` 放开） | 用户 IP 限定 |
-| 3 | **limit_req** 10r/s + burst 20 | 暴力爆破失败 |
-| + | **fail2ban** `[nginx-admin-auth]` jail | 401 超过 10 次 ban 1h |
+| 1 | basic auth (bcrypt) | 密码不知道直接 401 |
+| 2 | 速率限制 (Caddy rate_limit 模块, 见 Caddyfile 注释) | 暴力爆破失败 |
+| 3 | GitHub Actions 只通过 main branch 部署 | PAT 泄露也需 PR |
 
-**用户 IP 变了怎么办**：用密码登录（basic auth 是主防线，不依赖 IP）。
-**admin 凭据**：setup.sh 自动生成 32 字节随机密码 + bcrypt，仅显示一次。后续 `sudo htpasswd -B /etc/nginx/.htpasswd admin` 重置。
-
-### Layer 3: SSH 防护
-- **fail2ban `[sshd]` jail**：5 次失败 ban 24h
-- **SSH key-only**：`PasswordAuthentication no`（setup.sh 自动改），只允许密钥登录
-- **ufw 防火墙**：仅开 22/80/443
-
-### Layer 4: 响应头（Next.js 配置）
-`next.config.ts` 的 `SECURITY_HEADERS` 数组应用到 `:path*`（全站）：
-
-- `Content-Security-Policy`：`default-src 'self'; script-src 'self' 'unsafe-inline' https://unpkg.com; ...`（防 XSS 偷 token）
-- `Strict-Transport-Security: max-age=31536000; includeSubDomains`（强制 HTTPS）
-- `X-Frame-Options: DENY`（防 clickjacking）
+### Layer 3: 响应头 (next.config.ts + Caddyfile 双层)
+- `Content-Security-Policy`: 主页面 `'self' 'unsafe-inline'`, `/admin` 含 `unpkg.com` 给 Sveltia
+- `Strict-Transport-Security: max-age=31536000; includeSubDomains`
+- `X-Frame-Options: DENY`
 - `X-Content-Type-Options: nosniff`
 - `Referrer-Policy: strict-origin-when-cross-origin`
 - `Permissions-Policy: camera=(), microphone=(), geolocation=(), interest-cohort=()`
 
-nginx 也加同样头（defense in depth）+ `server_tokens off`（隐藏 nginx 版本）。
-
-### 完整的 `/admin` 访问流程
-```
-1. 用户访问 https://your-domain.com/admin/
-2. nginx 看到路径 /admin/, 走 location 块:
-   a. basic auth: 弹窗要用户名密码 → 用户输
-   b. IP 白名单: 用户 IP 不在 allow 列表 → 403 (默认 deny all)
-   c. limit_req: 401 失败 10 次 → fail2ban ban IP 1h
-3. basic auth + IP 通过 → 反代到 Node → Sveltia CMS UI
-4. Sveltia 跳 GitHub OAuth → 用户在 github.com 登录授权
-5. GitHub 跳回 /admin/?code=... → Sveltia 用 PKCE 换短期 token (数小时)
-6. Sveltia 写内容 → 通过 OAuth token 调 GitHub API
-7. GitHub 创建 PR (因为 main 分支 protected) → admin review → merge → Action 部署
-```
-
-**任何一层失效，下一层兜底**。攻击者需要同时攻破 basic auth + IP 白名单 + GitHub OAuth + branch protection 才能写入仓库。
+### Layer 4: Windows 防火墙 (deploy/setup.ps1 自动配)
+- 入站: 80/443 (Caddy)
+- 出站: 443 (GitHub Runner / Caddy ACME / npm)
 
 ### 上线前 checklist
 - [ ] GitHub repo 转 public + branch protection on main
-- [ ] OAuth App 注册 + Client ID 填到 `public/admin/config.yml`
-- [ ] 服务器跑 `setup.sh`，保存打印出来的凭据
-- [ ] `curl -I https://your-domain.com` 看响应头（CSP/HSTS/Permissions-Policy 应在）
-- [ ] `curl -I https://your-domain.com/admin/` 应返回 401（basic auth 弹窗）
+- [ ] 服务器跑 `setup.ps1`，保存打印出来的凭据
+- [ ] DNS A 记录指向服务器公网 IP
+- [ ] 冷启动部署成功 + `curl -I https://gdufscraft.top/` 返回 200
+- [ ] `curl -I https://gdufscraft.top/admin/` 返回 401
 - [ ] 用凭据登录 /admin/，看到 Sveltia CMS
-- [ ] 测一次 Sveltia 编辑 → GitHub 创建 PR → Action build → 上线生效
+- [ ] 测一次 Sveltia 编辑 → commit → Action build → 上线生效
 
 ## 监控与排错
 
-```bash
-# 实时日志
-ssh ubuntu@<server-ip> 'pm2 logs gdufsmc --lines 200'
+```powershell
+# PM2 状态
+pm2 status
+pm2 logs gdufsmc --lines 200
 
-# 资源监控
-ssh ubuntu@<server-ip> 'pm2 monit'
+# Caddy 状态
+nssm status Caddy
+Get-Content H:\GDUFSMC-web\logs\caddy-stderr.log -Tail 50
 
-# 重启
-ssh ubuntu@<server-ip> 'pm2 restart gdufsmc'
-
-# nginx 错误日志
-ssh ubuntu@<server-ip> 'tail -f /var/log/nginx/error.log'
-
-# 证书续期状态
-ssh ubuntu@<server-ip> 'certbot certificates'
+# GitHub Runner 状态
+Get-Service | Where-Object { $_.Name -like "actions.runner.*" }
+# 或 GitHub 网页: https://github.com/QingShi-Dev/GdufsMC-Website/settings/actions/runners
 
 # 健康检查
-curl -I https://your-domain.com
-curl https://your-domain.com/api/server-status | head
+curl http://127.0.0.1:3000/
+curl http://127.0.0.1:3000/api/server-status
 ```
 
 ## 升级 / 维护
 
 | 操作 | 步骤 |
 |------|------|
-| 部署新代码 | 本地 `bash deploy/app-deploy.sh ubuntu@<ip> /opt/gdufsmc` |
+| 部署新代码 | 开发机 `git push origin main` (GitHub Actions 自动跑) |
 | 重启应用 | 服务器 `pm2 restart gdufsmc` |
-| 续期证书 | 自动 (certbot.timer), 手动 `certbot renew && systemctl reload nginx` |
-| 看访问日志 | `/var/log/nginx/access.log` |
-| 看 PM2 日志 | `/var/log/pm2/gdufsmc-combined.log` |
-| 完全重置 | 服务器 `rm -rf /opt/gdufsmc && bash /tmp/gdufsmc-deploy/setup.sh domain` |
+| 重启 Caddy | 服务器 `nssm restart Caddy` (配置变更自动 reload) |
+| HTTPS 续期 | Caddy 自动 (90 天前自动续), 手动 `caddy reload --config Caddyfile` |
+| 看访问日志 | `H:\GDUFSMC-web\logs\caddy-access.log` |
+| 看 PM2 日志 | `H:\GDUFSMC-web\logs\gdufsmc-combined.log` |
+| 完全重置 | 服务器 `rmdir /s /q H:\GDUFSMC-web`, 重新跑 setup.ps1 |
 
 ## 待办（可选优化）
 
-- [ ] 加阿里云 CDN 把 `/images/*` 单独加速
-- [ ] 加 GitHub Actions 自动部署（本地 build → 推镜像或文件）
-- [ ] 加监控告警（UptimeRobot / 阿里云云监控）
-- [ ] 数据库（如果以后加评论 / 用户系统）
+- [ ] 加 CDN (Cloudflare / 阿里云) 把 `/images/*` 单独加速
+- [ ] 加 UptimeRobot 监控 + 告警
+- [ ] 加监控面板 (Grafana / Prometheus)
+- [ ] 加评论 / 用户系统 (数据库)
