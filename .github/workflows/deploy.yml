@@ -65,7 +65,7 @@ jobs:
           Write-Host "  corepack prepare: $corepackPnpm"
 
           # 找 pnpm: 多源 fallback, where.exe 兜底
-          #   优先级: corepack shim > 全局 npm pmpm.cmd > 全盘搜 > where.exe
+          #   优先级: corepack shim > 全局 npm pnpm.cmd > 全盘搜 > where.exe
           #   注意: deploy step working-directory 是 H:\GDUFSMC-web
           #   PowerShell 默认把 cwd 加到 PATH 前面,
           #   如果 H:\GDUFSMC-web\pnpm(.cmd|.exe) 存在, 直接可调
@@ -75,50 +75,79 @@ jobs:
           $shimDir = Join-Path $env:LOCALAPPDATA 'corepack'
           if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
 
-          # 2. 常见 pnpm 路径 (npm 全局包文件名是 pmpm.cmd, 加 pm 前缀防冲突)
+          # 诊断: 当前身份 + PATH 概览 (排查 NetworkService vs Administrator 权限差)
+          Write-Host "  当前用户: $env:USERNAME"
+          Write-Host "  APPDATA: $env:APPDATA"
+          Write-Host "  LOCALAPPDATA: $env:LOCALAPPDATA"
+
+          # 2. 常见 pnpm 路径 (npm 全局包文件名是 pnpm.cmd, 加 pm 前缀防冲突)
           # 注意: H:\GDUFSMC-web\pnpm 这种无后缀文件 Windows 不能直接执行,
           #   排除, 用 .cmd 后缀
           $candidates = @(
-              'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
-              'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
-              "$env:APPDATA\npm\pmpm.cmd"
-              'C:\npm\pmpm.cmd'
-              'C:\Program Files\nodejs\pmpm.cmd'
+              'C:\Users\Administrator\AppData\Roaming\npm\pnpm.cmd'
+              'C:\Users\ks-73\AppData\Roaming\npm\pnpm.cmd'
+              "$env:APPDATA\npm\pnpm.cmd"
+              'C:\npm\pnpm.cmd'
+              'C:\Program Files\nodejs\pnpm.cmd'
               "$env:PROJECT_DIR\pnpm.cmd"
               "$env:PROJECT_DIR\node_modules\.bin\pnpm.cmd"
           )
           foreach ($c in $candidates) {
-              if (Test-Path $c) {
+              # 双重检测: Test-Path 验证可见性, 试跑 --version 验证可执行性
+              # NetworkService 对 Administrator 用户 AppData 无权时 Test-Path False
+              $visible = Test-Path $c -ErrorAction SilentlyContinue
+              if ($visible) {
                   $env:PATH = (Split-Path $c) + ';' + $env:PATH
                   $pnpmCmd = $c
-                  Write-Host "  fallback pnpm: $c"
+                  Write-Host "  ✅ fallback pnpm (Test-Path): $c"
                   break
+              }
+              Write-Host "  ⏭ 跳过 (Test-Path False): $c"
+          }
+
+          # 2b. 试跑 --version (即使 Test-Path False 也试, 排除权限误判)
+          # 如果 Test-Path 因为 ACL 问题误判为 False, 但实际可执行, 这里命中
+          if (-not $pnpmCmd) {
+              foreach ($c in $candidates) {
+                  try {
+                      $ver = & $c --version 2>&1
+                      if ($LASTEXITCODE -eq 0 -and $ver -match '\d+\.\d+') {
+                          $env:PATH = (Split-Path $c) + ';' + $env:PATH
+                          $pnpmCmd = $c
+                          Write-Host "  ✅ fallback pnpm (exec): $c (ver: $ver)"
+                          break
+                      }
+                  } catch {}
               }
           }
 
           # 3. 全盘搜 (深度 4 限制耗时)
           if (-not $pnpmCmd) {
-              $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pmpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 1
-              if (-not $found) {
-                  $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pnpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 1
-              }
+              Write-Host "  开始全盘搜 pnpm.cmd..."
+              $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pnpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 1
               if ($found) {
                   $pnpmCmd = $found.FullName
                   $env:PATH = (Split-Path $pnpmCmd) + ';' + $env:PATH
-                  Write-Host "  找到: $pnpmCmd"
+                  Write-Host "  ✅ 找到: $pnpmCmd"
+              } else {
+                  Write-Host "  ⏭ 全盘搜也找不到"
               }
           }
 
           # 4. where.exe 兜底 (PATH 上有什么)
           if (-not $pnpmCmd) {
               try {
-                  $pnpmCmd = (where.exe pnpm 2>&1 | Where-Object { $_ -match '\\' -and (Test-Path $_) } | Select-Object -First 1)
-                  if ($pnpmCmd) { Write-Host "  where.exe: $pnpmCmd" }
-              } catch {}
+                  $whereOutput = where.exe pnpm 2>&1
+                  Write-Host "  where.exe 输出: $whereOutput"
+                  $pnpmCmd = ($whereOutput | Where-Object { $_ -match '\\' -and (Test-Path $_ -ErrorAction SilentlyContinue) } | Select-Object -First 1)
+                  if ($pnpmCmd) { Write-Host "  ✅ where.exe: $pnpmCmd" }
+              } catch {
+                  Write-Host "  ⏭ where.exe 抛错: $_"
+              }
           }
 
           if (-not $pnpmCmd) {
-              throw "❌ pnpm 找不到, 请先在服务端 Administrator PowerShell 装 pnpm@12.5.1: npm install -g pnpm@12.5.1"
+              throw "❌ pnpm 找不到 (用户=$env:USERNAME APPDATA=$env:APPDATA), 请检查 Runner 服务身份 (NetworkService vs Administrator) 或加 ACL"
           }
           & $pnpmCmd --version
 
