@@ -61,6 +61,14 @@ jobs:
       url: https://gdufscraft.top
 
     steps:
+      # 启用 Windows 长路径支持 (解决 "Filename too long" 报错)
+      #   GitHub Actions runner workspace 路径深: H:\actions-runner\_work\GdufsMC-Website\GdufsMC-Website\
+      #   + Next.js 16 .pnpm 路径嵌套 node_modules\.pnpm\next@...\next\dist\... → 超过 MAX_PATH 260
+      #   core.longPaths=true 让 git 支持 >260 字符路径
+      - name: Enable Windows long paths (>260 chars)
+        shell: powershell
+        run: git config --system core.longPaths true
+
       - name: Checkout (到 runner workspace, GitHub 限制不允许 checkout 到 workspace 外)
         uses: actions/checkout@v4
 
