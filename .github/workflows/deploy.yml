@@ -1,32 +1,19 @@
 # =============================================================================
-# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy)
+# Deploy to production — 校园服务器 (Windows + self-hosted runner + Caddy)
 # =============================================================================
-# 架构 (极简版, 全在 H:\GDUFSMC-web 跑):
-#   1. pnpm/action-setup 装 pnpm
-#   2. git fetch + reset (用 GITHUB_TOKEN) → H:\GDUFSMC-web 同步最新代码
-#   3. pnpm install + typecheck + lint + pnpm build (直接写 H:\GDUFSMC-web/.next)
-#   4. taskkill node + pm2 restart + health check + reload caddy
-#
-# 优势 vs 旧 (workspace build + robocopy + cmd move):
-#   - 不需要 actions/checkout (checkout 限制 path 必须在 workspace 下)
-#   - 不需要 workspace build (避免 pnpm 路径过长 + workspace 同步成本)
-#   - 不需要 robocopy + cmd move (build 直接写到 H:\GDUFSMC-web/.next)
-#   - GitHub Actions 跟 server 强解耦,代码同步用 GITHUB_TOKEN
-#   - 不需要 download/upload artifact (服务器自己 build)
+# 架构: 单 self-hosted runner job, 直接在 H:\GDUFSMC-web 跑
+#   1. Setup: core.longPaths + corepack pnpm 锁版本
+#   2. Sync code: git fetch + reset (用 GITHUB_TOKEN 临时认证)
+#   3. Build: pnpm install + lint + typecheck + pnpm build (build 写 .next 到 H:\GDUFSMC-web)
+#   4. Restart: taskkill node + pm2 restart + sync favicon
+#   5. Verify: health check + caddy reload (if Caddyfile changed)
 #
 # Runner 配置: Settings → Actions → Runners → New self-hosted runner
 #   - 标签: self-hosted, windows, gdufsmc
-#   - 装到校园服务器 C:\actions-runner\
+#   - 装到校园服务器 (默认 C:\actions-runner)
 #   - 装成 Windows 服务 (deploy\setup.ps1 自动做)
 #
 # 触发: push 到 main (Sveltia CMS 编辑完提交也算)
-#
-# PowerShell shell 选择: 用 Windows PS 5.1 (校园服务器默认没装 PS 7+)
-#
-# git fetch 用 GITHUB_TOKEN:
-#   - NetworkService 跑 git 命令, GitHub 自动注入 GITHUB_TOKEN 环境变量
-#   - URL 形式 https://x-access-token:$GITHUB_TOKEN@github.com/...
-#   - 这是 GitHub Actions 官方推荐的 git 凭证方式
 # =============================================================================
 
 name: Deploy to production
@@ -41,13 +28,14 @@ on:
         required: false
         default: 'manual'
 
+# 不要并发跑两个部署 (新 commit 触发时旧的会被取消或排队)
 concurrency:
   group: production-deploy
   cancel-in-progress: false
 
 jobs:
   deploy:
-    name: Build & deploy (H:\GDUFSMC-web 直跑)
+    name: Build & deploy
     runs-on: [self-hosted, windows, gdufsmc]
     if: github.event_name == 'push'
     timeout-minutes: 20
@@ -55,134 +43,133 @@ jobs:
       name: production
       url: https://gdufscraft.top
 
-    steps:
-      # Windows 长路径支持 (Next.js 16 pnpm 路径嵌套 node_modules/.pnpm/next@.../.../ 超 260 字符)
-      #   不能用 --system (写 C:\Program Files\Git\etc\gitconfig, NetworkService 没权限)
-      #   改用 --global (写 %USERPROFILE%\.gitconfig = C:\Windows\ServiceProfiles\NetworkService\.gitconfig)
-      - name: Enable Windows long paths (>260 chars)
-        shell: powershell
-        run: git config --global core.longPaths true
+    env:
+      PROJECT_DIR: H:\GDUFSMC-web
 
-      # 用 corepack 锁 pnpm 10.6.1 (跟 self-hosted runner 上用户装的一致)
-      #   - corepack 是 Node 自带, 把 pnpm 装到 corepack cache
-      #   - corepack pnpm 命令是 shim, 不依赖 PATH 顺序
-      #   - 比 pnpm/action-setup@v4 更稳 (不依赖系统 PATH 顺序)
-      - name: Setup pnpm via corepack
+    steps:
+      # =========================================================================
+      # 1. Setup — git long paths + corepack 锁 pnpm 版本
+      # =========================================================================
+      - name: Setup long paths + pnpm
         shell: powershell
         run: |
+          # Next.js 16 pnpm .pnpm 嵌套路径 > 260 字符, 启用 Windows 长路径支持
+          # 必须用 --global (NetworkService 是 Runner 服务账号, 没 system 权限)
+          git config --global core.longPaths true
+
+          # corepack 锁 pnpm 版本 (绕过 self-hosted runner PATH 顺序问题)
+          # - pnpm 10.6.1 跟用户机器装的版本一致, lockfile 兼容
+          # - corepack 是 Node 自带 shim, 不依赖 PATH
           corepack enable 2>&1 | Out-Null
           corepack prepare pnpm@10.6.1 --activate 2>&1 | Out-Null
-          # 验证 corepack pnpm 锁版本成功
           pnpm --version
 
-      # 兜底: 如果 corepack 失败, 用 pnpm/action-setup 装 pnpm 10
-      - name: Setup pnpm (fallback)
-        if: failure()
-        uses: pnpm/action-setup@v4
-        with:
-          version: 10
-
-      # 拉最新代码到 H:\GDUFSMC-web (NetworkService 跑 git, GITHUB_TOKEN 自动认证)
-      #   - 不需要 actions/checkout (GitHub 限制 checkout path 必须在 workspace)
-      #   - 不需要 PAT 或 SSH key (GITHUB_TOKEN 自动注入)
-      #   - H:\GDUFSMC-web 是 Administrators 拥有, NetworkService 不是 owner
-      #     git 2.35+ 默认 safe.directory 检查拒绝跨用户操作
-      #     用 git config --global --add safe.directory 加白名单
-      - name: Sync code to H:\GDUFSMC-web
+      # =========================================================================
+      # 2. Sync code — git fetch + reset, 用 GITHUB_TOKEN 临时认证
+      # =========================================================================
+      - name: Sync code from GitHub
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
         run: |
-          # 加 safe.directory 白名单 (NetworkService 不是 H:\GDUFSMC-web 的 owner)
-          git config --global --add safe.directory H:/GDUFSMC-web
-          Push-Location H:\GDUFSMC-web
-          $token = $env:GITHUB_TOKEN
-          $url = "https://x-access-token:$token@github.com/QingShi-Dev/GdufsMC-Website.git"
-          # git fetch / reset 写 stderr (From / HEAD / Counting 等) 被 PS 5.1 当 NativeCommandError
-          # 用 try/catch + 2>&1 | Out-Null 吞掉
-          try {
-              $fetchOut = git fetch $url main 2>&1
-              Write-Host "  fetch: $($fetchOut -join ' / ')"
-          } catch { Write-Host "  fetch: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
-          try {
-              git reset --hard FETCH_HEAD 2>&1 | Out-Null
-          } catch { Write-Host "  reset: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
-          # 清工作区,保留关键文件
-          try {
-              git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale 2>&1 | Out-Null
-          } catch { Write-Host "  clean: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
-          Pop-Location
+          # git 2.35+ 默认 safe.directory 检查拒绝跨用户操作
+          # H:\GDUFSMC-web 是 Administrators 拥有, NetworkService 不是 owner
+          git config --global --add safe.directory "H:/GDUFSMC-web"
 
-      - name: Install dependencies (含 devDependencies for build)
-        working-directory: H:\GDUFSMC-web
+          $url = "https://x-access-token:$env:GITHUB_TOKEN@github.com/QingShi-Dev/GdufsMC-Website.git"
+
+          # 所有 git 命令 try/catch + 2>&1 | Out-Null 吞 NativeCommandError
+          # (PS 5.1 把 git 写 stderr 的进度信息 [From / Counting / HEAD] 当 terminating error)
+          try { git fetch $url main 2>&1 | Out-Null } catch { Write-Host "fetch: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          try { git reset --hard FETCH_HEAD 2>&1 | Out-Null } catch { Write-Host "reset: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          # 保留: node_modules / .next / logs / app / secrets.caddy / .env / .next.stale
+          # 其他未跟踪文件 (build artifact 等) 清掉, 让 build 干净
+          try { git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale 2>&1 | Out-Null } catch {}
+          $LASTEXITCODE = 0
+
+      # =========================================================================
+      # 3. Build — install + typecheck + lint + build
+      # =========================================================================
+      - name: Install dependencies
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
         run: pnpm install --frozen-lockfile
 
-      - name: Type check
-        working-directory: H:\GDUFSMC-web
+      - name: Type check + Lint
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
-        run: pnpm typecheck
+        run: |
+          pnpm typecheck
+          pnpm lint
 
-      - name: Lint
-        working-directory: H:\GDUFSMC-web
-        shell: powershell
-        run: pnpm lint
-
-      - name: Build Next.js (.next 写到 H:\GDUFSMC-web/.next)
-        working-directory: H:\GDUFSMC-web
+      - name: Build Next.js
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
         env:
           NEXT_TELEMETRY_DISABLED: '1'
         run: pnpm build
 
-      # 杀 node (跨账号) + 启 PM2 + 健康检查 + reload caddy
-      # shell: cmd 避开 PowerShell 父进程持有 .next handle
-      - name: Kill node + restart PM2
-        shell: cmd
-        run: |
-          taskkill /F /IM node.exe 2>nul
-          timeout /t 5 /nobreak >nul
-
-      - name: Restart PM2 (Next.js)
-        working-directory: H:\GDUFSMC-web
+      # =========================================================================
+      # 4. Restart — taskkill node + pm2 restart + sync favicon
+      # =========================================================================
+      - name: Restart PM2 + sync favicon
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
         run: |
-            function Test-PathSafe([string]$p) {
-                try { Test-Path $p -ErrorAction Stop } catch { $false }
-            }
-            $pm2Candidates = @(
-                'C:\npm\pm2.cmd',
-                'C:\Program Files\nodejs\pm2.cmd',
-                'C:\Program Files (x86)\nodejs\pm2.cmd',
-                "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
-                'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
-                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'
-            )
-            $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
-            if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
-            $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
-            $ErrorActionPreference = 'Continue'
-            try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "  pm2 delete: $($_.Exception.Message)" }
-            $LASTEXITCODE = 0
-            try { & $pm2 start deploy/ecosystem.config.js 2>&1 | Out-Null } catch { Write-Host "  pm2 start: $($_.Exception.Message)" }
-            $LASTEXITCODE = 0
-            try { & $pm2 save 2>&1 | Out-Null } catch { Write-Host "  pm2 save: $($_.Exception.Message)" }
-            $LASTEXITCODE = 0
+          # 杀所有 node (跨账号, NetworkService 没权限杀 Administrator 进程但
+          # taskkill 是 Windows 内置, 用 PROCESS_TERMINATE 默认权限, 能杀)
+          try {
+              taskkill /F /IM node.exe 2>&1 | Out-Null
+          } catch { Write-Host "taskkill: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          Start-Sleep -Seconds 5  # 等 Next.js 优雅退出
 
-      - name: Sync favicon
-        shell: powershell
-        run: |
-          $ProjectDir = 'H:\GDUFSMC-web'
-          $favicon = Get-ChildItem -Path "$ProjectDir\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
+          # 找 pm2.cmd (NetworkService 默认 PATH 找不到, 用 fallback 链)
+          #   优先级: machine-wide (C:\npm) > node 同目录 > 用户级 npm
+          #   Administrator 用户 AppData 路径 NetworkService 不可执行 (stat OK, exec EPERM)
+          function Test-PathSafe([string]$p) {
+              try { Test-Path $p -ErrorAction Stop } catch { $false }
+          }
+          $pm2Candidates = @(
+              'C:\npm\pm2.cmd'
+              'C:\Program Files\nodejs\pm2.cmd'
+              'C:\Program Files (x86)\nodejs\pm2.cmd'
+              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd"
+              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd'
+              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'
+          )
+          $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
+          if (-not $pm2) { throw "❌ pm2.cmd 找不到, 候选: $($pm2Candidates -join ', ')" }
+          Write-Host "  pm2: $pm2"
+
+          # 把 pm2 目录加到 PATH, 让 pm2 调 node 时找得到
+          $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
+          $ErrorActionPreference = 'Continue'
+
+          # PM2 命令 try/catch + $LASTEXITCODE = 0 吞 NativeCommandError
+          # (PM2 把 [WARN] 写到 stdout, PS 5.1 当 terminating error)
+          try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "pm2 delete: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          try { & $pm2 start deploy/ecosystem.config.js 2>&1 | Out-Null } catch { Write-Host "pm2 start: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          try { & $pm2 save 2>&1 | Out-Null } catch { Write-Host "pm2 save: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+
+          # Sync favicon: build 后 .next/static/media/favicon.<hash>.ico 复制到 app/favicon.ico
+          # (Caddyfile handle /favicon.ico 指向 H:\GDUFSMC-web\app\favicon.ico)
+          $favicon = Get-ChildItem -Path "$env:PROJECT_DIR\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
           if ($favicon) {
-              New-Item -ItemType Directory -Path "$ProjectDir\app" -Force | Out-Null
-              Copy-Item -Force $favicon.FullName "$ProjectDir\app\favicon.ico"
-              Write-Host "✅ favicon 同步"
+              New-Item -ItemType Directory -Path "$env:PROJECT_DIR\app" -Force | Out-Null
+              Copy-Item -Force $favicon.FullName "$env:PROJECT_DIR\app\favicon.ico"
+              Write-Host "✅ favicon: $($favicon.Name) → app/favicon.ico"
           } else {
-              Write-Warning "⚠️ 找不到 favicon"
+              Write-Warning "⚠️ 找不到 favicon, /favicon.ico 可能 404"
           }
 
+      # =========================================================================
+      # 5. Verify — health check + caddy reload (if Caddyfile changed)
+      # =========================================================================
       - name: Health check (wait for Next.js bind port 3000)
         shell: powershell
         run: |
@@ -211,28 +198,31 @@ jobs:
           }
 
       - name: Reload Caddy (only if Caddyfile changed)
+        working-directory: ${{ env.PROJECT_DIR }}
         shell: powershell
         run: |
-          Push-Location H:\GDUFSMC-web
-          $changed = (git diff HEAD~1 HEAD --name-only 2>$null) | Where-Object { $_ -eq 'Caddyfile' }
-          Pop-Location
+          # 看上一次 commit 改了哪些文件, 如果含 Caddyfile 就 reload
+          $lastCommit = git log -1 --name-only 2>$null
+          $changed = $lastCommit | Where-Object { $_ -eq 'Caddyfile' }
 
           if ($changed -and (Get-Service -Name 'Caddy' -ErrorAction SilentlyContinue)) {
+              # 自动检测 caddy 路径 (PATH 找不到时 fallback)
               $caddy = Get-Command caddy -ErrorAction SilentlyContinue
               if (-not $caddy) {
                   $candidates = @(
-                      'C:\Program Files\Caddy\caddy.exe',
+                      'C:\Program Files\Caddy\caddy.exe'
+                      'C:\Caddy\caddy.exe'
                       "$env:USERPROFILE\scoop\apps\caddy\current\caddy.exe"
                   )
                   $caddyExe = $candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
                   if ($caddyExe) { $caddy = @{ Source = $caddyExe } }
               }
               if ($caddy) {
-                  & $caddy.Source reload --config 'H:\GDUFSMC-web\Caddyfile'
-                  Write-Host "✅ Caddy 重载"
+                  & $caddy.Source reload --config "$env:PROJECT_DIR\Caddyfile"
+                  Write-Host "✅ Caddy 重载 (Caddyfile 变更)"
               } else {
-                  Write-Warning "⚠️ 找不到 caddy.exe"
+                  Write-Warning "⚠️ 找不到 caddy.exe, 跳过 reload"
               }
           } else {
-              Write-Host "⏭️ 跳过 Caddy reload"
+              Write-Host "⏭️ 跳过 Caddy reload (Caddyfile 未变 或服务未启动)"
           }
