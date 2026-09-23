@@ -148,6 +148,8 @@ jobs:
           #   - Administrator 启的 daemon 跨账号拒绝, 2>$null 吞掉
           #   - 首次部署前必须先在服务端手动 taskkill /im node.exe /f 一次
           #     (否则旧 Administrator daemon 的 named pipe 占着 \\.\pipe\rpc.sock)
+          #   - 永远不要手动跑 `pm2 start` ! 会用 Administrator 启 daemon,
+          #     跟 deploy step 跨账号冲突, EPERM \\.\pipe\rpc.sock
           # PM2 把 [WARN] 写到 stdout (不是 stderr), 用 `2>&1 | Out-Null` 吞所有流
           & $pm2 kill 2>&1 | Out-Null
           $LASTEXITCODE = 0  # PM2 warning 不算失败
