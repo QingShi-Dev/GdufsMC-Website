@@ -2253,9 +2253,12 @@ const preloadedUrls = new Set<string>();
               //     right = 360-288-16 = 56px, 跟 left=16 不对齐)
               //   - 全屏时: 同样 inset-x-4, max-w 限制 280-360px
               //   - 注意: 不要混用 "left-4 + w-XXX" — w 会让 right 由 width 推导, 跟 left-4 不一致
+              // 宽度策略 — 用户要求 #3: 桌面端 lg 跟 popup 对齐 (lg:w-80 = 320px)
+              //   - 之前用 lg:max-w-sm (384px), 比 popup (320px) 长 64px
+              //   - 改 max-w-80 (320px) 让两个元素视觉等宽, popup 在下搜索栏在上
               isFullscreen
                 ? "max-w-[max(280px,min(25vw,360px))]"
-                : "max-w-[calc(100vw-32px)] sm:max-w-[clamp(240px,calc(100vw-32px),280px)] lg:max-w-sm",
+                : "max-w-[calc(100vw-32px)] sm:max-w-[clamp(240px,calc(100vw-32px),280px)] lg:max-w-80",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",
