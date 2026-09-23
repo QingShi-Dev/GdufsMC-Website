@@ -125,12 +125,14 @@ jobs:
         run: |
           # 找 pm2.cmd (不用 npm config get prefix, 因为 runner 服务用 NetworkService,
           # 它看到的 prefix 是自己的 APPDATA, 不是 pm2 真实安装的用户)
+          #   校园服务器 pm2 装在 Administrator 用户下 (C:\Users\Administrator\),
+          #   NetworkService 看不到 ks-73 用户, fallback 链按常见顺序列举
           $pm2Candidates = @(
-              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',  # 默认安装 (普通用户)
-              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # Administrator 装
-              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",  # 当前 shell 用户
-              'C:\npm\pm2.cmd',                               # machine-wide prefix
-              'C:\Program Files\nodejs\pm2.cmd',              # node 同目录
+              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # ← 你服务器的实际位置
+              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",        # 当前 shell 用户
+              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',          # 普通用户
+              'C:\npm\pm2.cmd',                                       # machine-wide prefix
+              'C:\Program Files\nodejs\pm2.cmd',                      # node 同目录
               'C:\Program Files (x86)\nodejs\pm2.cmd'
           )
           $pm2 = $pm2Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
@@ -206,9 +208,9 @@ jobs:
         shell: powershell
         run: |
             $pm2Candidates = @(
-                'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
-                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',
+                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # ← 校园服务器实际位置
                 "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
+                'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
                 'C:\npm\pm2.cmd',
                 'C:\Program Files\nodejs\pm2.cmd',
                 'C:\Program Files (x86)\nodejs\pm2.cmd'
