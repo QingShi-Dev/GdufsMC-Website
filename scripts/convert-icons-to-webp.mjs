@@ -1,7 +1,7 @@
 // convert-icons-to-webp.mjs
 // 遍历 public/icons/ 下所有 PNG → 同名 webp (q=85, 保持原尺寸)
 // 例外: Xaero图标 + 地毯图标 强制 w=96
-// PNG 输出后保留 (后续手动删), 也可以传 --delete-png 删除
+// PNG 输出后保留，不自动删除原图
 
 import sharp from "sharp";
 import { readdirSync, statSync, writeFileSync } from "node:fs";
@@ -11,8 +11,6 @@ const ROOT = "public/icons";
 const Q = 85;
 // 例外 (强制 w=96)
 const FORCE_W96 = new Set(["Xaero图标.png", "地毯图标.png"]);
-
-const DELETE_PNG = process.argv.includes("--delete-png");
 
 function walk(dir) {
   const out = [];

@@ -20,6 +20,7 @@ import {
   readFileSync,
   writeFileSync,
   readdirSync,
+  writeSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -34,9 +35,29 @@ const BUILD_ID_FILE = join(ROOT, ".next", "BUILD_ID");
 const STAGE_ROOT = join(ROOT, ".release-stage");
 const OUTPUT_ROOT = join(ROOT, "outputs");
 
+// CI captures stdout/stderr through pipes. Flush fatal diagnostics synchronously
+// before exit so short-lived failures cannot lose their error messages.
 function fail(msg) {
-  console.error("package-release: " + msg);
+  writeSync(2, "package-release: " + msg + "\n");
   process.exit(1);
+}
+
+let phase = "initialization";
+process.on("uncaughtException", (error) => {
+  fail(JSON.stringify({
+    phase,
+    message: error.message,
+    code: error.code,
+    syscall: error.syscall,
+    path: error.path,
+    dest: error.dest,
+    stack: error.stack,
+  }, null, 2));
+});
+
+function beginPhase(name) {
+  phase = name;
+  writeSync(1, "package-release: phase=" + name + "\n");
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +94,7 @@ console.log("package-release: releaseId=" + releaseId);
 // ---------------------------------------------------------------------------
 // 2. prerequisites + unique stage
 // ---------------------------------------------------------------------------
+beginPhase("validate standalone prerequisites");
 if (!existsSync(STANDALONE)) {
   fail(
     "missing .next/standalone (run `next build` with output:'standalone' first): " +
@@ -92,6 +114,7 @@ if (existsSync(STAGE)) {
 // ---------------------------------------------------------------------------
 // 3. copy standalone (dereferenced) + supplements
 // ---------------------------------------------------------------------------
+beginPhase("copy standalone (dereference links)");
 cpSync(STANDALONE, STAGE, { recursive: true, dereference: true });
 console.log("package-release: copied standalone -> " + STAGE);
 
