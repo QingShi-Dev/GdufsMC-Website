@@ -119,8 +119,16 @@ if ($nssm) {
 
 Write-Host ""
 Write-Host "==> 验证服务状态"
-$nssm status $ServiceName 2>$null
-if ($LASTEXITCODE -ne 0) {
+# 直接用 nssm 命令名 (跟 install/set 同款), 不要写 `$nssm status`
+#   - PowerShell 解析 `$nssm.status` 想调 CommandInfo 的 status 方法, 报错
+#   - 用 `nssm status` 命令名形式让 PowerShell 走 PATH 解析
+if (Get-Command nssm -ErrorAction SilentlyContinue) {
+    nssm status $ServiceName 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Get-Service -Name $ServiceName
+    }
+} else {
+    # NSSM 没装, 直接 Get-Service
     Get-Service -Name $ServiceName
 }
 
