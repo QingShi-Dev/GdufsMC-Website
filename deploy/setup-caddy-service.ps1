@@ -111,7 +111,31 @@ if ($nssm) {
         start= auto
     sc.exe description $ServiceName "Reverse proxy + automatic HTTPS for gdufsmc"
 
+    # 先 caddy validate 确认配置 OK (secrets.caddy 缺失/哈希错都会在这里报)
+    Write-Host ""
+    Write-Host "==> 验证 Caddyfile 配置"
+    & $CaddyPath validate --config $CaddyfilePath 2>&1 | Tee-Object -Variable validateOutput
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host ""
+        Write-Host "❌ Caddyfile 验证失败 (exit $LASTEXITCODE), 不启服务"
+        Write-Host "   上面是 caddy validate 的输出, 常见原因:"
+        Write-Host "     - secrets.caddy 不存在 (从 secrets.caddy.example 复制一份)"
+        Write-Host "     - basicauth 哈希还是占位符 \$2a\$14\$REPLACE..."
+        Write-Host "     - Caddyfile 语法错误"
+        throw "Caddyfile 验证失败, 修好再重跑"
+    }
+
     Start-Service -Name $ServiceName
+    Start-Sleep -Seconds 3
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    if ($svc.Status -ne 'Running') {
+        Write-Host ""
+        Write-Host "❌ 服务启动后状态不是 Running, 看 Windows Event Log"
+        Get-EventLog -LogName Application -Newest 10 -ErrorAction SilentlyContinue |
+            Where-Object { $_.Source -like '*caddy*' -or $_.Message -like '*Caddy*' } |
+            Format-List TimeWritten, Source, Message
+        throw "Caddy 服务启动失败"
+    }
 
     Write-Host "  ⚠️ 注意: sc.exe 创建的服务功能有限, 推荐安装 NSSM:"
     Write-Host "     scoop install nssm"
