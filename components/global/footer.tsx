@@ -486,13 +486,27 @@ export function Footer() {
             {/* 版权居中*/}
             <div
                 className={cn(
-                    "mt-6 sm:mt-8 pt-4 border-t border-slate-200/60",
+                    "block sm:hidden mt-6 pt-4 border-t border-slate-200/60",
+                    "text-center text-xs text-slate-500",
+                )}
+            >
+              <span className="font-medium text-slate-600">
+                湘ICP备2025106609号-2
+              </span>
+            </div>
+            <div
+                className={cn(
+                    "mt-1 sm:mt-8 pt-1 border-t border-slate-200/60",
                     "text-center text-xs sm:text-[13px] text-slate-500",
                 )}
             >
-            <span className="font-semibold text-slate-600">
-              © {year} GdufsMC
-            </span>
+              <span className="font-semibold text-slate-600">
+                © {year} GdufsMC
+              </span>
+              <span className="hidden sm:inline mx-1.5 text-slate-300">·</span>
+              <span className="hidden sm:inline font-semibold text-slate-600 break-keep">
+                湘ICP备2025106609号-2
+              </span>
               <span className="mx-1.5 text-slate-300">·</span>
               <span>Powered by Next.js</span>
             </div>
