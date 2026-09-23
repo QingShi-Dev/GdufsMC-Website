@@ -14,7 +14,6 @@
 //   7. tar the stage and emit a sha256 sidecar
 
 import {
-  cpSync,
   existsSync,
   mkdirSync,
   readFileSync,
@@ -25,6 +24,9 @@ import {
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, resolve, relative } from "node:path";
+import { copyReleaseTree } from "./copy-release-tree.mjs";
+
+const copyLog = (message) => writeSync(1, "package-release: " + message + "\n");
 
 const ROOT = resolve(process.cwd());
 const STANDALONE = join(ROOT, ".next", "standalone");
@@ -115,7 +117,7 @@ if (existsSync(STAGE)) {
 // 3. copy standalone (dereferenced) + supplements
 // ---------------------------------------------------------------------------
 beginPhase("copy standalone (dereference links)");
-cpSync(STANDALONE, STAGE, { recursive: true, dereference: true });
+copyReleaseTree(STANDALONE, STAGE, copyLog);
 console.log("package-release: copied standalone -> " + STAGE);
 
 function copyIn(src, destRel) {
@@ -125,7 +127,7 @@ function copyIn(src, destRel) {
   }
   const dest = join(STAGE, destRel);
   mkdirSync(dest, { recursive: true });
-  cpSync(src, dest, { recursive: true, dereference: true });
+  copyReleaseTree(src, dest, copyLog);
   console.log("package-release: copied " + src + " -> " + dest);
 }
 copyIn(PUBLIC_DIR, "public");

@@ -48,7 +48,11 @@ jobs:
           pnpm build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package release
-        run: node scripts/package-release.mjs
+        run: |
+          node scripts/package-release.mjs
+          $code = $LASTEXITCODE
+          Write-Host "package-release process exit code: $code"
+          if ($code -ne 0) { exit $code }
       - name: Test extracted archive (not source workspace)
         run: |
           $archive = @(Get-ChildItem outputs/*.tar.gz)
