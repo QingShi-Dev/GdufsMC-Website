@@ -39,6 +39,7 @@ export const SERVERS: ServerGroup[] = [
     desc: "广东高校 MC 联盟联合服务器",
     items: [
       { tag: "联合群组门户", host: "mc.ghmmua.net", note: "- 1.21" },
+      { tag: "大学城复原项目", host: "hemc.ghmmua.net", note: "- 1.20.1" },
     ],
   },
 ];

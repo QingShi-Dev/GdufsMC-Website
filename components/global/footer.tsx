@@ -360,6 +360,7 @@ const SERVER_GROUPS: ServerGroup[] = [
     bandwidth: "联合服务器",
     servers: [
       { host: "mc.ghmmua.net", version: "联合门户群组" },
+      { host: "hemc.ghmmua.net", version: "大学城复原项目" },
     ],
   },
 ];
@@ -374,7 +375,7 @@ function ServerGroupCard({
       <li
           className={cn(
               "flex flex-col justify-center",
-              "rounded-lg px-3.5 sm:px-4 py-3 sm:py-3.5 transition-colors",
+              "rounded-lg p-3 sm:p-3.5 transition-colors",
               "bg-white/60 border border-slate-200/60",
               "hover:border-slate-300/80 hover:bg-white/80",
           )}
@@ -400,7 +401,7 @@ function ServerGroupCard({
               </span>
           )}
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-0.5">
           {servers.map((s) => (
               <div key={s.host}>
                 <div className="flex font-mono text-[13px] sm:text-[14px] text-slate-800 justify-between">

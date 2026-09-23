@@ -43,6 +43,7 @@ export const SERVER_TARGETS: ServerTarget[] = [
   { key: "survival-backup", group: "survival", label: "群组服 公网备线", desc: "", host: "mc3.gdufscraft.top", port: DEFAULT_MC_PORT, order: 2 },
   // 粤高联联合群组门户
   { key: "gh-mua", group: "hemc", label: "联合群组门户", desc: "- 1.21", host: "mc.ghmmua.net", port: DEFAULT_MC_PORT, order: 0 },
+  { key: "hemc", group: "hemc", label: "大学城复原项目", desc: "- 1.20.1", host: "hemc.ghmmua.net", port: DEFAULT_MC_PORT, order: 0 },
 ];
 
 export interface ServerStatus {

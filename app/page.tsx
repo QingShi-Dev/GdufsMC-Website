@@ -29,7 +29,7 @@ export default function Home() {
     return (
         <HomeMotion>
             {/* ============== Hero：桌面 2 列 / 移动端堆叠 ============== */}
-            <section className="relative pt-28 pb-14 sm:pt-32 lg:pt-37 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden cursor-default">
+            <section className="relative pt-28 pb-14 sm:pt-32 lg:pt-32 sm:pb-16 px-6 sm:px-8 lg:px-8 overflow-hidden cursor-default">
                 {/* 像素方块装饰 */}
                 <div
                     aria-hidden="true"
