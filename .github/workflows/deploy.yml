@@ -123,6 +123,10 @@ jobs:
       - name: Deploy build output to project root
         shell: powershell
         run: |
+          # 把 npm 全局路径加到当前 PATH (runner 服务用 LocalSystem,
+          # 默认 PATH 不含 %AppData%\npm, 找不到 pm2.cmd)
+          $env:PATH = "$env:APPDATA\npm;$env:PATH"
+
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
@@ -190,6 +194,7 @@ jobs:
       - name: Restart PM2 (Next.js)
         shell: powershell
         run: |
+            $env:PATH = "$env:APPDATA\npm;$env:PATH"  # 找到 pm2
             $ErrorActionPreference = 'Continue'
             pm2 delete gdufsmc 2>$null
             pm2 start deploy/ecosystem.config.js

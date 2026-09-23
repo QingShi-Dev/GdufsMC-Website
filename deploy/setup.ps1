@@ -53,6 +53,18 @@ if (-not (Get-Command pm2 -ErrorAction SilentlyContinue)) {
     Write-Host "  pm2 已装: $(pm2 --version)"
 }
 
+# 把 npm 全局路径加到系统 PATH (Machine 级别)
+#   原因: GitHub Actions runner 服务用 LocalSystem 账号, 它的 PATH 不继承
+#   当前用户的 npm 全局路径 (%AppData%\npm), 所以 'pm2' 找不到
+#   用 Machine 级别 SetEnvironmentVariable 后, 所有服务/用户 shell 都能找到
+$npmPrefix = (& npm config get prefix).Trim()
+$sysPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
+if ($sysPath -notlike "*$npmPrefix*") {
+    [System.Environment]::SetEnvironmentVariable("Path", "$npmPrefix;$sysPath", "Machine")
+    $env:Path = "$npmPrefix;$env:Path"
+    Write-Host "  + 系统 PATH 已加 npm 全局: $npmPrefix"
+}
+
 # -------- 4. Caddy --------
 Write-Host "==> 4/7 安装 Caddy"
 if (-not (Get-Command caddy -ErrorAction SilentlyContinue)) {
