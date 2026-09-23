@@ -126,7 +126,12 @@ jobs:
           # 找 pm2.cmd (不用 npm config get prefix, 因为 runner 服务用 NetworkService,
           # 它看到的 prefix 是自己的 APPDATA, 不是 pm2 真实安装的用户)
           #   校园服务器 pm2 装在 Administrator 用户下 (C:\Users\Administrator\),
-          #   NetworkService 看不到 ks-73 用户, fallback 链按常见顺序列举
+          #   NetworkService 没有 Administrator 用户目录的读权限,
+          #   Test-Path 触发 UnauthorizedAccessException, 必须 try/catch
+          #   否则整个 step 失败
+          function Test-PathSafe([string]$p) {
+              try { Test-Path $p -ErrorAction Stop } catch { $false }
+          }
           $pm2Candidates = @(
               'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # ← 你服务器的实际位置
               "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",        # 当前 shell 用户
@@ -135,7 +140,7 @@ jobs:
               'C:\Program Files\nodejs\pm2.cmd',                      # node 同目录
               'C:\Program Files (x86)\nodejs\pm2.cmd'
           )
-          $pm2 = $pm2Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
           if (-not $pm2) { throw "❌ pm2.cmd 找不到,候选: $($pm2Candidates -join ', ')" }
           Write-Host "  pm2: $pm2"
           $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
@@ -207,6 +212,9 @@ jobs:
       - name: Restart PM2 (Next.js)
         shell: powershell
         run: |
+            function Test-PathSafe([string]$p) {
+                try { Test-Path $p -ErrorAction Stop } catch { $false }
+            }
             $pm2Candidates = @(
                 'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # ← 校园服务器实际位置
                 "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
@@ -215,7 +223,7 @@ jobs:
                 'C:\Program Files\nodejs\pm2.cmd',
                 'C:\Program Files (x86)\nodejs\pm2.cmd'
             )
-            $pm2 = $pm2Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
             if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
             $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
             $ErrorActionPreference = 'Continue'
