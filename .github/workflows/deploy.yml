@@ -61,13 +61,8 @@ jobs:
       url: https://gdufscraft.top
 
     steps:
-      - name: Checkout
+      - name: Checkout (到 runner workspace, GitHub 限制不允许 checkout 到 workspace 外)
         uses: actions/checkout@v4
-        with:
-          # 直接 checkout 到 H:\GDUFSMC-web (项目目录), 后续 build / deploy 全在这里
-          #   不覆盖 .gitignore 的文件 (.next / node_modules / secrets.caddy / logs)
-          #   deploy step 拿到的代码是最新的 commit
-          path: H:\GDUFSMC-web
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -75,34 +70,46 @@ jobs:
           version: 9
 
       - name: Install dependencies (含 devDependencies for build)
-        working-directory: H:\GDUFSMC-web
+        working-directory: ${{ github.workspace }}
         shell: powershell
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        working-directory: H:\GDUFSMC-web
+        working-directory: ${{ github.workspace }}
         shell: powershell
         run: pnpm typecheck
 
       - name: Lint
-        working-directory: H:\GDUFSMC-web
+        working-directory: ${{ github.workspace }}
         shell: powershell
         run: pnpm lint
 
       - name: Build Next.js
-        working-directory: H:\GDUFSMC-web
+        working-directory: ${{ github.workspace }}
         shell: powershell
         env:
           NEXT_TELEMETRY_DISABLED: '1'
         run: pnpm build
 
+      # 同步代码到 H:\GDUFSMC-web (项目目录)
+      #   robocopy 跳过 .git / node_modules / .next / logs / app / secrets.caddy
+      #   复制 public / content / next.config.ts / proxy.ts / deploy / Caddyfile / package.json
+      - name: Sync code to H:\GDUFSMC-web
+        shell: powershell
+        run: |
+          $src = $env:GITHUB_WORKSPACE
+          $dst = 'H:\GDUFSMC-web'
+          Write-Host "  robocopy $src → $dst"
+          & robocopy $src $dst /E /XD .git node_modules .next logs app /XF secrets.caddy /NFL /NDL /NJH /NJS /NP /R:0 /W:0
+
       # =========================================================================
-      # Deploy: 杀 node + 同步 build 产物 + 启 PM2 + 健康检查
+      # Deploy: 杀 node + 同步 .next + 启 PM2 + 健康检查
       # =========================================================================
       - name: Deploy build output to project root
         shell: powershell
         run: |
           $ProjectDir = 'H:\GDUFSMC-web'
+          $BuildSrc = Join-Path $env:GITHUB_WORKSPACE '.next'
 
           # 找 pm2.cmd (NetworkService 默认 PATH 找不到, 用 fallback 链)
           function Test-PathSafe([string]$p) {
@@ -140,12 +147,20 @@ jobs:
 
           # cmd move 是真正 atomic rename (NTFS MFT, 不开文件, 绕 Defender/WSearch 锁)
           # PowerShell Rename-Item 在 PS 5.1 是 copy+delete, 撞锁
-          # build step 已经在 build 完时写 .next, 这里只是把旧 .next 改名 .next.stale
-          # 然后 build step 覆盖写新 .next (pnpm build 不会删现有, 直接写文件)
-          # 顺序: build 完写 .next/ → 杀 node → 旧 .next rename → 新 .next 还在
+          # build step 在 workspace 写了 .next, 这里是:
+          #   1. 把 H:\GDUFSMC-web\.next rename 成 .next.stale (atomic)
+          #   2. 把 workspace\.next Move 到 H:\GDUFSMC-web\.next (rename 目标名已释放)
           if (Test-Path (Join-Path $ProjectDir '.next')) {
               & cmd.exe /c "move /Y `"$ProjectDir\.next`" `"$ProjectDir\.next.stale`"" 2>&1 | Out-Null
               Write-Host "  旧 .next → .next.stale (atomic rename)"
+          }
+
+          # workspace 的 .next move 到项目目录
+          if (Test-Path $BuildSrc) {
+              & cmd.exe /c "move /Y `"$BuildSrc`" `"$ProjectDir\.next`"" 2>&1 | Out-Null
+              Write-Host "  $BuildSrc → $ProjectDir\.next (atomic rename)"
+          } else {
+              throw "❌ workspace 没有 .next, build 可能失败"
           }
 
           # 异步删 .next.stale (后台慢慢删, 不阻塞 deploy)
@@ -157,19 +172,17 @@ jobs:
 
           Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
 
-      - name: Sync public / content / configs / deploy / Caddyfile
+      - name: Sync public / content / configs / deploy / Caddyfile (sanity check)
         shell: powershell
-        working-directory: H:\GDUFSMC-web
         run: |
-          # checkout step 直接把代码拉到 H:\GDUFSMC-web (path: 字段),
-          # public / content / next.config.ts / proxy.ts / deploy / Caddyfile
-          # 都已经在项目目录, 不需要 Copy-Item。
-          # 这里只做 sanity check (确认关键文件存在)。
+          # robocopy 步骤已经把 workspace 的 public / content / configs / deploy / Caddyfile
+          # 同步到 H:\GDUFSMC-web, 这里只做 sanity check
+          $ProjectDir = 'H:\GDUFSMC-web'
           foreach ($f in @('public', 'content', 'next.config.ts', 'proxy.ts', 'deploy', 'Caddyfile', 'package.json', 'pnpm-lock.yaml')) {
-              if (Test-Path $f) {
-                  Write-Host "  ✅ $f 存在"
+              if (Test-Path (Join-Path $ProjectDir $f)) {
+                  Write-Host "  ✅ $f"
               } else {
-                  throw "❌ $f 缺失, git checkout 可能失败"
+                  throw "❌ $f 缺失, robocopy 可能失败"
               }
           }
 
@@ -178,7 +191,7 @@ jobs:
         working-directory: H:\GDUFSMC-web
         # 之前 install 用了含 devDependencies 的, 这里重装成 prod-only
         # node_modules 重叠不影响, 但生产环境应只装 prod deps
-        run: pnpm install --prod --frozen-lockfile
+        run: pnpm install --prod --frozen-lockfile --config.package-import-method=copy
 
       - name: Sync favicon to static path (Caddy /favicon.ico 固定路径)
         shell: powershell
