@@ -1,14 +1,18 @@
 # =============================================================================
-# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy + self-build)
+# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy)
 # =============================================================================
-# 架构 (vs. 旧 ECS + rsync + nginx):
-#   旧: GitHub-hosted runner build → rsync 到服务器 → SSH 重启 PM2
-#   旧 2: GitHub-hosted build + artifact → self-hosted deploy (100MB download)
-#   新: Self-hosted runner 直接 build + 重启, 单 job 全流程
-#       - 无需 inbound SSH (GitHub Runner 走 outbound 443 出站)
-#       - 校园网 NAT 友好, 不依赖公网 SSH 端口
-#       - 取消 SSH secrets (SERVER_HOST / SERVER_USER / SSH_PRIVATE_KEY)
-#       - 不下载 artifact, 服务器直接 build 节省 download 带宽
+# 架构 (极简版, 全在 H:\GDUFSMC-web 跑):
+#   1. pnpm/action-setup 装 pnpm
+#   2. git fetch + reset (用 GITHUB_TOKEN) → H:\GDUFSMC-web 同步最新代码
+#   3. pnpm install + typecheck + lint + pnpm build (直接写 H:\GDUFSMC-web/.next)
+#   4. taskkill node + pm2 restart + health check + reload caddy
+#
+# 优势 vs 旧 (workspace build + robocopy + cmd move):
+#   - 不需要 actions/checkout (checkout 限制 path 必须在 workspace 下)
+#   - 不需要 workspace build (避免 pnpm 路径过长 + workspace 同步成本)
+#   - 不需要 robocopy + cmd move (build 直接写到 H:\GDUFSMC-web/.next)
+#   - GitHub Actions 跟 server 强解耦,代码同步用 GITHUB_TOKEN
+#   - 不需要 download/upload artifact (服务器自己 build)
 #
 # Runner 配置: Settings → Actions → Runners → New self-hosted runner
 #   - 标签: self-hosted, windows, gdufsmc
@@ -17,18 +21,12 @@
 #
 # 触发: push 到 main (Sveltia CMS 编辑完提交也算)
 #
-# PowerShell shell 选择:
-#   用 `powershell` (Windows PS 5.1) 而不是 `pwsh` (PS 7+ Core)
-#   校园服务器默认没装 PS 7+, 装 ps7 占 200MB 装包 + 100MB 运行时 RAM
-#   我们用的 cmdlet (Join-Path / Copy-Item / Move-Item / Test-Path / Get-Service
-#   / Get-Command / Invoke-WebRequest / pm2 / caddy) PS 5.1 都支持
+# PowerShell shell 选择: 用 Windows PS 5.1 (校园服务器默认没装 PS 7+)
 #
-# 性能 / 风险权衡:
-#   - 服务器 2G RAM build Next.js + sharp 大约 3-5 分钟 (vs GitHub-hosted ~1-2 分钟)
-#   - 省掉 download 100MB artifact 时间 (校园 NAT 出站通常 1-3 分钟)
-#   - 总时间差不多, 但少了 artifact 中转的脆弱性 (named pipe / Defender 锁 / EPERM)
-#   - 失去 GitHub-hosted CI 隔离: typecheck / lint / build 在生产服务器上跑
-#     如果 build 失败, deploy 不会跑 (但服务器上 node_modules 会被污染)
+# git fetch 用 GITHUB_TOKEN:
+#   - NetworkService 跑 git 命令, GitHub 自动注入 GITHUB_TOKEN 环境变量
+#   - URL 形式 https://x-access-token:$GITHUB_TOKEN@github.com/...
+#   - 这是 GitHub Actions 官方推荐的 git 凭证方式
 # =============================================================================
 
 name: Deploy to production
@@ -45,170 +43,79 @@ on:
 
 concurrency:
   group: production-deploy
-  cancel-in-progress: false    # 跑完当前的再跑下一个, 别 kill 正在跑的
+  cancel-in-progress: false
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # 唯一 job: self-hosted runner 一站式 build + deploy
-  # ---------------------------------------------------------------------------
   deploy:
-    name: Build & deploy
+    name: Build & deploy (H:\GDUFSMC-web 直跑)
     runs-on: [self-hosted, windows, gdufsmc]
     if: github.event_name == 'push'
-    timeout-minutes: 20    # build 5min + sync + deploy 15min
+    timeout-minutes: 20
     environment:
       name: production
       url: https://gdufscraft.top
 
     steps:
-      # 启用 Windows 长路径支持 (解决 "Filename too long" 报错)
-      #   GitHub Actions runner workspace 路径深: H:\actions-runner\_work\GdufsMC-Website\GdufsMC-Website\
-      #   + Next.js 16 .pnpm 路径嵌套 node_modules\.pnpm\next@...\next\dist\... → 超过 MAX_PATH 260
-      #   core.longPaths=true 让 git 支持 >260 字符路径
+      # Windows 长路径支持 (workspace 路径深, 但即使在 H:\GDUFSMC-web
+      # Next.js 16 pnpm 路径嵌套 node_modules/.pnpm/next@.../.../ 仍可能超 260)
       - name: Enable Windows long paths (>260 chars)
         shell: powershell
         run: git config --system core.longPaths true
-
-      - name: Checkout (到 runner workspace, GitHub 限制不允许 checkout 到 workspace 外)
-        uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
           version: 9
 
+      # 拉最新代码到 H:\GDUFSMC-web (NetworkService 跑 git, GITHUB_TOKEN 自动认证)
+      #   - 不需要 actions/checkout (GitHub 限制 checkout path 必须在 workspace)
+      #   - 不需要 PAT 或 SSH key (GITHUB_TOKEN 自动注入)
+      - name: Sync code to H:\GDUFSMC-web
+        shell: powershell
+        run: |
+          Push-Location H:\GDUFSMC-web
+          $token = $env:GITHUB_TOKEN
+          $url = "https://x-access-token:$token@github.com/QingShi-Dev/GdufsMC-Website.git"
+          git remote set-url origin $url
+          git fetch origin main
+          git reset --hard origin/main
+          # 清工作区,保留关键文件 (.git 保留, gitignore 的保留)
+          git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale
+          Pop-Location
+
       - name: Install dependencies (含 devDependencies for build)
-        working-directory: ${{ github.workspace }}
+        working-directory: H:\GDUFSMC-web
         shell: powershell
         run: pnpm install --frozen-lockfile
 
       - name: Type check
-        working-directory: ${{ github.workspace }}
+        working-directory: H:\GDUFSMC-web
         shell: powershell
         run: pnpm typecheck
 
       - name: Lint
-        working-directory: ${{ github.workspace }}
+        working-directory: H:\GDUFSMC-web
         shell: powershell
         run: pnpm lint
 
-      - name: Build Next.js
-        working-directory: ${{ github.workspace }}
+      - name: Build Next.js (.next 写到 H:\GDUFSMC-web/.next)
+        working-directory: H:\GDUFSMC-web
         shell: powershell
         env:
           NEXT_TELEMETRY_DISABLED: '1'
         run: pnpm build
 
-      # 同步代码到 H:\GDUFSMC-web (项目目录)
-      #   robocopy 跳过 .git / node_modules / .next / logs / app / secrets.caddy
-      #   复制 public / content / next.config.ts / proxy.ts / deploy / Caddyfile / package.json
-      - name: Sync code to H:\GDUFSMC-web
-        shell: powershell
-        run: |
-          $src = $env:GITHUB_WORKSPACE
-          $dst = 'H:\GDUFSMC-web'
-          Write-Host "  robocopy $src → $dst"
-          & robocopy $src $dst /E /XD .git node_modules .next logs app /XF secrets.caddy /NFL /NDL /NJH /NJS /NP /R:0 /W:0
-
-      # =========================================================================
-      # Deploy: 杀 node + 同步 .next + 启 PM2 + 健康检查
-      # shell: cmd (不用 PowerShell, 避免 PowerShell 父进程持有 .next 目录 handle,
-      #   cmd.exe 跑完命令立即退出, 不留 handle)
-      # =========================================================================
-      - name: Deploy build output to project root
+      # 杀 node (跨账号) + 启 PM2 + 健康检查 + reload caddy
+      # shell: cmd 避开 PowerShell 父进程持有 .next handle
+      - name: Kill node + restart PM2
         shell: cmd
         run: |
-          REM 找 pm2.cmd
-          set "PMCAND=C:\npm\pm2.cmd"
-          if not exist "%PMCAND%" set "PMCAND=C:\Program Files\nodejs\pm2.cmd"
-          if not exist "%PMCAND%" set "PMCAND=C:\Program Files (x86)\nodejs\pm2.cmd"
-          if not exist "%PMCAND%" set "PMCAND=%USERPROFILE%\AppData\Roaming\npm\pm2.cmd"
-          if not exist "%PMCAND%" set "PMCAND=C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd"
-          if not exist "%PMCAND%" set "PMCAND=C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"
-          if not exist "%PMCAND%" (
-              echo ERROR: pm2.cmd not found
-              exit /b 1
-          )
-          echo pm2: %PMCAND%
-          REM 取 PMCAND 所在目录加到 PATH (让后续 pm2 start 命令能找到 node)
-          for %%i in ("%PMCAND%") do set "PMDIR=%%~dpi"
-          set "PATH=%PMDIR%;%PATH%"
-
-          REM 杀 PM2 daemon
-          call "%PMCAND%" kill 2>nul
-          timeout /t 3 /nobreak >nul
-
-          REM taskkill 杀所有 node (跨账号)
           taskkill /F /IM node.exe 2>nul
           timeout /t 5 /nobreak >nul
 
-          REM PM2 delete gdufsmc
-          call "%PMCAND%" delete gdufsmc 2>nul
-          timeout /t 3 /nobreak >nul
-
-          REM cmd move 是真正 atomic rename (NTFS MFT, 不开文件)
-          REM 顺序: 旧 .next → .next.stale, 然后 workspace\.next → .next
-          set "PROJECTDIR=H:\GDUFSMC-web"
-          set "BUILDSRC=%GITHUB_WORKSPACE%\.next"
-          if exist "%PROJECTDIR%\.next" (
-              move /Y "%PROJECTDIR%\.next" "%PROJECTDIR%\.next.stale"
-              echo 旧 .next → .next.stale (atomic rename)
-          )
-          if exist "%BUILDSRC%" (
-              move /Y "%BUILDSRC%" "%PROJECTDIR%\.next"
-              echo %BUILDSRC% → %PROJECTDIR%\.next (atomic rename)
-          ) else (
-              echo ERROR: workspace 没有 .next, build 可能失败
-              exit /b 1
-          )
-
-          REM 异步删 .next.stale
-          if exist "%PROJECTDIR%\.next.stale" (
-              start /b cmd /c "rd /s /q "%PROJECTDIR%\.next.stale"" >nul 2>&1
-          )
-
-          REM 输出 BUILD_ID
-          for /f "usebackq delims=" %%i in ("%PROJECTDIR%\.next\BUILD_ID") do set "BUILDID=%%i"
-          echo BUILD_ID = %BUILDID%
-          echo .next deployed
-
-      - name: Sync public / content / configs / deploy / Caddyfile (sanity check)
-        shell: powershell
-        run: |
-          # robocopy 步骤已经把 workspace 的 public / content / configs / deploy / Caddyfile
-          # 同步到 H:\GDUFSMC-web, 这里只做 sanity check
-          $ProjectDir = 'H:\GDUFSMC-web'
-          foreach ($f in @('public', 'content', 'next.config.ts', 'proxy.ts', 'deploy', 'Caddyfile', 'package.json', 'pnpm-lock.yaml')) {
-              if (Test-Path (Join-Path $ProjectDir $f)) {
-                  Write-Host "  ✅ $f"
-              } else {
-                  throw "❌ $f 缺失, robocopy 可能失败"
-              }
-          }
-
-      - name: Install production dependencies (服务器 prod only)
-        shell: powershell
-        working-directory: H:\GDUFSMC-web
-        # 之前 install 用了含 devDependencies 的, 这里重装成 prod-only
-        # node_modules 重叠不影响, 但生产环境应只装 prod deps
-        run: pnpm install --prod --frozen-lockfile --config.package-import-method=copy
-
-      - name: Sync favicon to static path (Caddy /favicon.ico 固定路径)
-        shell: powershell
-        run: |
-          $ProjectDir = 'H:\GDUFSMC-web'
-          $favicon = Get-ChildItem -Path "$ProjectDir\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
-          if ($favicon) {
-              New-Item -ItemType Directory -Path "$ProjectDir\app" -Force | Out-Null
-              Copy-Item -Force $favicon.FullName "$ProjectDir\app\favicon.ico"
-              Write-Host "✅ favicon 同步: $($favicon.Name) → app/favicon.ico"
-          } else {
-              Write-Warning "⚠️ 找不到 favicon, /favicon.ico 可能 404"
-          }
-
       - name: Restart PM2 (Next.js)
-        shell: powershell
         working-directory: H:\GDUFSMC-web
+        shell: powershell
         run: |
             function Test-PathSafe([string]$p) {
                 try { Test-Path $p -ErrorAction Stop } catch { $false }
@@ -231,6 +138,19 @@ jobs:
             $LASTEXITCODE = 0
             try { & $pm2 save 2>&1 | Out-Null } catch { Write-Host "  pm2 save: $($_.Exception.Message)" }
             $LASTEXITCODE = 0
+
+      - name: Sync favicon
+        shell: powershell
+        run: |
+          $ProjectDir = 'H:\GDUFSMC-web'
+          $favicon = Get-ChildItem -Path "$ProjectDir\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($favicon) {
+              New-Item -ItemType Directory -Path "$ProjectDir\app" -Force | Out-Null
+              Copy-Item -Force $favicon.FullName "$ProjectDir\app\favicon.ico"
+              Write-Host "✅ favicon 同步"
+          } else {
+              Write-Warning "⚠️ 找不到 favicon"
+          }
 
       - name: Health check (wait for Next.js bind port 3000)
         shell: powershell
@@ -278,10 +198,10 @@ jobs:
               }
               if ($caddy) {
                   & $caddy.Source reload --config 'H:\GDUFSMC-web\Caddyfile'
-                  Write-Host "✅ Caddy 重载 (Caddyfile 变更)"
+                  Write-Host "✅ Caddy 重载"
               } else {
-                  Write-Warning "⚠️ 找不到 caddy.exe, 跳过 reload"
+                  Write-Warning "⚠️ 找不到 caddy.exe"
               }
           } else {
-              Write-Host "⏭️ 跳过 Caddy reload (Caddyfile 未变 或服务未启动)"
+              Write-Host "⏭️ 跳过 Caddy reload"
           }
