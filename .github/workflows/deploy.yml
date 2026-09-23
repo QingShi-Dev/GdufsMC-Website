@@ -61,7 +61,24 @@ jobs:
           # - pnpm 12.5.1 跟 self-hosted runner 上用户装的一致, lockfile 兼容
           # - corepack 是 Node 自带 shim, 不依赖 PATH
           corepack enable 2>&1 | Out-Null
-          corepack prepare pnpm@12.5.1 --activate 2>&1 | Out-Null
+          $corepackPnpm = corepack prepare pnpm@12.5.1 --activate 2>&1
+          Write-Host "  corepack prepare: $corepackPnpm"
+          # corepack shim 默认在 $env:LOCALAPPDATA\corepack\, 加到 PATH
+          $shimDir = Join-Path $env:LOCALAPPDATA 'corepack'
+          if (Test-Path $shimDir) {
+              $env:PATH = "$shimDir;$env:PATH"
+          }
+          # fallback: 如果 corepack 没装或 activate 失败, 用用户装在 C:\npm\pmpm.cmd
+          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
+              $candidates = @('C:\npm\pmpm.cmd', "$env:APPDATA\npm\pmpm.cmd", 'C:\Program Files\nodejs\pmpm.cmd')
+              foreach ($c in $candidates) {
+                  if (Test-Path $c) {
+                      $env:PATH = (Split-Path $c) + ';' + $env:PATH
+                      Write-Host "  fallback pnpm: $c"
+                      break
+                  }
+              }
+          }
           pnpm --version
 
       # =========================================================================
