@@ -63,10 +63,24 @@ jobs:
         shell: powershell
         run: git config --global core.longPaths true
 
-      - name: Setup pnpm
+      # 用 corepack 锁 pnpm 10.6.1 (跟 self-hosted runner 上用户装的一致)
+      #   - corepack 是 Node 自带, 把 pnpm 装到 corepack cache
+      #   - corepack pnpm 命令是 shim, 不依赖 PATH 顺序
+      #   - 比 pnpm/action-setup@v4 更稳 (不依赖系统 PATH 顺序)
+      - name: Setup pnpm via corepack
+        shell: powershell
+        run: |
+          corepack enable 2>&1 | Out-Null
+          corepack prepare pnpm@10.6.1 --activate 2>&1 | Out-Null
+          # 验证 corepack pnpm 锁版本成功
+          pnpm --version
+
+      # 兜底: 如果 corepack 失败, 用 pnpm/action-setup 装 pnpm 10
+      - name: Setup pnpm (fallback)
+        if: failure()
         uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10
 
       # 拉最新代码到 H:\GDUFSMC-web (NetworkService 跑 git, GITHUB_TOKEN 自动认证)
       #   - 不需要 actions/checkout (GitHub 限制 checkout path 必须在 workspace)
