@@ -71,9 +71,14 @@ jobs:
       # 拉最新代码到 H:\GDUFSMC-web (NetworkService 跑 git, GITHUB_TOKEN 自动认证)
       #   - 不需要 actions/checkout (GitHub 限制 checkout path 必须在 workspace)
       #   - 不需要 PAT 或 SSH key (GITHUB_TOKEN 自动注入)
+      #   - H:\GDUFSMC-web 是 Administrators 拥有, NetworkService 不是 owner
+      #     git 2.35+ 默认 safe.directory 检查拒绝跨用户操作
+      #     用 git config --global --add safe.directory 加白名单
       - name: Sync code to H:\GDUFSMC-web
         shell: powershell
         run: |
+          # 加 safe.directory 白名单 (NetworkService 不是 H:\GDUFSMC-web 的 owner)
+          git config --global --add safe.directory H:/GDUFSMC-web
           Push-Location H:\GDUFSMC-web
           $token = $env:GITHUB_TOKEN
           $url = "https://x-access-token:$token@github.com/QingShi-Dev/GdufsMC-Website.git"
