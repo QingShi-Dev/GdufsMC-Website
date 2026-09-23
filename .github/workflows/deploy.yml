@@ -123,18 +123,27 @@ jobs:
       - name: Deploy build output to project root
         shell: powershell
         run: |
-          # 把 npm 全局路径加到当前 PATH (LocalSystem 的 $env:APPDATA 不是
-          # 普通用户的 npm 全局路径, 用 `npm config get prefix` 拿真实位置)
-          $npmPrefix = (& npm config get prefix).Trim()
-          $env:PATH = "$npmPrefix;$env:PATH"
-          Write-Host "  npm global: $npmPrefix"
+          # 找 pm2.cmd (不用 npm config get prefix, 因为 runner 服务用 NetworkService,
+          # 它看到的 prefix 是自己的 APPDATA, 不是 pm2 真实安装的用户)
+          $pm2Candidates = @(
+              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',  # 默认安装 (普通用户)
+              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',  # Administrator 装
+              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",  # 当前 shell 用户
+              'C:\npm\pm2.cmd',                               # machine-wide prefix
+              'C:\Program Files\nodejs\pm2.cmd',              # node 同目录
+              'C:\Program Files (x86)\nodejs\pm2.cmd'
+          )
+          $pm2 = $pm2Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+          if (-not $pm2) { throw "❌ pm2.cmd 找不到,候选: $($pm2Candidates -join ', ')" }
+          Write-Host "  pm2: $pm2"
+          $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
 
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
           # 先停 PM2 释放 .next 文件句柄 (Windows mmap 锁文件, 删会 EBUSY)
           # 后续 "Restart PM2" 步骤会重新启动 Next.js
-          pm2 delete gdufsmc 2>$null
+          & $pm2 delete gdufsmc 2>$null
           Start-Sleep -Seconds 3
 
           # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
@@ -196,12 +205,21 @@ jobs:
       - name: Restart PM2 (Next.js)
         shell: powershell
         run: |
-            $npmPrefix = (& npm config get prefix).Trim()  # 拿 npm 全局真实路径
-            $env:PATH = "$npmPrefix;$env:PATH"
+            $pm2Candidates = @(
+                'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
+                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd',
+                "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
+                'C:\npm\pm2.cmd',
+                'C:\Program Files\nodejs\pm2.cmd',
+                'C:\Program Files (x86)\nodejs\pm2.cmd'
+            )
+            $pm2 = $pm2Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+            if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
+            $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
             $ErrorActionPreference = 'Continue'
-            pm2 delete gdufsmc 2>$null
-            pm2 start deploy/ecosystem.config.js
-            pm2 save | Out-Null
+            & $pm2 delete gdufsmc 2>$null
+            & $pm2 start deploy/ecosystem.config.js
+            & $pm2 save | Out-Null
 
       - name: Health check (wait for Next.js bind port 3000)
         shell: powershell

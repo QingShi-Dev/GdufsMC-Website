@@ -47,22 +47,30 @@ if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
     Write-Host "  pnpm 已装: $(pnpm --version)"
 }
 if (-not (Get-Command pm2 -ErrorAction SilentlyContinue)) {
-    npm install -g pm2
+    # 用 machine-wide prefix 装 pm2, 不依赖当前用户 (NetworkService / LocalSystem 也找得到)
+    npm install -g --prefix "C:\npm" pm2
     pm2-startup install  # Windows: 用 NSSM 装 Windows 服务
 } else {
     Write-Host "  pm2 已装: $(pm2 --version)"
 }
 
 # 把 npm 全局路径加到系统 PATH (Machine 级别)
-#   原因: GitHub Actions runner 服务用 LocalSystem 账号, 它的 PATH 不继承
-#   当前用户的 npm 全局路径 (%AppData%\npm), 所以 'pm2' 找不到
-#   用 Machine 级别 SetEnvironmentVariable 后, 所有服务/用户 shell 都能找到
-$npmPrefix = (& npm config get prefix).Trim()
+#   - setup.ps1 用 --prefix C:\npm 装 pm2, 把 C:\npm 加到 system PATH
+#   - 即使装到默认位置 (C:\Users\<user>\AppData\Roaming\npm) 也加上
+#   - GitHub Actions runner 服务用 NetworkService, 默认 PATH 不包含这些
+$prefixes = @('C:\npm', (& npm config get prefix).Trim()) | Select-Object -Unique
 $sysPath = [System.Environment]::GetEnvironmentVariable("Path", "Machine")
-if ($sysPath -notlike "*$npmPrefix*") {
-    [System.Environment]::SetEnvironmentVariable("Path", "$npmPrefix;$sysPath", "Machine")
-    $env:Path = "$npmPrefix;$env:Path"
-    Write-Host "  + 系统 PATH 已加 npm 全局: $npmPrefix"
+$added = @()
+foreach ($p in $prefixes) {
+    if ($p -and (Test-Path $p) -and ($sysPath -notlike "*$p*")) {
+        $sysPath = "$p;$sysPath"
+        $added += $p
+    }
+}
+if ($added.Count -gt 0) {
+    [System.Environment]::SetEnvironmentVariable("Path", $sysPath, "Machine")
+    $env:Path = $sysPath
+    Write-Host "  + 系统 PATH 已加: $($added -join ', ')"
 }
 
 # -------- 4. Caddy --------
