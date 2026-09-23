@@ -153,8 +153,22 @@ jobs:
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
-          # 先停 PM2 释放 .next 文件句柄 (Windows mmap 锁文件, 删会 EBUSY)
-          # 后续 "Restart PM2" 步骤会重新启动 Next.js
+          # 杀所有 node 进程 (PM2 daemon + Next.js 子进程, 跨账号都杀得掉)
+          #   - 用 Stop-Process 而不是 PM2 daemon, 因为:
+          #     1) PM2 daemon 跨账号 (Administrator 启的) kill 失败
+          #     2) Windows PROCESS_TERMINATE 权限默认开放, 不受 named pipe ACL 限制
+          #   - 这样 .next 文件句柄立刻释放, Remove-Item 不会失败
+          try {
+              $nodeProcs = Get-Process node -ErrorAction Stop
+              if ($nodeProcs) {
+                  Write-Host "  杀 $($nodeProcs.Count) 个 node 进程: $($nodeProcs.Id -join ', ')"
+                  $nodeProcs | Stop-Process -Force
+                  Start-Sleep -Seconds 5  # 等 Next.js 优雅退出 + 句柄释放
+              }
+          } catch { Write-Host "  kill node: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+
+          # PM2 cleanup (NetworkService 自己的 daemon 可 kill, 跨账号的杀不掉, try/catch 吞)
           try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "  pm2 delete: $($_.Exception.Message)" }
           $LASTEXITCODE = 0
           Start-Sleep -Seconds 3
