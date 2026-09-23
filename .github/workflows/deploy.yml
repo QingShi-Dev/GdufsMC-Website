@@ -143,6 +143,14 @@ jobs:
           Write-Host "  pm2: $pm2"
           $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
 
+          # 先杀 PM2 daemon 清 named pipe 残留
+          #   - 同 NetworkService 账号启的 daemon 能 kill
+          #   - Administrator 启的 daemon 跨账号拒绝, 2>$null 吞掉
+          #   - 首次部署前必须先在服务端手动 taskkill /im node.exe /f 一次
+          #     (否则旧 Administrator daemon 的 named pipe 占着 \\.\pipe\rpc.sock)
+          & $pm2 kill 2>$null
+          Start-Sleep -Seconds 3
+
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
