@@ -82,12 +82,22 @@ jobs:
           Push-Location H:\GDUFSMC-web
           $token = $env:GITHUB_TOKEN
           $url = "https://x-access-token:$token@github.com/QingShi-Dev/GdufsMC-Website.git"
-          # 不调 git remote set-url (写 .git\config, NetworkService 没权限)
-          # 直接用 URL fetch, ref 用 FETCH_HEAD, reset 指向 FETCH_HEAD
-          git fetch $url main
-          git reset --hard FETCH_HEAD
-          # 清工作区,保留关键文件 (.git 保留, gitignore 的保留)
-          git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale
+          # git fetch / reset 写 stderr (From / HEAD / Counting 等) 被 PS 5.1 当 NativeCommandError
+          # 用 try/catch + 2>&1 | Out-Null 吞掉
+          try {
+              $fetchOut = git fetch $url main 2>&1
+              Write-Host "  fetch: $($fetchOut -join ' / ')"
+          } catch { Write-Host "  fetch: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          try {
+              git reset --hard FETCH_HEAD 2>&1 | Out-Null
+          } catch { Write-Host "  reset: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
+          # 清工作区,保留关键文件
+          try {
+              git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale 2>&1 | Out-Null
+          } catch { Write-Host "  clean: $($_.Exception.Message)" }
+          $LASTEXITCODE = 0
           Pop-Location
 
       - name: Install dependencies (含 devDependencies for build)
