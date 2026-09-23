@@ -175,21 +175,24 @@ jobs:
 
           # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
           if (Test-Path (Join-Path $ArtifactsDir 'next-build')) {
+              # Defender exclusion 已加 (.next / logs / app), 任何 .next 操作不撞锁
               if (Test-Path (Join-Path $ProjectDir '.next')) {
-                  # 旧 .next 已存在, 用 Copy-Item 增量更新 (不动旧文件, 不撞 Defender 锁)
-                  #   - Rename-Item / Remove-Item / cmd rd 都撞 Defender 实时扫描锁
-                  #   - Copy-Item next-build/* → .next/ 覆盖同名 + 添加新文件, 不删旧文件
-                  #   - 累积问题: 旧 hash 命名的 chunks 文件残留, 占空间但不破坏 build
-                  #   - 永久修法: 服务端 Add-MpPreference -ExclusionPath "H:\GDUFSMC-web\.next"
-                  Write-Host "  增量更新 .next (Copy-Item, 不删旧)"
-                  Copy-Item -Path (Join-Path $ArtifactsDir 'next-build\*') -Destination (Join-Path $ProjectDir '.next') -Recurse -Force
-                  # 删 next-build (artifact 已经合并到 .next)
-                  Remove-Item -Recurse -Force (Join-Path $ArtifactsDir 'next-build') -ErrorAction SilentlyContinue
-              } else {
-                  # 没有旧 .next, 直接 Move
-                  Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
+                  # 旧 .next 改名 .next.stale, 立即释放 .next 这个 name
+                  Rename-Item (Join-Path $ProjectDir '.next') (Join-Path $ProjectDir '.next.stale') -Force
+                  Write-Host "  旧 .next → .next.stale (后台异步删)"
               }
+              Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
               Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
+
+              # 异步删 .next.stale (不阻塞 deploy)
+              if (Test-Path (Join-Path $ProjectDir '.next.stale')) {
+                  try {
+                      Start-Process -FilePath 'cmd.exe' -ArgumentList "/c rd /s /q `"$ProjectDir\.next.stale`"" -WindowStyle Hidden -ErrorAction Stop | Out-Null
+                  } catch {
+                      # 即使删失败也不影响 deploy, 服务端手动清理
+                      Write-Warning "异步删 .next.stale 失败, 服务端手动清"
+                  }
+              }
           } else {
               throw "❌ artifacts/next-build 不存在, build 可能失败"
           }
