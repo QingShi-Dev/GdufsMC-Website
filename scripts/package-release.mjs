@@ -25,6 +25,8 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, resolve, relative } from "node:path";
 import { copyReleaseTree } from "./copy-release-tree.mjs";
+import { includeRuntimePackage } from "./include-runtime-package.mjs";
+import { createRequire } from "node:module";
 
 const copyLog = (message) => writeSync(1, "package-release: " + message + "\n");
 
@@ -133,6 +135,25 @@ function copyIn(src, destRel) {
 copyIn(PUBLIC_DIR, "public");
 copyIn(NEXT_STATIC, join(".next", "static"));
 copyIn(CONTENT_DIR, "content");
+
+// Include the complete SWC helper exports tree, not only traced individual files.
+// Resolve from the installed Next package so the locked version is preserved.
+beginPhase("include and verify Next SWC runtime helpers");
+const workspaceRequire = createRequire(join(ROOT, "package.json"));
+includeRuntimePackage(
+  "@swc/helpers",
+  workspaceRequire.resolve("next/package.json"),
+  join(STAGE, "node_modules", "next", "node_modules"),
+  copyLog,
+);
+const releaseRequire = createRequire(join(STAGE, "node_modules", "next", "dist", "shared", "lib", "constants.js"));
+const helperPath = releaseRequire.resolve("@swc/helpers/_/_interop_require_default");
+const helperRelative = relative(STAGE, helperPath);
+if (helperRelative.startsWith("..") || resolve(helperPath) === resolve(STAGE)) {
+  fail("SWC helper resolved outside release: " + helperPath);
+}
+releaseRequire("@swc/helpers/_/_interop_require_default");
+console.log("package-release: verified SWC helper inside release: " + helperRelative);
 
 // ---------------------------------------------------------------------------
 // 4. ensure runtime essentials (server.js, .next/BUILD_ID)
