@@ -22,7 +22,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # -------- 1. 项目目录 --------
-Write-Host "==> 1/7 创建项目目录: $ProjectDir"
+Write-Host "==> 1/8 创建项目目录: $ProjectDir"
 if (-not (Test-Path $ProjectDir)) {
     New-Item -ItemType Directory -Path $ProjectDir | Out-Null
 }
@@ -31,7 +31,7 @@ if (-not (Test-Path (Join-Path $ProjectDir 'logs'))) {
 }
 
 # -------- 2. Node.js 22 LTS --------
-Write-Host "==> 2/7 安装 Node.js 22 LTS"
+Write-Host "==> 2/8 安装 Node.js 22 LTS"
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
     winget install OpenJS.NodeJS.LTS --accept-package-agreements --accept-source-agreements
     $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
@@ -40,7 +40,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 
 # -------- 3. pnpm + pm2 --------
-Write-Host "==> 3/7 安装 pnpm + pm2"
+Write-Host "==> 3/8 安装 pnpm + pm2"
 if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
     npm install -g pnpm
 } else {
@@ -74,7 +74,7 @@ if ($added.Count -gt 0) {
 }
 
 # -------- 4. Caddy --------
-Write-Host "==> 4/7 安装 Caddy"
+Write-Host "==> 4/8 安装 Caddy"
 if (-not (Get-Command caddy -ErrorAction SilentlyContinue)) {
     # 尝试 winget 装到默认位置
     winget install CaddyServer.Caddy --accept-package-agreements --accept-source-agreements
@@ -84,7 +84,7 @@ if (-not (Get-Command caddy -ErrorAction SilentlyContinue)) {
 }
 
 # -------- 5. 防火墙规则 --------
-Write-Host "==> 5/7 配置防火墙 (入站 80/443)"
+Write-Host "==> 5/8 配置防火墙 (入站 80/443)"
 $rules = @(
     @{Name="Caddy HTTP"; Port=80}
     @{Name="Caddy HTTPS"; Port=443}
@@ -101,8 +101,23 @@ foreach ($r in $rules) {
 
 # GitHub Runner 走 outbound 443 出站 (默认已放行, 学校有出站限制才需要额外规则)
 
-# -------- 6. GitHub Actions Runner --------
-Write-Host "==> 6/7 安装 GitHub Actions Runner"
+# -------- 6. Defender 排除路径 --------
+#   GitHub Actions runner 用 NetworkService 跑 pnpm install / build,
+#   Defender 实时保护会拦截 pnpm 在 node_modules 里解压文件报 EPERM,
+#   "拒绝访问 (os error 5)" 错误很难定位.
+#   整个项目目录 (H:\GDUFSMC-web) 一次性排除最干净, 比子目录白名单维护成本低.
+Write-Host "==> 6/8 配置 Defender 排除 (项目目录整路径)"
+$defenderExclusion = $ProjectDir  # H:\GDUFSMC-web
+$existingExcl = (Get-MpPreference).ExclusionPath
+if ($existingExcl -notcontains $defenderExclusion) {
+    Add-MpPreference -ExclusionPath $defenderExclusion -ErrorAction SilentlyContinue
+    Write-Host "  + 已加 Defender 排除: $defenderExclusion"
+} else {
+    Write-Host "  已存在 Defender 排除: $defenderExclusion"
+}
+
+# -------- 7. GitHub Actions Runner --------
+Write-Host "==> 7/8 安装 GitHub Actions Runner"
 if (-not (Test-Path $RunnerDir)) {
     New-Item -ItemType Directory -Path $RunnerDir | Out-Null
 }
@@ -132,9 +147,9 @@ if (-not (Test-Path ".\config.cmd")) {
 
 Pop-Location
 
-# -------- 7. 验证 --------
+# -------- 8. 验证 --------
 Write-Host ""
-Write-Host "==> 7/7 验证"
+Write-Host "==> 8/8 验证"
 Write-Host "  node:    $(node --version)"
 Write-Host "  pnpm:    $(pnpm --version)"
 Write-Host "  pm2:     $(pm2 --version)"
