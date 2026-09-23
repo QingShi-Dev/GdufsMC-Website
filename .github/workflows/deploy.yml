@@ -122,7 +122,9 @@ jobs:
               exit /b 1
           )
           echo pm2: %PMCAND%
-          set "PATH=%~dpPMCAND%;%PATH%"
+          REM 取 PMCAND 所在目录加到 PATH (让后续 pm2 start 命令能找到 node)
+          for %%i in ("%PMCAND%") do set "PMDIR=%%~dpi"
+          set "PATH=%PMDIR%;%PATH%"
 
           REM 杀 PM2 daemon
           call "%PMCAND%" kill 2>nul
