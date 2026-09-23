@@ -69,11 +69,14 @@ jobs:
           $shimDir = Join-Path $env:LOCALAPPDATA 'corepack'
           if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
           if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-              # npm 全局包默认装在 %APPDATA%\npm\pmpm.cmd (注意是 pmpm, 不是 pnpm)
+              # npm 全局包默认文件名是 pmpm.cmd (npm 给所有包加 pm 前缀)
+              # - $env:APPDATA 在 NetworkService 下是 ServiceProfiles\NetworkService (用户没装 pnpm)
+              # - 用户装的 pnpm 在 Administrator / ks-73 用户级 APPDATA
+              # - 或者 machine-wide prefix C:\npm (setup.ps1 装的)
               $candidates = @(
-                  "$env:APPDATA\npm\pmpm.cmd"
                   'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
                   'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
+                  "$env:APPDATA\npm\pmpm.cmd"
                   'C:\npm\pmpm.cmd'
                   'C:\Program Files\nodejs\pmpm.cmd'
               )
@@ -87,14 +90,24 @@ jobs:
               }
           }
           if (-not $pnpmCmd) {
-              # 最后兜底: where.exe 看 PATH 上有什么
-              $pnpmCmd = (where.exe pnpm 2>&1 | Select-Object -First 1)
-              if ($pnpmCmd) { Write-Host "  where.exe pnpm: $pnpmCmd" }
+              # 最后兜底: 全盘搜 pmpm.cmd (深度限制 4 避免太慢)
+              Write-Host "  fallback 全失败, 全盘搜 pmpm.cmd..."
+              $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pmpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 5
+              if ($found) {
+                  $pnpmCmd = $found[0].FullName
+                  $env:PATH = (Split-Path $pnpmCmd) + ';' + $env:PATH
+                  Write-Host "  找到: $pnpmCmd"
+              } else {
+                  $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pnpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 5
+                  if ($found) {
+                      $pnpmCmd = $found[0].FullName
+                      $env:PATH = (Split-Path $pnpmCmd) + ';' + $env:PATH
+                      Write-Host "  找到: $pnpmCmd"
+                  }
+              }
           }
           if (-not $pnpmCmd) {
-              # 全找不到, 报错让人知道缺 pnpm
-              Get-ChildItem C:\ -Recurse -Filter 'pmpm.cmd' -Depth 3 -ErrorAction SilentlyContinue | Select-Object -First 5 FullName
-              throw "❌ pnpm 找不到, 请先在服务端装 pnpm@12.5.1 (npm install -g pnpm@12.5.1 或 winget install pnpm)"
+              throw "❌ pnpm 找不到, 请先在服务端装 pnpm@12.5.1"
           }
           & $pnpmCmd --version
 
