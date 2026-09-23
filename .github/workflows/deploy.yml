@@ -35,7 +35,9 @@ jobs:
           pnpm --version
       - name: Install full build dependencies
         run: |
-          pnpm install --prod=false --frozen-lockfile
+          # Build from a real hoisted tree: dereferencing an isolated pnpm
+          # layout relocates packages away from their sibling dependencies.
+          pnpm install --prod=false --frozen-lockfile --config.node-linker=hoisted
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Typecheck and lint
         run: |
@@ -57,10 +59,14 @@ jobs:
         run: |
           $archive = @(Get-ChildItem outputs/*.tar.gz)
           if ($archive.Count -ne 1) { throw 'Expected one release archive' }
-          New-Item -ItemType Directory .release-smoke -ErrorAction Stop | Out-Null
-          tar -xzf $archive[0].FullName -C .release-smoke
+          # Outside the checkout so missing runtime dependencies cannot fall
+          # back to the build workspace's node_modules.
+          $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          New-Item -ItemType Directory $smoke -ErrorAction Stop | Out-Null
+          tar -xzf $archive[0].FullName -C $smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node scripts/test-release.mjs .release-smoke
+          Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
+          node scripts/test-release.mjs $smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload verified release and manual publisher
         uses: actions/upload-artifact@v4
