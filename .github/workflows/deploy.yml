@@ -151,6 +151,12 @@ jobs:
           }
           & $pnpmCmd --version
 
+          # 把 pnpm 目录追加到 GITHUB_PATH, 让后续步骤 (install/typecheck/build) 直接 pnpm 调用
+          # 不用每个步骤写 & "$env:PNPM_CMD" 绝对路径
+          $pnpmDir = Split-Path $pnpmCmd -Parent
+          "$pnpmDir" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          Write-Host "  ✅ 已追加 PATH: $pnpmDir"
+
       # =========================================================================
       # 2. Sync code — git fetch + reset, 用 GITHUB_TOKEN 临时认证
       # =========================================================================
