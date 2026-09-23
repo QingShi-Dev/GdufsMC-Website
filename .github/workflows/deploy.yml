@@ -56,11 +56,12 @@ jobs:
       url: https://gdufscraft.top
 
     steps:
-      # Windows 长路径支持 (workspace 路径深, 但即使在 H:\GDUFSMC-web
-      # Next.js 16 pnpm 路径嵌套 node_modules/.pnpm/next@.../.../ 仍可能超 260)
+      # Windows 长路径支持 (Next.js 16 pnpm 路径嵌套 node_modules/.pnpm/next@.../.../ 超 260 字符)
+      #   不能用 --system (写 C:\Program Files\Git\etc\gitconfig, NetworkService 没权限)
+      #   改用 --global (写 %USERPROFILE%\.gitconfig = C:\Windows\ServiceProfiles\NetworkService\.gitconfig)
       - name: Enable Windows long paths (>260 chars)
         shell: powershell
-        run: git config --system core.longPaths true
+        run: git config --global core.longPaths true
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
