@@ -58,10 +58,10 @@ jobs:
           git config --global core.longPaths true
 
           # corepack 锁 pnpm 版本 (绕过 self-hosted runner PATH 顺序问题)
-          # - pnpm 10.6.1 跟用户机器装的版本一致, lockfile 兼容
+          # - pnpm 12.5.1 跟 self-hosted runner 上用户装的一致, lockfile 兼容
           # - corepack 是 Node 自带 shim, 不依赖 PATH
           corepack enable 2>&1 | Out-Null
-          corepack prepare pnpm@10.6.1 --activate 2>&1 | Out-Null
+          corepack prepare pnpm@12.5.1 --activate 2>&1 | Out-Null
           pnpm --version
 
       # =========================================================================
