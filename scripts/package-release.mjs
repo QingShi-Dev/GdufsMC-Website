@@ -25,7 +25,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { join, resolve, relative } from "node:path";
 import { copyReleaseTree } from "./copy-release-tree.mjs";
-import { includeRuntimePackage } from "./include-runtime-package.mjs";
+import { includeRuntimePackage, resolveRuntimeManifest } from "./include-runtime-package.mjs";
 import { createRequire } from "node:module";
 
 const copyLog = (message) => writeSync(1, "package-release: " + message + "\n");
@@ -136,17 +136,24 @@ copyIn(PUBLIC_DIR, "public");
 copyIn(NEXT_STATIC, join(".next", "static"));
 copyIn(CONTENT_DIR, "content");
 
-// Include the complete SWC helper exports tree, not only traced individual files.
-// Resolve from the installed Next package so the locked version is preserved.
-beginPhase("include and verify Next SWC runtime helpers");
+// Include every declared Next production dependency, not one missing package
+// at a time. Use exactly the versions installed from the frozen lockfile.
+// Platform-specific optional dependencies remain supplied by standalone tracing.
+beginPhase("include and verify Next production dependencies");
 const workspaceRequire = createRequire(join(ROOT, "package.json"));
-includeRuntimePackage(
-  "@swc/helpers",
-  workspaceRequire.resolve("next/package.json"),
-  join(STAGE, "node_modules", "next", "node_modules"),
-  copyLog,
-);
+const nextManifestPath = workspaceRequire.resolve("next/package.json");
+const nextManifest = JSON.parse(readFileSync(nextManifestPath, "utf8"));
+for (const name of Object.keys(nextManifest.dependencies || {})) {
+  includeRuntimePackage(name, nextManifestPath,
+    join(STAGE, "node_modules", "next", "node_modules"), copyLog);
+}
 const releaseRequire = createRequire(join(STAGE, "node_modules", "next", "dist", "shared", "lib", "constants.js"));
+for (const name of Object.keys(nextManifest.dependencies || {})) {
+  const resolved = resolveRuntimeManifest(name, join(STAGE, "node_modules", "next", "package.json"));
+  if (relative(STAGE, resolved).startsWith("..")) fail("Dependency resolved outside release: " + resolved);
+  console.log("package-release: verified runtime dependency " + name + " -> " + relative(STAGE, resolved));
+}
+releaseRequire("@next/env");
 const helperPath = releaseRequire.resolve("@swc/helpers/_/_interop_require_default");
 const helperRelative = relative(STAGE, helperPath);
 if (helperRelative.startsWith("..") || resolve(helperPath) === resolve(STAGE)) {
