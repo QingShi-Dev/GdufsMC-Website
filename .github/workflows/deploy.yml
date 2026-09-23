@@ -176,20 +176,29 @@ jobs:
           # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
           if (Test-Path (Join-Path $ArtifactsDir 'next-build')) {
               if (Test-Path (Join-Path $ProjectDir '.next')) {
-                  # 文件锁经常 transient, retry 3 次
+                  # 文件锁可能来自 Defender 实时扫描 / 索引器 / 残留 handle
+                  #   1. 先试 PowerShell Remove-Item (5 次 retry + 5s 等)
+                  #   2. 失败则 fallback 到 cmd `rd /s /q` (更底层 Win32 API)
+                  #   3. 还失败则 throw
                   $removed = $false
-                  for ($i = 1; $i -le 3; $i++) {
+                  for ($i = 1; $i -le 5; $i++) {
                       try {
                           Remove-Item -Recurse -Force (Join-Path $ProjectDir '.next') -ErrorAction Stop
                           $removed = $true
                           break
                       } catch {
-                          Write-Warning "Remove .next 第 $i 次失败 (文件被 Next.js 持有): $($_.Exception.Message)"
-                          Start-Sleep -Seconds 3
+                          Write-Warning "Remove .next 第 $i 次失败: $($_.Exception.Message)"
+                          Start-Sleep -Seconds 5
                       }
                   }
                   if (-not $removed) {
-                      throw "❌ 删除 .next 失败 3 次, 文件被锁死"
+                      Write-Warning "PowerShell Remove-Item 失败 5 次, 试 cmd rd /s /q"
+                      & cmd.exe /c "rd /s /q `"$ProjectDir\.next`"" 2>&1 | Out-Null
+                      if (-not (Test-Path (Join-Path $ProjectDir '.next'))) {
+                          $removed = $true
+                      } else {
+                          throw "❌ 删除 .next 失败, PowerShell + cmd 都试了, 文件被锁死"
+                      }
                   }
               }
               Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
