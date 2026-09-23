@@ -104,73 +104,63 @@ jobs:
 
       # =========================================================================
       # Deploy: 杀 node + 同步 .next + 启 PM2 + 健康检查
+      # shell: cmd (不用 PowerShell, 避免 PowerShell 父进程持有 .next 目录 handle,
+      #   cmd.exe 跑完命令立即退出, 不留 handle)
       # =========================================================================
       - name: Deploy build output to project root
-        shell: powershell
+        shell: cmd
         run: |
-          $ProjectDir = 'H:\GDUFSMC-web'
-          $BuildSrc = Join-Path $env:GITHUB_WORKSPACE '.next'
-
-          # 找 pm2.cmd (NetworkService 默认 PATH 找不到, 用 fallback 链)
-          function Test-PathSafe([string]$p) {
-              try { Test-Path $p -ErrorAction Stop } catch { $false }
-          }
-          $pm2Candidates = @(
-              'C:\npm\pm2.cmd',                                       # ← machine-wide, NetworkService 可执行
-              'C:\Program Files\nodejs\pm2.cmd',
-              'C:\Program Files (x86)\nodejs\pm2.cmd',
-              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
-              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
-              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'   # 兜底, NetworkService 不可执行
+          REM 找 pm2.cmd
+          set "PMCAND=C:\npm\pm2.cmd"
+          if not exist "%PMCAND%" set "PMCAND=C:\Program Files\nodejs\pm2.cmd"
+          if not exist "%PMCAND%" set "PMCAND=C:\Program Files (x86)\nodejs\pm2.cmd"
+          if not exist "%PMCAND%" set "PMCAND=%USERPROFILE%\AppData\Roaming\npm\pm2.cmd"
+          if not exist "%PMCAND%" set "PMCAND=C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd"
+          if not exist "%PMCAND%" set "PMCAND=C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd"
+          if not exist "%PMCAND%" (
+              echo ERROR: pm2.cmd not found
+              exit /b 1
           )
-          $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
-          if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
-          Write-Host "  pm2: $pm2"
-          $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
+          echo pm2: %PMCAND%
+          set "PATH=%~dpPMCAND%;%PATH%"
 
-          # PM2 调用包 try/catch, 彻底吞 NativeCommandError 异常
-          try { & $pm2 kill 2>&1 | Out-Null } catch { Write-Host "  pm2 kill: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
-          Start-Sleep -Seconds 3
+          REM 杀 PM2 daemon
+          call "%PMCAND%" kill 2>nul
+          timeout /t 3 /nobreak >nul
 
-          # taskkill 跨账号杀所有 node.exe (PM2 daemon + Next.js, 不受 Get-Process ACL 限制)
-          try {
-              Write-Host "  taskkill /F /IM node.exe"
-              & taskkill.exe /F /IM node.exe 2>&1 | Out-Null
-              Start-Sleep -Seconds 5
-          } catch { Write-Host "  kill node: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
+          REM taskkill 杀所有 node (跨账号)
+          taskkill /F /IM node.exe 2>nul
+          timeout /t 5 /nobreak >nul
 
-          try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "  pm2 delete: $($_.Exception.Message)" }
-          $LASTEXITCODE = 0
-          Start-Sleep -Seconds 3
+          REM PM2 delete gdufsmc
+          call "%PMCAND%" delete gdufsmc 2>nul
+          timeout /t 3 /nobreak >nul
 
-          # cmd move 是真正 atomic rename (NTFS MFT, 不开文件, 绕 Defender/WSearch 锁)
-          # PowerShell Rename-Item 在 PS 5.1 是 copy+delete, 撞锁
-          # build step 在 workspace 写了 .next, 这里是:
-          #   1. 把 H:\GDUFSMC-web\.next rename 成 .next.stale (atomic)
-          #   2. 把 workspace\.next Move 到 H:\GDUFSMC-web\.next (rename 目标名已释放)
-          if (Test-Path (Join-Path $ProjectDir '.next')) {
-              & cmd.exe /c "move /Y `"$ProjectDir\.next`" `"$ProjectDir\.next.stale`"" 2>&1 | Out-Null
-              Write-Host "  旧 .next → .next.stale (atomic rename)"
-          }
+          REM cmd move 是真正 atomic rename (NTFS MFT, 不开文件)
+          REM 顺序: 旧 .next → .next.stale, 然后 workspace\.next → .next
+          set "PROJECTDIR=H:\GDUFSMC-web"
+          set "BUILDSRC=%GITHUB_WORKSPACE%\.next"
+          if exist "%PROJECTDIR%\.next" (
+              move /Y "%PROJECTDIR%\.next" "%PROJECTDIR%\.next.stale"
+              echo 旧 .next → .next.stale (atomic rename)
+          )
+          if exist "%BUILDSRC%" (
+              move /Y "%BUILDSRC%" "%PROJECTDIR%\.next"
+              echo %BUILDSRC% → %PROJECTDIR%\.next (atomic rename)
+          ) else (
+              echo ERROR: workspace 没有 .next, build 可能失败
+              exit /b 1
+          )
 
-          # workspace 的 .next move 到项目目录
-          if (Test-Path $BuildSrc) {
-              & cmd.exe /c "move /Y `"$BuildSrc`" `"$ProjectDir\.next`"" 2>&1 | Out-Null
-              Write-Host "  $BuildSrc → $ProjectDir\.next (atomic rename)"
-          } else {
-              throw "❌ workspace 没有 .next, build 可能失败"
-          }
+          REM 异步删 .next.stale
+          if exist "%PROJECTDIR%\.next.stale" (
+              start /b cmd /c "rd /s /q "%PROJECTDIR%\.next.stale"" >nul 2>&1
+          )
 
-          # 异步删 .next.stale (后台慢慢删, 不阻塞 deploy)
-          if (Test-Path (Join-Path $ProjectDir '.next.stale')) {
-              try {
-                  Start-Process -FilePath 'cmd.exe' -ArgumentList "/c rd /s /q `"$ProjectDir\.next.stale`"" -WindowStyle Hidden -ErrorAction Stop | Out-Null
-              } catch { Write-Warning "异步删 .next.stale 失败, 服务端手动清" }
-          }
-
-          Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
+          REM 输出 BUILD_ID
+          for /f "usebackq delims=" %%i in ("%PROJECTDIR%\.next\BUILD_ID") do set "BUILDID=%%i"
+          echo BUILD_ID = %BUILDID%
+          echo .next deployed
 
       - name: Sync public / content / configs / deploy / Caddyfile (sanity check)
         shell: powershell
