@@ -171,8 +171,8 @@ function Set-PrivateAcl {
     foreach ($id in $identities) {
         $rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
             $id, 'FullControl',
-            [System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
-            [System.Security.AccessControl.InheritanceFlags]::ObjectInherit,
+            ([System.Security.AccessControl.InheritanceFlags]::ContainerInherit -bor
+             [System.Security.AccessControl.InheritanceFlags]::ObjectInherit),
             [System.Security.AccessControl.PropagationFlags]::None,
             'Allow')
         $acl.AddAccessRule($rule)
@@ -264,7 +264,7 @@ function Invoke-Pm2 {
     # Never log `jlist` output (it may contain secrets in the env block).
     $cmdline = ($ArgumentList -join ' ')
     if ($ArgumentList.Count -eq 0 -or $ArgumentList[0] -ne 'jlist') {
-        ($out | Out-String) | Out-File -LiteralPath $Pm2OpLog -Append -Encoding $Utf8NoBom
+        [System.IO.File]::AppendAllText($Pm2OpLog, ($out | Out-String), $Utf8NoBom)
     }
     if (-not $IgnoreExit -and $exitCode -ne 0) {
         throw "pm2 $cmdline failed (exit $exitCode)"
@@ -284,7 +284,67 @@ function Get-Pm2AppList {
     }
     if ($exitCode -ne 0) { throw 'pm2 jlist failed' }
     if ([string]::IsNullOrWhiteSpace($raw)) { return @() }
-    return @($raw | ConvertFrom-Json)
+    # PS5.1 rejects case-variant keys (PM2 commonly emits username/USERNAME).
+    # Normalize in memory through Node; never write environment secrets to disk.
+    # Windows environment names are case-insensitive; prefer the uppercase key.
+    $normalize = @'
+let input = "";
+process.stdin.setEncoding("utf8");
+process.stdin.on("data", chunk => { input += chunk; });
+process.stdin.on("end", () => {
+  try {
+    function normalize(value) {
+      if (Array.isArray(value)) return value.map(normalize);
+      if (value === null || typeof value !== "object") return value;
+      const chosen = new Map();
+      for (const key of Object.keys(value)) {
+        const folded = key.toLowerCase();
+        if (!chosen.has(folded) || key === key.toUpperCase()) chosen.set(folded, key);
+      }
+      return Object.fromEntries([...chosen.values()].map(key => [key, normalize(value[key])]));
+    }
+    // The PowerShell pipe carries only base64 ASCII, avoiding codepage/BOM
+    // conversion of the JSON itself. PM2 may prefix jlist with banner lines.
+    const text = Buffer.from(input.trim(), "base64").toString("utf8")
+      .replace(/^\uFEFF/, "").replace(/\x1b\[[0-?]*[ -/]*[@-~]/g, "").trim();
+    let apps;
+    const candidates = [text];
+    for (let i = 0; i < text.length; i++) {
+      if (text[i] === "[" && (i === 0 || text[i - 1] === "\n")) candidates.push(text.slice(i));
+    }
+    for (const candidate of candidates) {
+      try {
+        const parsed = JSON.parse(candidate);
+        if (Array.isArray(parsed) && parsed.every(app => app && typeof app.name === "string" && app.pm2_env && typeof app.pm2_env === "object")) {
+          apps = parsed;
+          break;
+        }
+      } catch { /* Try another line boundary, never echo JSON contents. */ }
+    }
+    if (!apps) {
+      process.stderr.write(`PM2 JSON is not an app array (chars=${text.length}, lines=${text.split("\n").length})\n`);
+      process.exitCode = 1;
+      return;
+    }
+    const json = JSON.stringify(normalize(apps));
+    process.stdout.write(json.replace(/[\u007f-\uffff]/g, ch => "\\u" + ch.charCodeAt(0).toString(16).padStart(4, "0")));
+  } catch (error) {
+    process.stderr.write(`Cannot normalize PM2 JSON (type=${error.name})\n`);
+    process.exitCode = 1;
+  }
+});
+'@
+    # Base64 avoids Windows PowerShell 5.1 native-argument quote stripping.
+    $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($normalize))
+    $bootstrap = "eval(Buffer.from('$encoded','base64').toString('utf8'))"
+    $oldOutputEncoding = $OutputEncoding
+    try {
+        $OutputEncoding = New-Object System.Text.UTF8Encoding($false)
+        $payload = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($raw -join "`n")))
+        $normalized = $payload | & $NodePath -e $bootstrap
+        if ($LASTEXITCODE -ne 0) { throw 'PM2 JSON normalization failed' }
+    } finally { $OutputEncoding = $oldOutputEncoding }
+    return @(($normalized -join "`n") | ConvertFrom-Json)
 }
 
 # ===========================================================================
@@ -869,11 +929,6 @@ try {
         }
         Assert-SafeCopySource $ReleaseDirectory $newReleasePath
 
-        # Copy (never move); keep the original incoming artifact intact.
-        Copy-Item -LiteralPath $ReleaseDirectory -Destination $newReleasePath -Recurse -Force
-        # Re-validate the copied release (buildId marker + id) at the target.
-        Assert-ReleaseStructure $newReleasePath $manifest
-
         # Capture live PM2 app: exactly one app named "gdufsmc" must exist.
         $apps = Get-Pm2AppList
         $g = @($apps | Where-Object { $_.name -eq 'gdufsmc' })
@@ -897,6 +952,10 @@ try {
                 throw "Drift detected: state.current '$([string]$state.current.id)' is not healthy/online. Refusing to publish."
             }
         }
+
+        # Copy only after PM2 parsing and live-state preflight have succeeded.
+        Copy-Item -LiteralPath $ReleaseDirectory -Destination $newReleasePath -Recurse -Force
+        Assert-ReleaseStructure $newReleasePath $manifest
 
         # Rollback baseline config stored privately under shared WITH A UNIQUE GUID NAME
         # so we never overwrite a config that state.previous still references.
