@@ -1,0 +1,6 @@
+# Explicit, version-scoped install-script approvals for non-interactive CI.
+# Review this list when upgrading dependencies; do not allow all builds.
+strictDepBuilds: true
+allowBuilds:
+  "sharp@0.34.5": true
+  "unrs-resolver@1.12.2": true
