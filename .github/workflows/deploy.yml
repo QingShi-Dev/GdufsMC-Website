@@ -1,13 +1,14 @@
 # =============================================================================
-# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy)
+# GitHub Actions — 部署到校园服务器 (self-hosted runner + Caddy + self-build)
 # =============================================================================
-# 架构变更 (vs. 旧 ECS + rsync + nginx):
+# 架构 (vs. 旧 ECS + rsync + nginx):
 #   旧: GitHub-hosted runner build → rsync 到服务器 → SSH 重启 PM2
-#   新: Self-hosted runner (装在校园服务器上) build + 重启都在本机
+#   旧 2: GitHub-hosted build + artifact → self-hosted deploy (100MB download)
+#   新: Self-hosted runner 直接 build + 重启, 单 job 全流程
 #       - 无需 inbound SSH (GitHub Runner 走 outbound 443 出站)
 #       - 校园网 NAT 友好, 不依赖公网 SSH 端口
 #       - 取消 SSH secrets (SERVER_HOST / SERVER_USER / SSH_PRIVATE_KEY)
-#       - 文件在 runner 本机直接访问, 不需 upload-artifact 中转
+#       - 不下载 artifact, 服务器直接 build 节省 download 带宽
 #
 # Runner 配置: Settings → Actions → Runners → New self-hosted runner
 #   - 标签: self-hosted, windows, gdufsmc
@@ -21,7 +22,13 @@
 #   校园服务器默认没装 PS 7+, 装 ps7 占 200MB 装包 + 100MB 运行时 RAM
 #   我们用的 cmdlet (Join-Path / Copy-Item / Move-Item / Test-Path / Get-Service
 #   / Get-Command / Invoke-WebRequest / pm2 / caddy) PS 5.1 都支持
-#   如需 PS 7+ 特性, 改 shell: pwsh + 在 runner 服务器装 PowerShell 7
+#
+# 性能 / 风险权衡:
+#   - 服务器 2G RAM build Next.js + sharp 大约 3-5 分钟 (vs GitHub-hosted ~1-2 分钟)
+#   - 省掉 download 100MB artifact 时间 (校园 NAT 出站通常 1-3 分钟)
+#   - 总时间差不多, 但少了 artifact 中转的脆弱性 (named pipe / Defender 锁 / EPERM)
+#   - 失去 GitHub-hosted CI 隔离: typecheck / lint / build 在生产服务器上跑
+#     如果 build 失败, deploy 不会跑 (但服务器上 node_modules 会被污染)
 # =============================================================================
 
 name: Deploy to production
@@ -29,7 +36,6 @@ name: Deploy to production
 on:
   push:
     branches: [main]
-  # 手动重跑 — 修部署脚本时用
   workflow_dispatch:
     inputs:
       reason:
@@ -37,178 +43,141 @@ on:
         required: false
         default: 'manual'
 
-# 不要并发跑两个部署 (新 commit 触发时旧的会被取消或排队)
 concurrency:
   group: production-deploy
   cancel-in-progress: false    # 跑完当前的再跑下一个, 别 kill 正在跑的
 
 jobs:
   # ---------------------------------------------------------------------------
-  # Job 1: build + 校验 (push 和手动触发都跑)
-  # ---------------------------------------------------------------------------
-  build:
-    name: Build & validate
-    # GitHub-hosted runner, 跟项目其他 CI 一致 (build 验证 + 校验)
-    # 校园服务器跑 deploy 时不再 build, 用 artifact 下载 — build 失败就不到 deploy
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Type check
-        run: pnpm typecheck
-
-      - name: Lint
-        run: pnpm lint
-
-      - name: Build Next.js
-        run: pnpm build
-        env:
-          NEXT_TELEMETRY_DISABLED: '1'
-
-      # build 产物打成包, 传到下一 job
-      # 不含 node_modules / .git / .next/cache — 服务器自己装 prod 依赖
-      - name: Stage build for transfer
-        run: |
-          mkdir -p build-out
-          cp -r .next build-out/next-build
-          cp -r public build-out/public
-          cp package.json pnpm-lock.yaml next.config.ts proxy.ts build-out/
-          cp -r deploy build-out/deploy
-          cp Caddyfile build-out/Caddyfile
-          cp -r content build-out/content
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: gdufsmc-build
-          path: build-out/
-          retention-days: 1
-          if-no-files-found: error
-
-  # ---------------------------------------------------------------------------
-  # Job 2: deploy — self-hosted runner 直接在校园服务器跑
+  # 唯一 job: self-hosted runner 一站式 build + deploy
   # ---------------------------------------------------------------------------
   deploy:
-    name: Deploy to production
-    needs: build
-    # 关键变更: 改 self-hosted, 校园服务器上的 runner
+    name: Build & deploy
     runs-on: [self-hosted, windows, gdufsmc]
     if: github.event_name == 'push'
-    timeout-minutes: 15
+    timeout-minutes: 20    # build 5min + sync + deploy 15min
     environment:
       name: production
-      # 显示在 Actions 摘要里 (域名硬编码, runner 在校园服务器本地访问不需要 secrets)
       url: https://gdufscraft.top
 
     steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          name: gdufsmc-build
-          path: ${{ github.workspace }}\artifacts
+          # 直接 checkout 到 H:\GDUFSMC-web (项目目录), 后续 build / deploy 全在这里
+          #   不覆盖 .gitignore 的文件 (.next / node_modules / secrets.caddy / logs)
+          #   deploy step 拿到的代码是最新的 commit
+          path: H:\GDUFSMC-web
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Install dependencies (含 devDependencies for build)
+        working-directory: H:\GDUFSMC-web
+        shell: powershell
+        run: pnpm install --frozen-lockfile
+
+      - name: Type check
+        working-directory: H:\GDUFSMC-web
+        shell: powershell
+        run: pnpm typecheck
+
+      - name: Lint
+        working-directory: H:\GDUFSMC-web
+        shell: powershell
+        run: pnpm lint
+
+      - name: Build Next.js
+        working-directory: H:\GDUFSMC-web
+        shell: powershell
+        env:
+          NEXT_TELEMETRY_DISABLED: '1'
+        run: pnpm build
+
+      # =========================================================================
+      # Deploy: 杀 node + 同步 build 产物 + 启 PM2 + 健康检查
+      # =========================================================================
       - name: Deploy build output to project root
         shell: powershell
         run: |
-          # 找 pm2.cmd (不用 npm config get prefix, 因为 runner 服务用 NetworkService,
-          # 它看到的 prefix 是自己的 APPDATA, 不是 pm2 真实安装的用户)
-          #   优先级: machine-wide (C:\npm) 优先, 因为 NetworkService 没 Administrator
-          #   用户目录的执行权限; Test-Path 能 stat 但 `& $pm2` 调不起来
+          $ProjectDir = 'H:\GDUFSMC-web'
+
+          # 找 pm2.cmd (NetworkService 默认 PATH 找不到, 用 fallback 链)
           function Test-PathSafe([string]$p) {
               try { Test-Path $p -ErrorAction Stop } catch { $false }
           }
           $pm2Candidates = @(
               'C:\npm\pm2.cmd',                                       # ← machine-wide, NetworkService 可执行
-              'C:\Program Files\nodejs\pm2.cmd',                      # node 同目录
+              'C:\Program Files\nodejs\pm2.cmd',
               'C:\Program Files (x86)\nodejs\pm2.cmd',
-              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",        # 当前 shell 用户
-              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',          # 普通用户
-              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'   # Administrator 装 (NetworkService 不可执行, 兜底)
+              "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
+              'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
+              'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'   # 兜底, NetworkService 不可执行
           )
           $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
-          if (-not $pm2) { throw "❌ pm2.cmd 找不到,候选: $($pm2Candidates -join ', ')" }
+          if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
           Write-Host "  pm2: $pm2"
           $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
 
-          # PM2 调用包 try/catch, PowerShell 5.1 把 stderr 当 NativeCommandError 异常
-          #   - `2>&1 | Out-Null` 吞 stream 但不 catch 异常, step 仍 exit 1
-          #   - try/catch + 显式 $LASTEXITCODE=0 彻底吞掉
+          # PM2 调用包 try/catch, 彻底吞 NativeCommandError 异常
           try { & $pm2 kill 2>&1 | Out-Null } catch { Write-Host "  pm2 kill: $($_.Exception.Message)" }
           $LASTEXITCODE = 0
           Start-Sleep -Seconds 3
 
-          $ProjectDir = 'H:\GDUFSMC-web'
-          $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
-
-          # 杀所有 node 进程 (PM2 daemon + Next.js 子进程, 跨账号都杀得掉)
-          #   - Get-Process node 只显示当前用户进程, 看不到其他账号的
-          #     用 taskkill /F /IM node.exe 是 Windows 内置工具, 跨账号杀进程
-          #     (TerminateProcess 走 PROCESS_TERMINATE 权限, 默认开放)
+          # taskkill 跨账号杀所有 node.exe (PM2 daemon + Next.js, 不受 Get-Process ACL 限制)
           try {
-              Write-Host "  taskkill /F /IM node.exe (跨账号杀进程)"
+              Write-Host "  taskkill /F /IM node.exe"
               & taskkill.exe /F /IM node.exe 2>&1 | Out-Null
-              Start-Sleep -Seconds 5  # 等 Next.js 退出 + 句柄释放
+              Start-Sleep -Seconds 5
           } catch { Write-Host "  kill node: $($_.Exception.Message)" }
           $LASTEXITCODE = 0
 
-          # PM2 cleanup (NetworkService 自己的 daemon 可 kill, 跨账号的杀不掉, try/catch 吞)
           try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "  pm2 delete: $($_.Exception.Message)" }
           $LASTEXITCODE = 0
           Start-Sleep -Seconds 3
 
-          # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
-          if (Test-Path (Join-Path $ArtifactsDir 'next-build')) {
-              # PowerShell Rename-Item 在 PS 5.1 是 copy+delete (走 .NET Framework 4.x),
-              # 不撞 atomic, 撞 Defender 锁。用 cmd `move /Y` 是真正 atomic rename
-              # (调 Win32 MoveFileExW + MOVEFILE_REPLACE_EXISTING, 不开文件内容)
-              if (Test-Path (Join-Path $ProjectDir '.next')) {
-                  $moveOut = & cmd.exe /c "move /Y `"$ProjectDir\.next`" `"$ProjectDir\.next.stale`"" 2>&1
-                  Write-Host "  cmd move .next → .next.stale: $($moveOut -join ' / ')"
-              }
-              Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
-              Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
-
-              # 异步删 .next.stale (不阻塞 deploy)
-              if (Test-Path (Join-Path $ProjectDir '.next.stale')) {
-                  try {
-                      Start-Process -FilePath 'cmd.exe' -ArgumentList "/c rd /s /q `"$ProjectDir\.next.stale`"" -WindowStyle Hidden -ErrorAction Stop | Out-Null
-                  } catch {
-                      Write-Warning "异步删 .next.stale 失败, 服务端手动清"
-                  }
-              }
-          } else {
-              throw "❌ artifacts/next-build 不存在, build 可能失败"
+          # cmd move 是真正 atomic rename (NTFS MFT, 不开文件, 绕 Defender/WSearch 锁)
+          # PowerShell Rename-Item 在 PS 5.1 是 copy+delete, 撞锁
+          # build step 已经在 build 完时写 .next, 这里只是把旧 .next 改名 .next.stale
+          # 然后 build step 覆盖写新 .next (pnpm build 不会删现有, 直接写文件)
+          # 顺序: build 完写 .next/ → 杀 node → 旧 .next rename → 新 .next 还在
+          if (Test-Path (Join-Path $ProjectDir '.next')) {
+              & cmd.exe /c "move /Y `"$ProjectDir\.next`" `"$ProjectDir\.next.stale`"" 2>&1 | Out-Null
+              Write-Host "  旧 .next → .next.stale (atomic rename)"
           }
 
-          # 同步 public / content / package.json / config / deploy / Caddyfile
-          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'public') $ProjectDir
-          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'content') $ProjectDir
-          Copy-Item -Force (Join-Path $ArtifactsDir 'package.json') $ProjectDir
-          Copy-Item -Force (Join-Path $ArtifactsDir 'pnpm-lock.yaml') $ProjectDir
-          Copy-Item -Force (Join-Path $ArtifactsDir 'next.config.ts') $ProjectDir
-          Copy-Item -Force (Join-Path $ArtifactsDir 'proxy.ts') $ProjectDir
-          Copy-Item -Recurse -Force (Join-Path $ArtifactsDir 'deploy') $ProjectDir
-          Copy-Item -Force (Join-Path $ArtifactsDir 'Caddyfile') $ProjectDir
-          # NOTE: secrets.caddy (basic auth 密码哈希) 在 .gitignore, 不会被 artifact 打包,
-          #       也不会被覆盖 — 服务器本地维护, 永不进 git
-          Write-Host "✅ public / content / configs / deploy / Caddyfile 同步完成"
+          # 异步删 .next.stale (后台慢慢删, 不阻塞 deploy)
+          if (Test-Path (Join-Path $ProjectDir '.next.stale')) {
+              try {
+                  Start-Process -FilePath 'cmd.exe' -ArgumentList "/c rd /s /q `"$ProjectDir\.next.stale`"" -WindowStyle Hidden -ErrorAction Stop | Out-Null
+              } catch { Write-Warning "异步删 .next.stale 失败, 服务端手动清" }
+          }
 
-      - name: Install production dependencies
+          Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
+
+      - name: Sync public / content / configs / deploy / Caddyfile
         shell: powershell
         working-directory: H:\GDUFSMC-web
+        run: |
+          # checkout step 直接把代码拉到 H:\GDUFSMC-web (path: 字段),
+          # public / content / next.config.ts / proxy.ts / deploy / Caddyfile
+          # 都已经在项目目录, 不需要 Copy-Item。
+          # 这里只做 sanity check (确认关键文件存在)。
+          foreach ($f in @('public', 'content', 'next.config.ts', 'proxy.ts', 'deploy', 'Caddyfile', 'package.json', 'pnpm-lock.yaml')) {
+              if (Test-Path $f) {
+                  Write-Host "  ✅ $f 存在"
+              } else {
+                  throw "❌ $f 缺失, git checkout 可能失败"
+              }
+          }
+
+      - name: Install production dependencies (服务器 prod only)
+        shell: powershell
+        working-directory: H:\GDUFSMC-web
+        # 之前 install 用了含 devDependencies 的, 这里重装成 prod-only
+        # node_modules 重叠不影响, 但生产环境应只装 prod deps
         run: pnpm install --prod --frozen-lockfile
 
       - name: Sync favicon to static path (Caddy /favicon.ico 固定路径)
@@ -226,23 +195,23 @@ jobs:
 
       - name: Restart PM2 (Next.js)
         shell: powershell
+        working-directory: H:\GDUFSMC-web
         run: |
             function Test-PathSafe([string]$p) {
                 try { Test-Path $p -ErrorAction Stop } catch { $false }
             }
             $pm2Candidates = @(
-                'C:\npm\pm2.cmd',                                       # ← machine-wide, NetworkService 可执行
+                'C:\npm\pm2.cmd',
                 'C:\Program Files\nodejs\pm2.cmd',
                 'C:\Program Files (x86)\nodejs\pm2.cmd',
                 "$env:USERPROFILE\AppData\Roaming\npm\pm2.cmd",
                 'C:\Users\ks-73\AppData\Roaming\npm\pm2.cmd',
-                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'   # 兜底, NetworkService 不可执行
+                'C:\Users\Administrator\AppData\Roaming\npm\pm2.cmd'
             )
             $pm2 = $pm2Candidates | Where-Object { Test-PathSafe $_ } | Select-Object -First 1
             if (-not $pm2) { throw "❌ pm2.cmd 找不到" }
             $env:PATH = (Split-Path $pm2) + ';' + $env:PATH
             $ErrorActionPreference = 'Continue'
-            # try/catch 包 PM2 调用, 彻底吞掉 NativeCommandError 异常
             try { & $pm2 delete gdufsmc 2>&1 | Out-Null } catch { Write-Host "  pm2 delete: $($_.Exception.Message)" }
             $LASTEXITCODE = 0
             try { & $pm2 start deploy/ecosystem.config.js 2>&1 | Out-Null } catch { Write-Host "  pm2 start: $($_.Exception.Message)" }
@@ -263,13 +232,10 @@ jobs:
                       $ok = $true
                       break
                   }
-              } catch {
-                  # 服务器还没起来, 继续等
-              }
+              } catch { }
           }
           if (-not $ok) {
               Write-Error "❌ 主页 30s 内未就绪"
-              pm2 logs gdufsmc --lines 50 --nostream --raw
               exit 1
           }
 
@@ -283,13 +249,11 @@ jobs:
       - name: Reload Caddy (only if Caddyfile changed)
         shell: powershell
         run: |
-          # git log 在 actions workspace 里执行不是项目目录, 用 Push-Location 切到 H:\GDUFSMC-web
           Push-Location H:\GDUFSMC-web
           $changed = (git diff HEAD~1 HEAD --name-only 2>$null) | Where-Object { $_ -eq 'Caddyfile' }
           Pop-Location
 
           if ($changed -and (Get-Service -Name 'Caddy' -ErrorAction SilentlyContinue)) {
-              # 自动检测 Caddy 路径 (支持 winget / scoop / choco / 手动安装)
               $caddy = Get-Command caddy -ErrorAction SilentlyContinue
               if (-not $caddy) {
                   $candidates = @(
