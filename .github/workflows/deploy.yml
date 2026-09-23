@@ -82,9 +82,10 @@ jobs:
           Push-Location H:\GDUFSMC-web
           $token = $env:GITHUB_TOKEN
           $url = "https://x-access-token:$token@github.com/QingShi-Dev/GdufsMC-Website.git"
-          git remote set-url origin $url
-          git fetch origin main
-          git reset --hard origin/main
+          # 不调 git remote set-url (写 .git\config, NetworkService 没权限)
+          # 直接用 URL fetch, ref 用 FETCH_HEAD, reset 指向 FETCH_HEAD
+          git fetch $url main
+          git reset --hard FETCH_HEAD
           # 清工作区,保留关键文件 (.git 保留, gitignore 的保留)
           git clean -fdx -e node_modules -e .next -e logs -e app -e secrets.caddy -e .env -e .next.stale
           Pop-Location
