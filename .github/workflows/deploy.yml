@@ -126,10 +126,29 @@ jobs:
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
+          # 先停 PM2 释放 .next 文件句柄 (Windows mmap 锁文件, 删会 EBUSY)
+          # 后续 "Restart PM2" 步骤会重新启动 Next.js
+          pm2 delete gdufsmc 2>$null
+          Start-Sleep -Seconds 3
+
           # 重命名 next-build → .next (绕开 upload-artifact 吃 .next 内容)
           if (Test-Path (Join-Path $ArtifactsDir 'next-build')) {
               if (Test-Path (Join-Path $ProjectDir '.next')) {
-                  Remove-Item -Recurse -Force (Join-Path $ProjectDir '.next')
+                  # 文件锁经常 transient, retry 3 次
+                  $removed = $false
+                  for ($i = 1; $i -le 3; $i++) {
+                      try {
+                          Remove-Item -Recurse -Force (Join-Path $ProjectDir '.next') -ErrorAction Stop
+                          $removed = $true
+                          break
+                      } catch {
+                          Write-Warning "Remove .next 第 $i 次失败 (文件被 Next.js 持有): $($_.Exception.Message)"
+                          Start-Sleep -Seconds 3
+                      }
+                  }
+                  if (-not $removed) {
+                      throw "❌ 删除 .next 失败 3 次, 文件被锁死"
+                  }
               }
               Move-Item (Join-Path $ArtifactsDir 'next-build') (Join-Path $ProjectDir '.next')
               Write-Host "✅ .next deployed (BUILD_ID = $((Get-Content (Join-Path $ProjectDir '.next\BUILD_ID')).Trim()))"
