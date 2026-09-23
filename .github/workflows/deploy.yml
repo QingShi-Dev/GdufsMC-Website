@@ -76,15 +76,16 @@ jobs:
           if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
 
           # 2. 常见 pnpm 路径 (npm 全局包文件名是 pmpm.cmd, 加 pm 前缀防冲突)
+          # 注意: H:\GDUFSMC-web\pnpm 这种无后缀文件 Windows 不能直接执行,
+          #   排除, 用 .cmd 后缀
           $candidates = @(
               'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
               'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
               "$env:APPDATA\npm\pmpm.cmd"
               'C:\npm\pmpm.cmd'
               'C:\Program Files\nodejs\pmpm.cmd'
-              # working-directory 里的 pnpm (PowerShell cwd 默认在 PATH 前面)
               "$env:PROJECT_DIR\pnpm.cmd"
-              "$env:PROJECT_DIR\pnpm"
+              "$env:PROJECT_DIR\node_modules\.bin\pnpm.cmd"
           )
           foreach ($c in $candidates) {
               if (Test-Path $c) {
