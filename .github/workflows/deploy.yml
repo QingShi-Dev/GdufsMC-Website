@@ -154,17 +154,13 @@ jobs:
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
 
           # 杀所有 node 进程 (PM2 daemon + Next.js 子进程, 跨账号都杀得掉)
-          #   - 用 Stop-Process 而不是 PM2 daemon, 因为:
-          #     1) PM2 daemon 跨账号 (Administrator 启的) kill 失败
-          #     2) Windows PROCESS_TERMINATE 权限默认开放, 不受 named pipe ACL 限制
-          #   - 这样 .next 文件句柄立刻释放, Remove-Item 不会失败
+          #   - Get-Process node 只显示当前用户进程, 看不到其他账号的
+          #     用 taskkill /F /IM node.exe 是 Windows 内置工具, 跨账号杀进程
+          #     (TerminateProcess 走 PROCESS_TERMINATE 权限, 默认开放)
           try {
-              $nodeProcs = Get-Process node -ErrorAction Stop
-              if ($nodeProcs) {
-                  Write-Host "  杀 $($nodeProcs.Count) 个 node 进程: $($nodeProcs.Id -join ', ')"
-                  $nodeProcs | Stop-Process -Force
-                  Start-Sleep -Seconds 5  # 等 Next.js 优雅退出 + 句柄释放
-              }
+              Write-Host "  taskkill /F /IM node.exe (跨账号杀进程)"
+              & taskkill.exe /F /IM node.exe 2>&1 | Out-Null
+              Start-Sleep -Seconds 5  # 等 Next.js 退出 + 句柄释放
           } catch { Write-Host "  kill node: $($_.Exception.Message)" }
           $LASTEXITCODE = 0
 
