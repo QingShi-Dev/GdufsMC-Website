@@ -15,6 +15,13 @@
 #   - 装成 Windows 服务 (deploy\setup.ps1 自动做)
 #
 # 触发: push 到 main (Sveltia CMS 编辑完提交也算)
+#
+# PowerShell shell 选择:
+#   用 `powershell` (Windows PS 5.1) 而不是 `pwsh` (PS 7+ Core)
+#   校园服务器默认没装 PS 7+, 装 ps7 占 200MB 装包 + 100MB 运行时 RAM
+#   我们用的 cmdlet (Join-Path / Copy-Item / Move-Item / Test-Path / Get-Service
+#   / Get-Command / Invoke-WebRequest / pm2 / caddy) PS 5.1 都支持
+#   如需 PS 7+ 特性, 改 shell: pwsh + 在 runner 服务器装 PowerShell 7
 # =============================================================================
 
 name: Deploy to production
@@ -114,7 +121,7 @@ jobs:
           path: ${{ github.workspace }}\artifacts
 
       - name: Deploy build output to project root
-        shell: pwsh
+        shell: powershell
         run: |
           $ProjectDir = 'H:\GDUFSMC-web'
           $ArtifactsDir = Join-Path ${{ github.workspace }} 'artifacts'
@@ -144,12 +151,12 @@ jobs:
           Write-Host "✅ public / content / configs / deploy / Caddyfile 同步完成"
 
       - name: Install production dependencies
-        shell: pwsh
+        shell: powershell
         working-directory: H:\GDUFSMC-web
         run: pnpm install --prod --frozen-lockfile
 
       - name: Sync favicon to static path (Caddy /favicon.ico 固定路径)
-        shell: pwsh
+        shell: powershell
         run: |
           $ProjectDir = 'H:\GDUFSMC-web'
           $favicon = Get-ChildItem -Path "$ProjectDir\.next\static\media\favicon.*.ico" -ErrorAction SilentlyContinue | Select-Object -First 1
@@ -162,7 +169,7 @@ jobs:
           }
 
       - name: Restart PM2 (Next.js)
-        shell: pwsh
+        shell: powershell
         run: |
             $ErrorActionPreference = 'Continue'
             pm2 delete gdufsmc 2>$null
@@ -170,7 +177,7 @@ jobs:
             pm2 save | Out-Null
 
       - name: Health check (wait for Next.js bind port 3000)
-        shell: pwsh
+        shell: powershell
         run: |
           $ok = $false
           for ($i = 1; $i -le 10; $i++) {
@@ -200,7 +207,7 @@ jobs:
           }
 
       - name: Reload Caddy (only if Caddyfile changed)
-        shell: pwsh
+        shell: powershell
         run: |
           # git log 在 actions workspace 里执行不是项目目录, 用 Push-Location 切到 H:\GDUFSMC-web
           Push-Location H:\GDUFSMC-web
