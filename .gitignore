@@ -43,5 +43,23 @@ next-env.d.ts
 # 本地笔记 / 工作产物 (不入 git)
 /.workbuddy/
 
+# editor-local project state (not application source)
+/.idea/
+
+# generated release archives and staging directories
+/outputs/
+/.release-stage/
+/.release-smoke/
+
+# local runtime and diagnostic output
+/logs/
+/pnpm-store/
+/.pnpm-store/
+/_syncheck_result.txt
+
+# Windows filesystem metadata
+Thumbs.db
+Desktop.ini
+
 # 本地 Caddy 密钥 (basic auth 密码哈希, 服务器本地维护)
 /secrets.caddy

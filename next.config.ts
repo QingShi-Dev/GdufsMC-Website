@@ -100,6 +100,10 @@ const ADMIN_SECURITY_HEADERS: { key: string; value: string }[] = [
 ];
 
 const nextConfig: NextConfig = {
+  output: "standalone",
+  outputFileTracingIncludes: {
+    "/*": ["./content/**/*"],
+  },
   async headers() {
     return [
       // 主路径: 安全 CSP, 不含外部 CDN

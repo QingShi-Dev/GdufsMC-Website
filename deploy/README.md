@@ -1,6 +1,61 @@
 # gdufsmc-site 部署手册
 
-针对 **Windows Server 2019+ / 校园网 / GitHub Actions self-hosted Runner / Caddy** 优化。
+## 当前发布方式：GitHub 构建，管理员手动发布
+
+**以下为当前流程。后面的 self-hosted 初始化和服务器构建内容仅为历史参考，不要再次执行，也不要改动现有开机启动服务。**
+
+1. 提交并推送代码到 `main`（本次改造不会自动替你提交或推送）。在 Actions 的 `Build release (manual publish)` 等待安装、类型检查、lint、构建、解包冒烟测试全部通过。
+2. 下载该次运行的 `windows-release-...` artifact，在服务器解压到一个新的独立下载目录。应包含 `outputs/*.tar.gz`、同名 `.sha256.txt`、`deploy/publish-release.ps1` 和本说明。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
+3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。不要从 NETWORK SERVICE 的 Runner 调用发布脚本。
+4. 在 artifact 解压目录运行下面的校验/解包命令，再执行发布。
+
+```powershell
+$ErrorActionPreference = 'Stop'
+$archives = @(Get-ChildItem .\outputs\*.tar.gz)
+if ($archives.Count -ne 1) { throw 'Expected exactly one archive' }
+$archive = $archives[0]
+$id = $archive.Name -replace '\.tar\.gz$', ''
+$expected = ((Get-Content -LiteralPath ".\outputs\$id.sha256.txt" -Raw).Trim() -split '\s+')[0]
+$actual = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash
+if ($actual -ne $expected) { throw 'SHA256 mismatch; stop here' }
+$incoming = "H:\GDUFSMC-web\incoming\$id"
+if (Test-Path -LiteralPath $incoming) { throw 'Use a fresh incoming directory' }
+New-Item -ItemType Directory -Path $incoming | Out-Null
+tar -xzf $archive.FullName -C $incoming
+if ($LASTEXITCODE -ne 0) { throw 'Archive extraction failed' }
+$manifest = Get-Content "$incoming\release.json" -Raw | ConvertFrom-Json
+$nodeVersion = (& 'C:\Program Files\nodejs\node.exe' --version).Trim().TrimStart('v')
+if ($nodeVersion -ne $manifest.nodeVersion) { throw 'Node version differs from release; align versions before publishing' }
+& .\deploy\publish-release.ps1 -ReleaseDirectory $incoming
+```
+
+工作流固定的 Node/pnpm 版本必须确实可下载；生产 Node 必须与发布清单中的版本完全一致。不要为通过校验直接替换正在运行的 Node；先核实服务器实际版本，再统一构建配置及运行时。首次构建和真实发布尚需在实际环境验证。
+
+发布脚本会先在临时回环端口验证新包，再切换 `gdufsmc` 并检查首页、版本标记；切换失败会尝试恢复旧进程。**切换使用 stop/delete/start，会有短暂停机，不是零停机发布。** 成功后执行 `pm2 save`，不安装或修改开机启动机制，不改 Caddy。其他 PM2 应用不受操作。
+
+成功发布后检查：
+
+```powershell
+& 'C:\npm\pm2.cmd' list
+Invoke-WebRequest http://127.0.0.1:3000/__release.json -UseBasicParsing
+Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
+```
+
+如需回到上一个版本，在同一管理员会话运行：
+
+```powershell
+& .\deploy\publish-release.ps1 -Rollback
+```
+
+`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。
+
+这次改造将依赖安装和构建移出生产服务器，**不会修复 Realtek 网卡驱动导致的 0x139 蓝屏**，驱动问题仍需单独处理。稳定后可关闭临时 Caddy `debug` 日志。
+
+---
+
+## 历史部署参考（已被上面的发布流程替代）
+
+针对 **Windows Server 2019+ / 校园网 / GitHub Actions self-hosted Runner / Caddy** 的旧流程。
 
 ## 文件清单
 
