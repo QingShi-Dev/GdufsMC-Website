@@ -63,23 +63,40 @@ jobs:
           corepack enable 2>&1 | Out-Null
           $corepackPnpm = corepack prepare pnpm@12.5.1 --activate 2>&1
           Write-Host "  corepack prepare: $corepackPnpm"
-          # corepack shim 默认在 $env:LOCALAPPDATA\corepack\, 加到 PATH
+
+          # 找 pnpm: corepack shim 优先 → fallback 到常见路径 → 最后 where.exe 兜底
+          $pnpmCmd = $null
           $shimDir = Join-Path $env:LOCALAPPDATA 'corepack'
-          if (Test-Path $shimDir) {
-              $env:PATH = "$shimDir;$env:PATH"
-          }
-          # fallback: 如果 corepack 没装或 activate 失败, 用用户装在 C:\npm\pmpm.cmd
+          if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
           if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-              $candidates = @('C:\npm\pmpm.cmd', "$env:APPDATA\npm\pmpm.cmd", 'C:\Program Files\nodejs\pmpm.cmd')
+              # npm 全局包默认装在 %APPDATA%\npm\pmpm.cmd (注意是 pmpm, 不是 pnpm)
+              $candidates = @(
+                  "$env:APPDATA\npm\pmpm.cmd"
+                  'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
+                  'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
+                  'C:\npm\pmpm.cmd'
+                  'C:\Program Files\nodejs\pmpm.cmd'
+              )
               foreach ($c in $candidates) {
                   if (Test-Path $c) {
                       $env:PATH = (Split-Path $c) + ';' + $env:PATH
+                      $pnpmCmd = $c
                       Write-Host "  fallback pnpm: $c"
                       break
                   }
               }
           }
-          pnpm --version
+          if (-not $pnpmCmd) {
+              # 最后兜底: where.exe 看 PATH 上有什么
+              $pnpmCmd = (where.exe pnpm 2>&1 | Select-Object -First 1)
+              if ($pnpmCmd) { Write-Host "  where.exe pnpm: $pnpmCmd" }
+          }
+          if (-not $pnpmCmd) {
+              # 全找不到, 报错让人知道缺 pnpm
+              Get-ChildItem C:\ -Recurse -Filter 'pmpm.cmd' -Depth 3 -ErrorAction SilentlyContinue | Select-Object -First 5 FullName
+              throw "❌ pnpm 找不到, 请先在服务端装 pnpm@12.5.1 (npm install -g pnpm@12.5.1 或 winget install pnpm)"
+          }
+          & $pnpmCmd --version
 
       # =========================================================================
       # 2. Sync code — git fetch + reset, 用 GITHUB_TOKEN 临时认证
