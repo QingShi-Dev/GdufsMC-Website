@@ -64,50 +64,60 @@ jobs:
           $corepackPnpm = corepack prepare pnpm@12.5.1 --activate 2>&1
           Write-Host "  corepack prepare: $corepackPnpm"
 
-          # 找 pnpm: corepack shim 优先 → fallback 到常见路径 → 最后 where.exe 兜底
+          # 找 pnpm: 多源 fallback, where.exe 兜底
+          #   优先级: corepack shim > 全局 npm pmpm.cmd > 全盘搜 > where.exe
+          #   注意: deploy step working-directory 是 H:\GDUFSMC-web
+          #   PowerShell 默认把 cwd 加到 PATH 前面,
+          #   如果 H:\GDUFSMC-web\pnpm(.cmd|.exe) 存在, 直接可调
           $pnpmCmd = $null
+
+          # 1. corepack shim (Node 自带, 装 pnpm 到 $env:LOCALAPPDATA\corepack)
           $shimDir = Join-Path $env:LOCALAPPDATA 'corepack'
           if (Test-Path $shimDir) { $env:PATH = "$shimDir;$env:PATH" }
-          if (-not (Get-Command pnpm -ErrorAction SilentlyContinue)) {
-              # npm 全局包默认文件名是 pmpm.cmd (npm 给所有包加 pm 前缀)
-              # - $env:APPDATA 在 NetworkService 下是 ServiceProfiles\NetworkService (用户没装 pnpm)
-              # - 用户装的 pnpm 在 Administrator / ks-73 用户级 APPDATA
-              # - 或者 machine-wide prefix C:\npm (setup.ps1 装的)
-              $candidates = @(
-                  'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
-                  'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
-                  "$env:APPDATA\npm\pmpm.cmd"
-                  'C:\npm\pmpm.cmd'
-                  'C:\Program Files\nodejs\pmpm.cmd'
-              )
-              foreach ($c in $candidates) {
-                  if (Test-Path $c) {
-                      $env:PATH = (Split-Path $c) + ';' + $env:PATH
-                      $pnpmCmd = $c
-                      Write-Host "  fallback pnpm: $c"
-                      break
-                  }
+
+          # 2. 常见 pnpm 路径 (npm 全局包文件名是 pmpm.cmd, 加 pm 前缀防冲突)
+          $candidates = @(
+              'C:\Users\Administrator\AppData\Roaming\npm\pmpm.cmd'
+              'C:\Users\ks-73\AppData\Roaming\npm\pmpm.cmd'
+              "$env:APPDATA\npm\pmpm.cmd"
+              'C:\npm\pmpm.cmd'
+              'C:\Program Files\nodejs\pmpm.cmd'
+              # working-directory 里的 pnpm (PowerShell cwd 默认在 PATH 前面)
+              "$env:PROJECT_DIR\pnpm.cmd"
+              "$env:PROJECT_DIR\pnpm"
+          )
+          foreach ($c in $candidates) {
+              if (Test-Path $c) {
+                  $env:PATH = (Split-Path $c) + ';' + $env:PATH
+                  $pnpmCmd = $c
+                  Write-Host "  fallback pnpm: $c"
+                  break
               }
           }
+
+          # 3. 全盘搜 (深度 4 限制耗时)
           if (-not $pnpmCmd) {
-              # 最后兜底: 全盘搜 pmpm.cmd (深度限制 4 避免太慢)
-              Write-Host "  fallback 全失败, 全盘搜 pmpm.cmd..."
-              $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pmpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 5
+              $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pmpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 1
+              if (-not $found) {
+                  $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pnpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 1
+              }
               if ($found) {
-                  $pnpmCmd = $found[0].FullName
+                  $pnpmCmd = $found.FullName
                   $env:PATH = (Split-Path $pnpmCmd) + ';' + $env:PATH
                   Write-Host "  找到: $pnpmCmd"
-              } else {
-                  $found = Get-ChildItem 'C:\','D:\','E:\' -Recurse -Filter 'pnpm.cmd' -Depth 4 -ErrorAction SilentlyContinue -Force | Select-Object -First 5
-                  if ($found) {
-                      $pnpmCmd = $found[0].FullName
-                      $env:PATH = (Split-Path $pnpmCmd) + ';' + $env:PATH
-                      Write-Host "  找到: $pnpmCmd"
-                  }
               }
           }
+
+          # 4. where.exe 兜底 (PATH 上有什么)
           if (-not $pnpmCmd) {
-              throw "❌ pnpm 找不到, 请先在服务端装 pnpm@12.5.1"
+              try {
+                  $pnpmCmd = (where.exe pnpm 2>&1 | Where-Object { $_ -match '\\' -and (Test-Path $_) } | Select-Object -First 1)
+                  if ($pnpmCmd) { Write-Host "  where.exe: $pnpmCmd" }
+              } catch {}
+          }
+
+          if (-not $pnpmCmd) {
+              throw "❌ pnpm 找不到, 请先在服务端 Administrator PowerShell 装 pnpm@12.5.1: npm install -g pnpm@12.5.1"
           }
           & $pnpmCmd --version
 
