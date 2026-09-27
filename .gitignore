@@ -63,3 +63,27 @@ Desktop.ini
 
 # 本地 Caddy 密钥 (basic auth 密码哈希, 服务器本地维护)
 /secrets.caddy
+
+# AI 助手 / 编码 agent 的项目说明文档 (工具链配置, 不是项目源代码)
+# 跟踪到仓库会被 agent 反复编辑产生噪音, 也容易泄漏 prompt 上下文
+AGENTS.md
+CLAUDE.md
+
+# scripts/ 里 build/push 流程不用的 dev 工具 (一次性内容生成 / 调试脚本)
+# 保留 (不被忽略) 的 5 个是 build/push 必需的:
+#   package-release.mjs / test-release.mjs / copy-release-tree.mjs
+#   include-runtime-package.mjs / convert-news-images.mjs
+# 新增 dev 脚本默认入版本控制; 加到这里 = 后续新增文件不入 git, 已 tracked 不动
+/scripts/build-thumbs-fine-sprite.mjs
+/scripts/convert-icons-to-webp.mjs
+/scripts/convert-overworld-to-webp.mjs
+/scripts/gen-image-webps.cjs
+/scripts/gen-overworld-thumbs.cjs
+/scripts/gen-test-images.cjs
+/scripts/gen-test-tiles.cjs
+/scripts/inspect-overworld-tiles.cjs
+/scripts/migrate-data-png-to-webp.cjs
+/scripts/png-to-webp-q95.cjs
+/scripts/rebuild-images-from-origin.mjs
+/scripts/relayout-overworld-tiles.cjs
+/scripts/verify-search.mjs
