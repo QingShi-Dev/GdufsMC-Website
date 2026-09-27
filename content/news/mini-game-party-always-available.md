@@ -40,7 +40,7 @@ pinned: false
 
 进入游戏大厅后，前往**二楼左侧**，找到“小游戏派对”的告示牌，右键点击加入。
 
-![派对入口](/content/news/images/game-party-entrance.png)
+![派对入口](/content/news/images/game-party-entrance.webp)
 
 ### 三、活动时间
 
