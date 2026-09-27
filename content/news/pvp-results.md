@@ -9,7 +9,7 @@ badge: ''
 pinned: true
 ---
 
-### 第一届 PVP 大赛
+## 第一届 PVP 大赛
 
 于2025年10月26日举办，采用个人单循环赛制。
 
@@ -22,7 +22,7 @@ Aurora1229937、cmlok、 Hideswa、HuM0rouS1_、KirkLee123（裁判员）、Qin
 
 ![第一届PVP](/content/news/images/1st-pvp-result.png)
 
-### 第二届 PVP 大赛
+## 第二届 PVP 大赛
 
 于2025年11月16日举办，为五人团队赛。
 
@@ -34,7 +34,7 @@ Aurora1229937、BestCN_MUA、HuM0rouS1_、KirkLee123、kui_lei_shi、QingShi、S
 
 ![第二届PVP](/content/news/images/2nd-pvp.png)
 
-### 第三届 PVP 大赛
+## 第三届 PVP 大赛
 
 于2026年9月25日举办，采用个人瑞士轮加淘汰赛赛制。
 
@@ -47,4 +47,4 @@ Aurora1229937、DBUG、 Dew667、liudehua6894、mc_zte_GHM、QingShi、RTXKim_j
 
 ![第三届PVP](/content/news/images/3rd-pvp-result.png)
 
-#### 感谢所有参与和关注 PVP 大赛的朋友，后续赛事安排请关注群内公告。
+### 感谢所有参与和关注 PVP 大赛的朋友，后续赛事安排请关注群内公告。
