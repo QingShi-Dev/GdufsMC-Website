@@ -194,7 +194,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                     </span>
                     <span
                       className={cn(
-                        "font-semibold text-base sm:text-[17px] transition-colors truncate",
+                        "font-semibold text-base sm:text-[1.0625rem] transition-colors truncate",
                         isActive ? "text-slate-800" : "text-slate-500 group-hover:text-slate-700",
                       )}
                     >
@@ -204,7 +204,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                   <p
                     className={cn(
                         "hidden sm:block",
-                        "text-[15px] leading-relaxed transition-colors",
+                        "text-[0.9375rem] leading-relaxed transition-colors",
                         isActive ? "text-slate-600" : "text-slate-500",
                     )}
                   >
@@ -269,12 +269,12 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                 aria-label={`${active.title} 链接面板`}
               >
                 <div className="mb-3 flex items-center gap-2">
-                  <span className="font-semibold text-[16px] sm:text-[17px] text-slate-800">
+                  <span className="font-semibold text-[1rem] sm:text-[1.0625rem] text-slate-800">
                     {current.panel.title}
                   </span>
                   {current.panel.subtitle && (
                     <>
-                      <span className="text-[14px] sm:text-[15px] text-slate-600 ml-0.5">
+                      <span className="text-[0.875rem] sm:text-[0.9375rem] text-slate-600 ml-0.5">
                         {current.panel.subtitle}
                       </span>
                     </>
@@ -304,22 +304,22 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="font-semibold flex items-center gap-1.5 text-[15px] sm:text-[16px] text-slate-800">
+                          <div className="font-semibold flex items-center gap-1.5 text-[0.9375rem] sm:text-[1rem] text-slate-800">
                             <span className="group-hover:text-blue-500 transition-colors truncate">{l.label}</span>
                             {l.primary && (
-                              <span className="text-[11px] sm:text-[12px] px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium flex-shrink-0">
+                              <span className="text-[0.6875rem] sm:text-[0.75rem] px-1.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200 font-medium flex-shrink-0">
                                 推荐
                               </span>
                             )}
                             {l.password && (
-                              <span className="inline-flex items-center gap-1 text-[10px] sm:text-[12px] font-mono px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
+                              <span className="inline-flex items-center gap-1 text-[0.625rem] sm:text-[0.75rem] font-mono px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200 flex-shrink-0">
                                 <IconLock className="w-2.5 h-2.5" />
                                 {l.password}
                               </span>
                             )}
                           </div>
                           {l.desc && (
-                            <div className="hidden sm:flex text-[13px] sm:text-[14px] text-slate-500 mt-0.5 line-clamp-2">
+                            <div className="hidden sm:flex text-[0.8125rem] sm:text-[0.875rem] text-slate-500 mt-0.5 line-clamp-2">
                               {l.desc}
                             </div>
                           )}
@@ -369,10 +369,10 @@ export function Tutorial({ steps }: { steps: Step[] }) {
               }
               return (
                 <div className="flex items-start gap-2.5 text-sm text-slate-700 leading-relaxed">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[12px] sm:text-[14px] font-mono font-semibold flex items-center justify-center mt-0.5 tabular-nums border border-slate-200/60">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-[0.75rem] sm:text-[0.875rem] font-mono font-semibold flex items-center justify-center mt-0.5 tabular-nums border border-slate-200/60">
                     {String(contentIdx + 1).padStart(2, "0")}
                   </span>
-                  <div className="flex-1 pt-0.5 text-[15px] sm:text-[16px]">{Children.toArray(text)}</div>
+                  <div className="flex-1 pt-0.5 text-[0.9375rem] sm:text-[1rem]">{Children.toArray(text)}</div>
                 </div>
               );
             })()}
@@ -404,7 +404,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                 </button>
 
                 <span
-                  className="text-[15px] sm:text-[16px] font-mono text-slate-500 tabular-nums"
+                  className="text-[0.9375rem] sm:text-[1rem] font-mono text-slate-500 tabular-nums"
                   aria-current="true"
                 >
                   {contentIdx + 1} / {contents.length}
@@ -428,7 +428,7 @@ export function Tutorial({ steps }: { steps: Step[] }) {
                 </button>
               </div>
               {/* 边界提示 + 键盘提示 */}
-              <div className="px-3 py-1 sm:py-1.5 text-[12px] sm:text-[13px] text-slate-500 text-center bg-white/40 border-t border-slate-100">
+              <div className="px-3 py-1 sm:py-1.5 text-[0.75rem] sm:text-[0.8125rem] text-slate-500 text-center bg-white/40 border-t border-slate-100">
                 左右按钮点击翻页
               </div>
             </>

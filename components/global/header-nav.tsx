@@ -339,10 +339,10 @@ export function HeaderNav() {
                         className="relative flex flex-col cursor-pointer z-10 group select-none"
                         aria-label="云城像素社 - 返回首页"
                     >
-                        <div className="font-bold text-slate-700 text-[20px] md:text-[21px] tracking-tight leading-none pt-2">
+                        <div className="font-bold text-slate-700 text-[1.25rem] md:text-[1.3125rem] tracking-tight leading-none pt-2">
                             云城像素社
                         </div>
-                        <div className="text-[10px] md:text-[11px] text-slate-500 text-center uppercase tracking-[0.2em] font-semibold mt-0.5">
+                        <div className="text-[0.625rem] md:text-[0.6875rem] text-slate-500 text-center uppercase tracking-[0.2em] font-semibold mt-0.5">
                             GDUFS·MC
                         </div>
 

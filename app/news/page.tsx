@@ -40,8 +40,8 @@ export default async function NewsPage() {
           {/* 主栏: 全部动态 */}
           <div className="flex-1 min-w-0 px-2 sm:px-0">
             <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-5">
-              <span className="text-[19px] font-semibold text-slate-800">全部动态</span>
-              <span className="text-[17px] text-slate-500 ml-1.5">共 {list.length} 条</span>
+              <span className="text-[1.1875rem] font-semibold text-slate-800">全部动态</span>
+              <span className="text-[1.0625rem] text-slate-500 ml-1.5">共 {list.length} 条</span>
             </div>
             <NewsList items={list} />
           </div>

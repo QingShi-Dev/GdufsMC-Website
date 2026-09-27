@@ -63,7 +63,7 @@ function parseView(raw: string | null): MapView {
 export function MapTabs() {
   // useSearchParams() 在 client component 里必须包 Suspense 才能正常 SSG
   return (
-    <Suspense fallback={<div className="h-[80px]" />}>
+    <Suspense fallback={<div className="h-[5rem]" />}>
       <MapViewTabsContent />
     </Suspense>
   );
@@ -137,7 +137,7 @@ function MapViewTabsContent() {
                     <div className="flex flex-col sm:flex-row gap-x-1.5">
                       <span
                           className={cn(
-                              "text-[17px] font-bold tracking-tight flex-shrink-0",
+                              "text-[1.0625rem] font-bold tracking-tight flex-shrink-0",
                               active ? "text-slate-800" : "text-slate-600 group-hover:text-blue-500",
                           )}
                       >
@@ -146,21 +146,21 @@ function MapViewTabsContent() {
                       {/* 群系地图 tab: 标题右边放网址文字 (短版, 完整 URL 走 title tooltip) */}
                       {t.id === "block" && (
                           <span
-                              className="inline text-[11px] sm:text-[14px] text-slate-500 font-mono truncate min-w-0 flex-1 sm:ml-1"
+                              className="inline text-[0.6875rem] sm:text-[0.875rem] text-slate-500 font-mono truncate min-w-0 flex-1 sm:ml-1"
                           >
                           {BIOME_MAP_SHORT_URL}
                         </span>
                       )}
                     </div>
                     {active && (
-                        <span className="ml-auto flex-shrink-0 text-[14px] font-semibold uppercase tracking-wider text-blue-600/90 bg-blue-50 border border-blue-100 px-3 py-0.5 rounded-full">
+                        <span className="ml-auto flex-shrink-0 text-[0.875rem] font-semibold uppercase tracking-wider text-blue-600/90 bg-blue-50 border border-blue-100 px-3 py-0.5 rounded-full">
                           当前
                         </span>
                     )}
                     {isExternal && (
                         <span
                             className={cn(
-                                "ml-auto flex-shrink-0 inline-flex items-center gap-1 text-[14px] font-semibold px-3 py-0.5 rounded-full",
+                                "ml-auto flex-shrink-0 inline-flex items-center gap-1 text-[0.875rem] font-semibold px-3 py-0.5 rounded-full",
                                 "text-slate-600 bg-slate-100 border border-slate-200/80 group-hover:text-blue-500",
                             )}
                         >
@@ -171,7 +171,7 @@ function MapViewTabsContent() {
                   </div>
                   <p
                       className={cn(
-                          "hidden sm:flex text-[15px] leading-relaxed",
+                          "hidden sm:flex text-[0.9375rem] leading-relaxed",
                           active ? "text-slate-600" : "text-slate-500",
                       )}
                   >

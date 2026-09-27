@@ -60,7 +60,7 @@ export default function Home() {
                             {/* 顶部小框：Minecraft 高校联盟成员 */}
                             <div className="text-2xl sm:text-2xl lg:text-3xl font-light text-slate-600 sm:text-slate-500 mb-2">
                                 欢迎来到
-                                <a href="https://www.mualliance.cn/" target="_blank" className="inline-flex items-center gap-1.5 px-2.5 py-1 ml-2 mt-1.5 mb-2 md:mb-3 text-[14px] font-mono text-emerald-600 bg-white/60 rounded-sm">
+                                <a href="https://www.mualliance.cn/" target="_blank" className="inline-flex items-center gap-1.5 px-2.5 py-1 ml-2 mt-1.5 mb-2 md:mb-3 text-[0.875rem] font-mono text-emerald-600 bg-white/60 rounded-sm">
                                     {/* eslint-disable-next-line @next/next/no-img-element -- 本地 40x20 小图标，无需 next/image 优化 */}
                                     <img src="/icons/home/MUA图标.webp" alt="" className="w-10 h-5 flex-shrink-0"/>
                                     Minecraft 高校联盟成员
@@ -68,13 +68,13 @@ export default function Home() {
                             </div>
 
 
-                            <h1 className="text-[52px] sm:text-6xl lg:text-[80px] font-bold tracking-tight mb-4 sm:mb-5 leading-[1.05]">
+                            <h1 className="text-[3.25rem] sm:text-6xl lg:text-[5rem] font-bold tracking-tight mb-4 sm:mb-5 leading-[1.05]">
                                 <span className="bg-gradient-to-br from-sky-300 via-emerald-400 to-amber-300 bg-clip-text text-transparent">
                                   云城像素社
                                 </span>
                             </h1>
 
-                            <p className="text-base sm:text-[18px] text-slate-600 max-w-xl mx-auto sm:pl-1 lg:mx-0 mb-8 leading-relaxed">
+                            <p className="text-base sm:text-[1.125rem] text-slate-600 max-w-xl mx-auto sm:pl-1 lg:mx-0 mb-8 leading-relaxed">
                                 广外人自己的 Minecraft 服务器
                                 <span className="hidden sm:inline mx-2 text-slate-300"> · </span>
                                 <br className="sm:hidden" />
@@ -84,13 +84,13 @@ export default function Home() {
                             <div className="flex flex-col sm:flex-row justify-center items-center lg:items-start gap-3 lg:justify-start">
                                 <Link
                                     href="/guide"
-                                    className="w-full sm:w-auto px-7 py-3 rounded-full text-[18px] sm:text-[20px] bg-emerald-400 hover:bg-emerald-500 text-white font-semibold transition-colors shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40"
+                                    className="w-full sm:w-auto px-7 py-3 rounded-full text-[1.125rem] sm:text-[1.25rem] bg-emerald-400 hover:bg-emerald-500 text-white font-semibold transition-colors shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40"
                                 >
                                     开始游玩
                                 </Link>
                                 <Link
                                     href="/map"
-                                    className="w-full sm:w-auto px-7 py-3 rounded-full text-[18px] sm:text-[20px] bg-white/80 hover:bg-gray-100 text-slate-700 font-semibold border border-slate-200 hover:border-slate-300 transition-colors backdrop-blur-sm"
+                                    className="w-full sm:w-auto px-7 py-3 rounded-full text-[1.125rem] sm:text-[1.25rem] bg-white/80 hover:bg-gray-100 text-slate-700 font-semibold border border-slate-200 hover:border-slate-300 transition-colors backdrop-blur-sm"
                                 >
                                     浏览世界地图
                                 </Link>
@@ -115,12 +115,12 @@ export default function Home() {
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
                             组织简介
                         </h2>
-                        <p className="text-sm md:text-[16px] text-slate-500">
+                        <p className="text-sm md:text-[1rem] text-slate-500">
                             关于云城像素社
                         </p>
                     </div>
 
-                    <div className="md:text-[19px] px-3 sm:px-0 prose prose-slate max-w-none text-slate-600 leading-relaxed text-center">
+                    <div className="md:text-[1.1875rem] px-3 sm:px-0 prose prose-slate max-w-none text-slate-600 leading-relaxed text-center">
                         <p>
                             云城像素社是广外学生自发建设的 MC 同好交流会（非学校官方社团），成立于2024年12月。
                             目前聊天群内已添加超过二百人，包含数十名活跃玩家。
@@ -151,7 +151,7 @@ export default function Home() {
                         <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
                             服务器简介
                         </h2>
-                        <p className="text-sm md:text-[16px] text-slate-500">
+                        <p className="text-sm md:text-[1rem] text-slate-500">
                             群组服间可通过 /server 指令快捷切换
                         </p>
                     </div>
@@ -171,10 +171,10 @@ export default function Home() {
                                         className="w-9 h-9"
                                     />
                                 </div>
-                                <h3 className="text-[17px] sm:text-[18px] font-bold text-slate-800 mb-1.5">
+                                <h3 className="text-[1.0625rem] sm:text-[1.125rem] font-bold text-slate-800 mb-1.5">
                                     {f.title}
                                 </h3>
-                                <p className="text-[15px] sm:text-[16px] text-slate-600 leading-relaxed whitespace-pre-wrap">
+                                <p className="text-[0.9375rem] sm:text-[1rem] text-slate-600 leading-relaxed whitespace-pre-wrap">
                                     {f.desc}
                                 </p>
                             </div>

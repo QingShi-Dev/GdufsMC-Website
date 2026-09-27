@@ -50,8 +50,8 @@ export function Leaderboard({ data }: { data?: LeaderboardData }) {
       <div className="rounded-2xl bg-white border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] overflow-hidden">
         {/* 头部 */}
         <div className="p-4 sm:p-5 pb-3 sm:pb-3.5 border-b border-slate-100">
-          <h3 className="text-[17px] font-bold text-slate-900">{data.title}</h3>
-          <p className="text-[12px] text-slate-500 mt-1">{data.subtitle}</p>
+          <h3 className="text-[1.0625rem] font-bold text-slate-900">{data.title}</h3>
+          <p className="text-[0.75rem] text-slate-500 mt-1">{data.subtitle}</p>
         </div>
 
         {/* 列表 */}
@@ -72,7 +72,7 @@ export function Leaderboard({ data }: { data?: LeaderboardData }) {
                   className={
                     isTop3
                       ? "w-8 flex items-center justify-center shrink-0"
-                      : "w-8 text-center text-[17px] font-mono tabular-nums text-slate-500 shrink-0"
+                      : "w-8 text-center text-[1.0625rem] font-mono tabular-nums text-slate-500 shrink-0"
                   }
                   aria-label={`第 ${entry.rank} 名`}
                 >
@@ -93,10 +93,10 @@ export function Leaderboard({ data }: { data?: LeaderboardData }) {
 
                 {/* 玩家 + 分数 */}
                 <div className="flex-1 min-w-0">
-                  <div className="text-[16px] sm:text-[17px] font-semibold text-slate-800 truncate">
+                  <div className="text-[1rem] sm:text-[1.0625rem] font-semibold text-slate-800 truncate">
                     {entry.player}
                   </div>
-                  <div className="flex text-center text-[13px] text-slate-700 font-mono tabular-nums">
+                  <div className="flex text-center text-[0.8125rem] text-slate-700 font-mono tabular-nums">
                     {entry.score.toLocaleString()} 胜
                   </div>
                 </div>

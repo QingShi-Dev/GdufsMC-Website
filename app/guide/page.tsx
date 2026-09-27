@@ -25,8 +25,8 @@ export default function HelpPage() {
           <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/玩家社群图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
-            <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">玩家社群</span>
-            <span className="text-slate-500 text-[16px] sm:text-[17px] ml-1.5">扫码加入</span>
+            <span className="text-[1.125rem] sm:text-[1.1875rem] font-semibold text-slate-800">玩家社群</span>
+            <span className="text-slate-500 text-[1rem] sm:text-[1.0625rem] ml-1.5">扫码加入</span>
           </div>
           <div className="grid sm:grid-cols-2 gap-3 px-1.5 sm:px-0">
             {/* 微信群 */}
@@ -56,14 +56,14 @@ export default function HelpPage() {
                         className="w-5 h-5"
                       />
                     </div>
-                    <div className="font-semibold text-base sm:text-[17px] text-slate-800">微信小助手</div>
+                    <div className="font-semibold text-base sm:text-[1.0625rem] text-slate-800">微信小助手</div>
                   </div>
-                  <p className="text-[14px] sm:text-[15px] text-slate-600 leading-relaxed">
+                  <p className="text-[0.875rem] sm:text-[0.9375rem] text-slate-600 leading-relaxed">
                     添加好友后，小助手会将你拉入群聊
                     <br />
                     群公告包含重要信息，入群后请及时阅读
                   </p>
-                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-600">
+                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[0.8125rem] text-slate-600">
                     <span className="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                       <span className="w-2 h-2 rounded-full bg-emerald-500" />
                       推荐
@@ -100,14 +100,14 @@ export default function HelpPage() {
                         className="w-5 h-5"
                       />
                     </div>
-                    <div className="font-semibold text-base sm:text-[17px] text-slate-800">QQ 群</div>
+                    <div className="font-semibold text-base sm:text-[1.0625rem] text-slate-800">QQ 群</div>
                   </div>
-                  <p className="text-[14px] sm:text-[15px] text-slate-600 leading-relaxed">
+                  <p className="text-[0.875rem] sm:text-[0.9375rem] text-slate-600 leading-relaxed">
                     主要用于存放文件
                     <br />
                     交流推荐微信群
                   </p>
-                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[13px] text-slate-600">
+                  <div className="mt-3.5 hidden sm:flex flex-wrap items-center justify-center sm:justify-start gap-1.5 text-[0.8125rem] text-slate-600">
                     <span className="inline-flex items-center gap-1.5 font-mono px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 border border-slate-200">
                       <span className="w-2 h-2 rounded-full bg-sky-500" />
                       备选
@@ -122,9 +122,9 @@ export default function HelpPage() {
         {/* 4 步教程 — 左侧步骤列表 + 右侧手动轮播 */}
         <div className="mt-14 px-1.5 sm:px-0">
           <div className="mb-5 flex items-baseline gap-2 flex-wrap">
-            <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">逐步教程</span>
+            <span className="text-[1.125rem] sm:text-[1.1875rem] font-semibold text-slate-800">逐步教程</span>
             <br className="flex md:hidden" />
-            <span className="text-slate-500 text-[16px] sm:text-[17px] md:ml-1.5">
+            <span className="text-slate-500 text-[1rem] sm:text-[1.0625rem] md:ml-1.5">
               本教程以注册 MUA 皮肤站，配置 PCL2 启动器为例
             </span>
           </div>
@@ -138,7 +138,7 @@ export default function HelpPage() {
           <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/服务器列表图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
-            <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">服务器列表</span>
+            <span className="text-[1.125rem] sm:text-[1.1875rem] font-semibold text-slate-800">服务器列表</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-1.5 sm:px-0">
             {GROUP_ORDER.map((groupKey) => {
@@ -157,11 +157,11 @@ export default function HelpPage() {
                     {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
                     <img src={meta.icon} alt="" aria-hidden="true" className="w-9 h-9" />
                   </div>
-                  <h3 className="text-[16px] sm:text-[17px] font-bold text-slate-800 mb-1.5">
+                  <h3 className="text-[1rem] sm:text-[1.0625rem] font-bold text-slate-800 mb-1.5">
                     {meta.guideTitle}
                   </h3>
                   {meta.guideDesc && (
-                    <p className="text-[13px] sm:text-[14px] text-slate-500 leading-relaxed mb-4">{meta.guideDesc}</p>
+                    <p className="text-[0.8125rem] sm:text-[0.875rem] text-slate-500 leading-relaxed mb-4">{meta.guideDesc}</p>
                   )}
                   <div className="space-y-2.5">
                     {items.map((it) => {
@@ -178,13 +178,13 @@ export default function HelpPage() {
                           />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="text-[14px] sm:text-[15px] font-semibold text-slate-700 tracking-wide">
+                              <span className="text-[0.875rem] sm:text-[0.9375rem] font-semibold text-slate-700 tracking-wide">
                                 {it.line}
                               </span>
                               <CopyHost host={it.host} />
                             </div>
                             {it.note && (
-                              <div className="text-[12px] sm:text-[13px] text-slate-500 mt-0.5 leading-snug">
+                              <div className="text-[0.75rem] sm:text-[0.8125rem] text-slate-500 mt-0.5 leading-snug">
                                 {it.note}
                               </div>
                             )}
@@ -205,8 +205,8 @@ export default function HelpPage() {
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/推荐模组图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
             <div className={"flex flex-col items-start sm:flex-row sm:items-center sm:gap-2"}>
-              <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">推荐模组</span>
-              <span className="text-slate-500 text-[15px] sm:text-[16px] md:ml-1.5">
+              <span className="text-[1.125rem] sm:text-[1.1875rem] font-semibold text-slate-800">推荐模组</span>
+              <span className="text-slate-500 text-[0.9375rem] sm:text-[1rem] md:ml-1.5">
                 需在版本安装时选择 Fabric
               </span>
             </div>
@@ -226,13 +226,13 @@ export default function HelpPage() {
                       <img src={m.icon} alt="" aria-hidden="true" className="w-6 h-6 object-contain" />
                     </div>
                     <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-[16px] sm:text-[17px] text-slate-800 leading-tight">
+                      <div className="font-semibold text-[1rem] sm:text-[1.0625rem] text-slate-800 leading-tight">
                         {m.name}
                       </div>
-                      <div className="hidden sm:flex text-[13px] font-mono text-slate-500 mt-0.5">
+                      <div className="hidden sm:flex text-[0.8125rem] font-mono text-slate-500 mt-0.5">
                         {m.en}
                       </div>
-                      <div className="text-[14px] sm:text-[15px] text-slate-600 mt-2 leading-relaxed">
+                      <div className="text-[0.875rem] sm:text-[0.9375rem] text-slate-600 mt-2 leading-relaxed">
                         {m.desc}
                       </div>
                     </div>
@@ -248,7 +248,7 @@ export default function HelpPage() {
           <div className="flex items-center gap-1.5 text-sm text-slate-600 mb-4 px-1 sm:px-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 本地静态 SVG */}
             <img src="/icons/guide/相关链接图标.svg" alt="" aria-hidden="true" className="w-8 h-8 sm:w-8.5 sm:h-8.5" />
-            <span className="text-[18px] sm:text-[19px] font-semibold text-slate-800">相关链接</span>
+            <span className="text-[1.125rem] sm:text-[1.1875rem] font-semibold text-slate-800">相关链接</span>
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2 px-1.5 sm:px-0">
             {EXTERNAL.map((e) => (
@@ -263,10 +263,10 @@ export default function HelpPage() {
                   <IconExternalLink className="w-3.5 h-3.5 text-slate-500 group-hover:text-blue-500 transition-colors" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[15px] sm:text-[16px] font-medium text-slate-800 group-hover:text-blue-500 truncate">
+                  <div className="text-[0.9375rem] sm:text-[1rem] font-medium text-slate-800 group-hover:text-blue-500 truncate">
                     {e.label}
                   </div>
-                  <div className="text-[13px] sm:text-[14px] text-slate-500 truncate">{e.desc}</div>
+                  <div className="text-[0.8125rem] sm:text-[0.875rem] text-slate-500 truncate">{e.desc}</div>
                 </div>
               </a>
             ))}

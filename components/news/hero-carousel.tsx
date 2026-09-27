@@ -216,7 +216,7 @@ const onTouchEnd = () => {
         onTouchEnd={onTouchEnd}
         // 不在 <Link> 上挂 onTouchMove — React 18 移动端默认 passive listener, preventDefault() 被忽略
         // native touchmove listener 挂在外层 carouselRef 上 (useEffect, { passive: false }), 真正能 preventDefault
-        className="block relative min-h-[200px] sm:aspect-[21/7] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] cursor-pointer"
+        className="block relative min-h-[12.5rem] sm:aspect-[21/7] rounded-2xl overflow-hidden bg-slate-100 border border-slate-200/80 shadow-sm shadow-slate-900/[0.04] cursor-pointer"
         role="region"
         aria-roledescription="carousel"
         aria-label={`新闻轮播 — 当前: ${current.title}`}
@@ -252,25 +252,25 @@ const onTouchEnd = () => {
               <div className="flex items-center gap-2 mb-1 sm:mb-3">
                 <span
                   className={cn(
-                    "text-[11px] sm:text-[12px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
+                    "text-[0.6875rem] sm:text-[0.75rem] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
                     CATEGORY_BADGE_CLASS[current.category] ?? CATEGORY_BADGE_CLASS["公告"],
                   )}
                 >
                   {current.category}
                 </span>
                 {current.badge && (
-                  <span className="text-[11px] sm:text-[12px] font-semibold px-2 py-0.5 rounded-md bg-rose-500 text-white">
+                  <span className="text-[0.6875rem] sm:text-[0.75rem] font-semibold px-2 py-0.5 rounded-md bg-rose-500 text-white">
                     {current.badge}
                   </span>
                 )}
-                <time className="text-[15px] sm:text-[16px] text-white font-semibold tabular-nums ml-2">
+                <time className="text-[0.9375rem] sm:text-[1rem] text-white font-semibold tabular-nums ml-2">
                   {current.date}
                 </time>
               </div>
-              <h2 className="text-[22px] sm:text-[30px] font-bold text-white leading-tight sm:mb-2 max-w-2xl">
+              <h2 className="text-[1.375rem] sm:text-[1.875rem] font-bold text-white leading-tight sm:mb-2 max-w-2xl">
                 {current.title}
               </h2>
-              <p className="hidden sm:flex text-[14px] text-white/80 leading-relaxed max-w-2xl line-clamp-2">
+              <p className="hidden sm:flex text-[0.875rem] text-white/80 leading-relaxed max-w-2xl line-clamp-2">
                 {current.summary}
               </p>
             </div>
@@ -307,7 +307,7 @@ const onTouchEnd = () => {
 
         {/* 计数 — 右上角 */}
         {items.length > 1 && (
-          <div className="hidden sm:flex absolute top-4 right-6 px-2.5 py-1 rounded-full bg-black/40 text-white text-[13px] font-mono tabular-nums z-10 pointer-events-none">
+          <div className="hidden sm:flex absolute top-4 right-6 px-2.5 py-1 rounded-full bg-black/40 text-white text-[0.8125rem] font-mono tabular-nums z-10 pointer-events-none">
             {safeActive + 1} / {items.length}
           </div>
         )}

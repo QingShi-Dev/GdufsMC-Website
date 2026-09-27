@@ -37,7 +37,7 @@ export interface LabelPopupProps {
   onClose: () => void;
   /**
    * 覆盖默认 `top-3` — 用于外部挂载了其他元素 (e.g. 搜索框) 时下移避开
-   * 例: 搜索开启时父组件传 `top-[70px]` 让 popup 落到搜索框下方
+   * 例: 搜索开启时父组件传 `top-[4.375rem]` 让 popup 落到搜索框下方
    *  - 桌面端用 (popup 在地图左上)
    *  - 移动端忽略 (popup 在底部)
    */
@@ -60,8 +60,10 @@ export interface LabelPopupProps {
   rootRef?: React.RefObject<HTMLDivElement | null>;
   /**
    * 全屏状态 — 控制 popup 宽度
-   *   - false (非全屏): w-72 sm:w-80 (320px 固定)
-   *   - true (全屏): w-[max(320px,min(25vw,420px))] viewport 25% 不超 420px 不低于 320px
+   *   - false (非全屏): w-72 sm:w-[clamp(...)] lg:w-80 (20rem 跟着根字号 16-19px 缩放)
+   *   - true (全屏): 17.5rem / 22.5rem 跟着根字号缩放, 跟非全屏 lg 保持"全屏稍宽"的关系
+   *     (2026-09-27 修复: 之前写死 280-360px, 2K 下根字号 19px 时非全屏 lg 涨到 380px,
+   *      反而比全屏 360px 宽, 跟搜索栏一样的 bug)
    */
   isFullscreen?: boolean;
   /**
@@ -207,9 +209,11 @@ function DesktopPopup({
       className={cn(
         "absolute left-4 z-20",
         topClassName ?? "top-4",
+        // 2026-09-27: 跟搜索栏同款 — 全屏分支用 rem (17.5/22.5), 跟非全屏 lg:w-80 (20rem)
+        // 一起跟着根字号 (clamp 16-19px) 缩放, 防止 2K 下非全屏 380 > 全屏 360 的反向
         isFullscreen
-          ? "w-[max(280px,min(25vw,360px))] max-w-[calc(100vw-24px)]"
-          : "w-72 sm:w-[clamp(240px,calc(100vw-32px),280px)] lg:w-80 max-w-[calc(100%-24px)]",
+          ? "w-[max(17.5rem,min(25vw,22.5rem))] max-w-[calc(100vw-24px)]"
+          : "w-72 sm:w-[clamp(15rem,calc(100vw-32px),17.5rem)] lg:w-80 max-w-[calc(100%-24px)]",
         "bg-white border border-slate-200 rounded-lg",
         "shadow-2xl shadow-slate-900/20",
         // max-h 按屏幕高度限制 — 手机横屏 (300px 高度) 时不会溢出
@@ -245,7 +249,7 @@ function DesktopPopup({
               alt=""
               className="w-5 h-5 opacity-0 group-hover:opacity-90 transition-opacity"
             />
-            <span className="text-[13px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+            <span className="text-[0.8125rem] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
               查看大图
             </span>
           </div>
@@ -255,18 +259,18 @@ function DesktopPopup({
       <div className="px-4.5 pt-5.5 pb-5 space-y-1.5">
         <span
           id="lm-popup-name"
-          className="text-[23px] font-normal text-slate-800 leading-tight"
+          className="text-[1.4375rem] font-normal text-slate-800 leading-tight"
         >
           {label.name}
         </span>
         {hasDescription && (
-          <p className="text-[15px] mt-1.5 leading-snug text-slate-600">
+          <p className="text-[0.9375rem] mt-1.5 leading-snug text-slate-600">
             {label.description}
           </p>
         )}
         <div className="mt-3 space-y-1.5">
-          <div className="flex items-center gap-1.5 text-[14px] text-slate-600">
-            <span className="text-[13px] uppercase w-8 shrink-0 text-slate-600">
+          <div className="flex items-center gap-1.5 text-[0.875rem] text-slate-600">
+            <span className="text-[0.8125rem] uppercase w-8 shrink-0 text-slate-600">
               坐标
             </span>
             <span className="font-mono">
@@ -275,10 +279,10 @@ function DesktopPopup({
           </div>
           {label.builder && (
               <div className="flex  items-center gap-1.5 pt-1">
-                <span className="text-[13px] uppercase w-11 shrink-0 text-slate-600">
+                <span className="text-[0.8125rem] uppercase w-11 shrink-0 text-slate-600">
                   建设者
                 </span>
-                <span className="text-[13px] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-1.5">
+                <span className="text-[0.8125rem] leading-snug text-slate-600 font-medium flex-1 min-w-0 flex flex-wrap gap-x-1.5">
                   {label.builder
                     .split(/\s+/)
                     .filter((name) => name.length > 0)
@@ -467,17 +471,17 @@ function MobilePopup({
       <div className="sticky top-0 z-10 bg-white border-b border-slate-100 px-5 pt-4 flex flex-col items-start">
         <span
           id="lm-popup-name"
-          className="min-w-0 text-[22px] font-semibold text-slate-700"
+          className="min-w-0 text-[1.375rem] font-semibold text-slate-700"
         >
           {label.name}
         </span>
-        <div className="flex items-center pt-1 gap-1.5 text-[16px] text-slate-500">
+        <div className="flex items-center pt-1 gap-1.5 text-[1rem] text-slate-500">
           <span className="font-mono text-slate-700">
                   x={label.x} z={label.z}
                 </span>
         </div>
         {hasDescription && (
-            <span className="text-[16px] pt-0.5 text-slate-600">
+            <span className="text-[1rem] pt-0.5 text-slate-600">
               {label.description}
             </span>
         )}
@@ -526,7 +530,7 @@ function MobilePopup({
           <div className="space-y-3 pt-2 border-t border-slate-100">
             <div className="space-y-2">
               {hasBuilder && (
-                <div className="flex items-center gap-1.5 text-[13px]">
+                <div className="flex items-center gap-1.5 text-[0.8125rem]">
                   <span className="uppercase w-11 shrink-0 text-slate-500">
                     建设者
                   </span>
@@ -676,7 +680,7 @@ function MobileImagesGrid({
               }}
             />
             <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-800/50 transition-colors flex items-center justify-center">
-              <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[0.6875rem] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
                 查看大图
               </span>
             </div>
@@ -766,12 +770,12 @@ function ImageThumbnails({
                   alt=""
                   className="w-4 h-4 opacity-0 group-hover:opacity-90 transition-opacity"
                 />
-                <span className="text-[11px] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                <span className="text-[0.6875rem] font-medium text-white opacity-0 group-hover:opacity-100 transition-opacity">
                   查看大图
                 </span>
               </div>
               {i === totalSlots - 1 && more > 0 && (
-                <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[10px] font-semibold text-white pointer-events-none">
+                <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center text-[0.625rem] font-semibold text-white pointer-events-none">
                   +{more}
                 </div>
               )}
@@ -791,7 +795,7 @@ function ImageThumbnails({
           return (
             <div
               key={i}
-              className="flex-1 text-center text-[10px] text-slate-500 leading-tight truncate"
+              className="flex-1 text-center text-[0.625rem] text-slate-500 leading-tight truncate"
             >
               {caption ?? ""}
             </div>
@@ -815,7 +819,7 @@ function ProductRow({
     <div className="flex items-start gap-1.5">
       <span
         className={cn(
-          "text-[13px] font-medium uppercase pt-0.5 w-7 shrink-0",
+          "text-[0.8125rem] font-medium uppercase pt-0.5 w-7 shrink-0",
           tone === "sky" ? "text-sky-600" : "text-emerald-600",
         )}
       >
@@ -823,7 +827,7 @@ function ProductRow({
       </span>
       <div className="flex flex-wrap gap-1 flex-1 min-w-0">
         {products.length === 0 ? (
-          <span className="text-[13px] text-slate-400">—</span>
+          <span className="text-[0.8125rem] text-slate-400">—</span>
         ) : (
           products.map((p) => <ProductPill key={p.label} product={p} tone={tone} />)
         )}
@@ -848,7 +852,7 @@ function ProductPill({
   return (
     <span
       className={cn(
-        "inline-flex items-center text-center px-1.5 py-0.5 rounded text-[12px] font-medium ring-1",
+        "inline-flex items-center text-center px-1.5 py-0.5 rounded text-[0.75rem] font-medium ring-1",
         showIcon && "gap-1",
         toneClass,
       )}

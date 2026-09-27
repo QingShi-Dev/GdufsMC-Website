@@ -98,7 +98,7 @@ function SearchResults({
       <div
         role="listbox"
         aria-label="搜索结果"
-        className="border-t border-slate-200 px-3 py-3 text-[13px] text-slate-400"
+        className="border-t border-slate-200 px-3 py-3 text-[0.8125rem] text-slate-400"
       >
         暂无搜索结果
       </div>
@@ -144,17 +144,17 @@ function SearchResults({
             style={{ background: worldAccent(r.worldId) }}
             aria-hidden="true"
           />
-          <span className="text-[14px] font-medium text-slate-800 truncate flex-1 min-w-0">
+          <span className="text-[0.875rem] font-medium text-slate-800 truncate flex-1 min-w-0">
             {r.label.name}
           </span>
-          <span className="text-[13px] font-mono text-slate-500 shrink-0">
+          <span className="text-[0.8125rem] font-mono text-slate-500 shrink-0">
             {worldName(r.worldId)}
           </span>
           {/* 命中的字段 chip — 只显示"产出"一种, 让用户知道 "这里是因为我搜的产出物命中"
               (拼音/缩写 chip 信息冗余: 搜的就是这两个, 显示出来没新增信息) */}
           {r.matched.includes("output") && (
             <span
-              className="px-1.5 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
+              className="px-1.5 py-0.5 rounded text-[0.6875rem] font-medium bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 shrink-0"
               title="该地标的产出匹配搜索词"
             >
               产出
@@ -221,8 +221,8 @@ function WorldTabs({
                 boxShadow: active ? `0 0 2px ${w.accent}80` : "none",
               }}
             />
-            <span className="text-[17px] ml-0.5">{w.name}</span>
-            <span className="text-[15px] text-slate-500 font-mono hidden sm:inline">
+            <span className="text-[1.0625rem] ml-0.5">{w.name}</span>
+            <span className="text-[0.9375rem] text-slate-500 font-mono hidden sm:inline">
               {w.version}
             </span>
           </button>
@@ -242,7 +242,7 @@ function WorldTabs({
           aria-label={searchVisible ? "隐藏搜索" : "显示搜索"}
           aria-pressed={searchVisible}
           className={cn(
-            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[0.9375rem] sm:text-[1.0625rem] font-semibold",
             "transition-all flex items-center text-center gap-2 cursor-pointer",
             "text-slate-500 hover:text-slate-700 hover:bg-white/40",
           )}
@@ -263,7 +263,7 @@ function WorldTabs({
           aria-label={labelsVisible ? "隐藏地名" : "显示地名"}
           aria-pressed={labelsVisible}
           className={cn(
-            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[0.9375rem] sm:text-[1.0625rem] font-semibold",
             "transition-all flex items-center gap-2 cursor-pointer",
             "text-slate-500 hover:text-slate-700 hover:bg-white/40",
           )}
@@ -286,7 +286,7 @@ function WorldTabs({
           aria-pressed={transitVisible}
           className={cn(
             "lg:mr-72",
-            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[15px] sm:text-[17px] font-semibold",
+            "px-2.5 pt-2 pd-1.5 sm:py-2 rounded-xl text-[0.9375rem] sm:text-[1.0625rem] font-semibold",
             "transition-all flex items-center gap-2 cursor-pointer",
             "text-slate-500 hover:text-slate-700 hover:bg-white/40",
           )}
@@ -1223,23 +1223,41 @@ const preloadedUrls = new Set<string>();
   //     - writeHoverCoordFromScreen 前: 该 useCallback 的 deps 包含 isFullscreen
   //   - hook 内部 useEffect 在 commit 后才跑, 此时 computeMapScrollTarget 已初始化
   const computeMapScrollTarget = useCallback((): number => {
-    // 之前: 移动端 < 640 直接 return window.scrollY (no-op) — 注释说"用户手指控制滚动"
-    //   - 现在: label 点击等操作需要跟桌面端一致滚到地图位置 (用户最新要求)
-    //   - 桌面端 < 640 / >= 640 都按"地图贴 header 下"算 (offsetTop 累加 + 减 headerHeight)
-    //   - 移动端 TOP_GAP 从 14 改成 1.5 (用户最新要求 — 滚动 target 稍微小一点, 地图更贴 header)
+    // 滚动到地图在视窗里的位置:
+    //   - 移动端 (window.innerWidth < 640): 贴 header 下沿, 极小 gap (1.5px),
+    //     移动端用户用手指控制滚动, 不强制居中 (大地图居中反而露出底部白边, 不自然)
+    //   - 桌面端 (>= 640): 把 rootRef (WorldTabs + 地图) 垂直居中在 header 下方的视口里,
+    //     减去 header 高度. 即使地图本身比可用视口高也居中 — 让用户看到地图中部,
+    //     上下边缘超出视口可以手动滚去看 (center 是用户的明确要求).
     const el = rootRef.current;
     if (!el) return window.scrollY;
     const headerEl = document.querySelector<HTMLElement>("header.fixed.top-0");
     const headerHeight = headerEl ? headerEl.getBoundingClientRect().height : 0;
-    const TOP_GAP = window.innerWidth >= 640 ? 8 : 1.5;
-    // 累加 offsetTop 算地图到 page 顶部的 naturalTop, 减去 header + gap
-    let top = 0;
+
+    // 累加 offsetTop 算地图到 page 顶部的 naturalTop
+    let naturalTop = 0;
     let node: HTMLElement | null = el;
     while (node && node !== document.body) {
-      top += node.offsetTop;
+      naturalTop += node.offsetTop;
       node = node.offsetParent as HTMLElement | null;
     }
-    return Math.max(0, top - headerHeight - TOP_GAP);
+
+    // 移动端: 贴 header 下沿 (保持原行为)
+    if (window.innerWidth < 640) {
+      return Math.max(0, naturalTop - headerHeight - 1.5);
+    }
+
+    // 桌面端: 始终居中 (即使地图比视口高)
+    //   - rootRef 中心 = naturalTop + mapHeight/2
+    //   - 目标视口中心 = headerHeight + (viewportHeight - headerHeight) / 2
+    //   - scrollY = (rootRef 中心 natural) - (目标视口中心)
+    //   - 即 naturalTop + mapHeight/2 - headerHeight - (viewportHeight - headerHeight)/2
+    //   - 化简: naturalTop - headerHeight - (viewportHeight - headerHeight - mapHeight)/2
+    const mapHeight = el.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    const availableHeight = viewportHeight - headerHeight;
+    const verticalGap = (availableHeight - mapHeight) / 2;
+    return Math.max(0, naturalTop - headerHeight - verticalGap);
   }, []);
   const { isFullscreen, toggleFullscreen, compactLabels } = useFullscreen({
     containerRef,
@@ -2036,7 +2054,7 @@ const preloadedUrls = new Set<string>();
           // 文字大小跟上方两个开关按钮 (text-xs sm:text-sm) 对齐
           <div
             ref={coordBoxRef}
-            className="hidden sm:flex absolute right-5 top-1/2 -translate-y-1/2 items-center gap-2 text-xs sm:text-[15px] font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
+            className="hidden sm:flex absolute right-5 top-1/2 -translate-y-1/2 items-center gap-2 text-xs sm:text-[0.9375rem] font-mono text-slate-700 whitespace-nowrap tabular-nums select-none pointer-events-none"
             aria-live="polite"
             style={{ display: "none" }}
           >
@@ -2128,9 +2146,10 @@ const preloadedUrls = new Set<string>();
           // 配合移动端 preserveAspectRatio="xMidYMid slice", 瓦片填满容器不留背景
           // 桌面端: aspectRatio 2.17 + min(85vh, 90vw) 已经够大, minHeight 不生效
           minHeight: isFullscreen ? undefined : 420,
-          // 桌面端最大宽度 1374px (居中), 移动端/全屏不限
-          maxWidth: isFullscreen ? "none" : 1374,
-          marginInline: isFullscreen ? undefined : "auto",
+          // 桌面端宽度跟随父级 (父级是 max-w-7xl, 也就是 80rem 跟着根字号变)
+          //   - 之前硬编码 maxWidth: 1374 + marginInline: auto 在 viewport > 1455px 时会让
+          //     WorldTabs (w-full) 比地图容器宽, 维度栏从两侧"伸出来"一截
+          //   - 移除这两个属性后, WorldTabs 和 map 容器都是父级 100%, 同宽对齐
           width: isFullscreen ? "100%" : "100%",
           height: isFullscreen ? "100%" : undefined,
           touchAction: "none",
@@ -2218,13 +2237,13 @@ const preloadedUrls = new Set<string>();
         />
 
         {/* 标签详情卡片 — 左上角, 拖动/缩放不关, 点地图关
-            搜索开启时 popup 用 absolute + top-[60px] 让位搜索栏 (wrapper 也是 absolute,
+            搜索开启时 popup 用 absolute + top-[3.75rem] 让位搜索栏 (wrapper 也是 absolute,
             跟 page scroll 走; click map 触发的 scrollMapIntoView 让地图 + wrapper 一起到 viewport 顶部) */}
         {selectedLabel && (
           <LabelPopup
             label={selectedLabel}
             onClose={() => setSelectedLabel(null)}
-            topClassName={searchVisible ? "absolute top-[70px] left-4" : undefined}
+            topClassName={searchVisible ? "absolute top-[4.375rem] left-4" : undefined}
             topOffset={searchVisible ? 70 : 16}
             rootRef={popupRef}
             isFullscreen={isFullscreen}
@@ -2256,9 +2275,12 @@ const preloadedUrls = new Set<string>();
               // 宽度策略 — 用户要求 #3: 桌面端 lg 跟 popup 对齐 (lg:w-80 = 320px)
               //   - 之前用 lg:max-w-sm (384px), 比 popup (320px) 长 64px
               //   - 改 max-w-80 (320px) 让两个元素视觉等宽, popup 在下搜索栏在上
+              // 2026-09-27: 全屏 max-w 改用 rem (17.5rem / 22.5rem), 跟非全屏 max-w-80 一起
+              //   跟着根字号 (clamp 16-19px) 缩放. 之前写死 280-360px, 2K 下根字号涨到 19px
+              //   时 max-w-80 = 380 > 全屏 360, 反过来"全屏比非全屏窄", 用户看着别扭.
               isFullscreen
-                ? "max-w-[max(280px,min(25vw,360px))]"
-                : "max-w-[calc(100vw-32px)] sm:max-w-[clamp(240px,calc(100vw-32px),280px)] lg:max-w-80",
+                ? "max-w-[max(17.5rem,min(25vw,22.5rem))]"
+                : "max-w-[calc(100vw-32px)] sm:max-w-[clamp(15rem,calc(100vw-32px),17.5rem)] lg:max-w-80",
               "bg-white border border-slate-200 rounded-lg",
               "shadow-2xl shadow-slate-900/20",
               "animate-in fade-in slide-in-from-top-2 duration-200",
@@ -2301,7 +2323,7 @@ const preloadedUrls = new Set<string>();
                   }
                 }}
                 placeholder="搜索建筑名称或机器产物"
-                className="flex-1 min-w-0 px-2 text-[15px] text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
+                className="flex-1 min-w-0 px-2 text-[0.9375rem] text-slate-700 bg-transparent outline-none placeholder:text-slate-400"
               />
               {searchQuery.length > 0 && (
                 <button
@@ -2354,7 +2376,7 @@ const preloadedUrls = new Set<string>();
               全屏下右上空间足够, 跟搜索栏 (左上) 不重叠 */}
         {(!isMobile || !searchVisible || isFullscreen) && (
           <div className="absolute top-3 right-3 z-10 pointer-events-none">
-            <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[11px] sm:text-[15px] font-mono text-slate-600 shadow-sm tabular-nums">
+            <div className="px-2 py-1 rounded-lg bg-white/80 border border-slate-200/80 text-[0.6875rem] sm:text-[0.9375rem] font-mono text-slate-600 shadow-sm tabular-nums">
               {Math.round(k * 100)}%
             </div>
           </div>

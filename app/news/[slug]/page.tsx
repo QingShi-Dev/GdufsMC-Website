@@ -53,7 +53,7 @@ export default async function NewsDetailPage({ params }: Props) {
         <img src={news.cover} alt={news.title} className="absolute inset-0 w-full h-full object-cover" />
         {news.badge && (
           <div className="absolute top-3.5 sm:top-5 left-4.5 sm:left-6">
-            <span className="text-[12px] sm:text-[15px] font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md bg-rose-500 text-white">
+            <span className="text-[0.75rem] sm:text-[0.9375rem] font-semibold px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-md bg-rose-500 text-white">
               {news.badge}
             </span>
           </div>
@@ -64,13 +64,13 @@ export default async function NewsDetailPage({ params }: Props) {
       <header className="mb-4 sm:mb-8">
         <div className="flex items-center gap-2 mb-2 sm:mb-4 flex-wrap">
           <span
-            className={`text-[13px] sm:text-[15px] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wider ${CATEGORY_BADGE_CLASS[news.category] ?? CATEGORY_BADGE_CLASS["公告"]}`}
+            className={`text-[0.8125rem] sm:text-[0.9375rem] font-semibold px-2.5 py-1 rounded-md uppercase tracking-wider ${CATEGORY_BADGE_CLASS[news.category] ?? CATEGORY_BADGE_CLASS["公告"]}`}
           >
             {news.category}
           </span>
-          <time className="text-[16px] text-slate-500 font-medium tabular-nums ml-0.5 sm:ml-1.5">{news.date}</time>
+          <time className="text-[1rem] text-slate-500 font-medium tabular-nums ml-0.5 sm:ml-1.5">{news.date}</time>
         </div>
-        <h1 className="text-[26px] sm:text-4xl font-bold text-slate-900 leading-tight">
+        <h1 className="text-[1.625rem] sm:text-4xl font-bold text-slate-900 leading-tight">
           {news.title}
         </h1>
       </header>
@@ -97,8 +97,8 @@ export default async function NewsDetailPage({ params }: Props) {
               className="w-4.5 h-4.5 text-slate-400 group-hover:text-brand-600 shrink-0 mt-0.5 rotate-180"
             />
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] text-slate-600 mb-1">上一篇</div>
-              <div className="text-[17px] font-semibold text-slate-800 group-hover:text-brand-600 line-clamp-2">
+              <div className="text-[0.9375rem] text-slate-600 mb-1">上一篇</div>
+              <div className="text-[1.0625rem] font-semibold text-slate-800 group-hover:text-brand-600 line-clamp-2">
                 {prev.title}
               </div>
             </div>
@@ -118,8 +118,8 @@ export default async function NewsDetailPage({ params }: Props) {
               className="w-4.5 h-4.5 text-slate-400 group-hover:text-brand-600 shrink-0 mt-0.5"
             />
             <div className="min-w-0 flex-1">
-              <div className="text-[15px] text-slate-600 mb-1">下一篇</div>
-              <div className="text-[17px] font-semibold text-slate-800 group-hover:text-brand-600 line-clamp-2">
+              <div className="text-[0.9375rem] text-slate-600 mb-1">下一篇</div>
+              <div className="text-[1.0625rem] font-semibold text-slate-800 group-hover:text-brand-600 line-clamp-2">
                 {next.title}
               </div>
             </div>
@@ -138,7 +138,7 @@ export default async function NewsDetailPage({ params }: Props) {
        */}
       <Link
         href="/news"
-        className="fixed top-24 sm:top-32 right-6 lg:right-[max(1.5rem,calc(50vw-32rem+1.5rem))] z-40 inline-flex flex-col sm:flex-row items-center gap-2 px-2 sm:px-5 py-3 rounded-full bg-white/80 hover:bg-white border border-slate-200/80 shadow-sm text-slate-800 text-[15px] font-medium transition-all"
+        className="fixed top-24 sm:top-32 right-6 lg:right-[max(1.5rem,calc(50vw-32rem+1.5rem))] z-40 inline-flex flex-col sm:flex-row items-center gap-2 px-2 sm:px-5 py-3 rounded-full bg-white/80 hover:bg-white border border-slate-200/80 shadow-sm text-slate-800 text-[0.9375rem] font-medium transition-all"
       >
         {/* eslint-disable-next-line @next/next/no-img-element -- 本地图标 */}
           <img
@@ -146,7 +146,7 @@ export default async function NewsDetailPage({ params }: Props) {
             alt=""
             className="w-4 h-4"
           />
-        <span className="text-[10px] sm:text-[15px]">返回</span>
+        <span className="text-[0.625rem] sm:text-[0.9375rem]">返回</span>
       </Link>
     </article>
   );

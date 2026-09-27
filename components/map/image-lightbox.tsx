@@ -439,7 +439,7 @@ export function ImageLightbox({
             k > MIN_K
               ? "cursor-grab active:cursor-grabbing"
               : "cursor-default",
-            "w-[90vw] h-[90vh] max-w-[1400px] max-h-[900px]",
+            "w-[90vw] h-[90vh] max-w-[87.5rem] max-h-[56.25rem]",
           )}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
@@ -478,7 +478,7 @@ export function ImageLightbox({
           hiResImages[currentIndex].split("/").pop()?.split(/[?#]/)[0] ?? "";
         const stem = filename.replace(/\.[^.]+$/, "");
         return stem ? (
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-6.5 py-2.5 rounded-full bg-white/90 text-slate-700 text-[16px] font-semibold backdrop-blur-md pointer-events-none whitespace-nowrap">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 max-w-[80vw] px-6.5 py-2.5 rounded-full bg-white/90 text-slate-700 text-[1rem] font-semibold backdrop-blur-md pointer-events-none whitespace-nowrap">
             {stem}
           </div>
         ) : null;

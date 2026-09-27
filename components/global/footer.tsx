@@ -55,7 +55,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
       <h4
           className={cn(
-              "text-[15px] sm:text-[16px] font-semibold uppercase tracking-[0.12em] mb-4",
+              "text-[0.9375rem] sm:text-[1rem] font-semibold uppercase tracking-[0.12em] mb-4",
               "text-slate-700",
           )}
       >
@@ -100,18 +100,18 @@ function QRCard({ type }: { type: Exclude<QrType, null> }) {
         <div className="flex items-center gap-2 mb-1 justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={cfg.icon} alt="" className="w-5 h-5" />
-          <h3 className="text-[16px] font-bold text-slate-800">{cfg.title}</h3>
+          <h3 className="text-[1rem] font-bold text-slate-800">{cfg.title}</h3>
         </div>
-        <p className="text-[12px] text-slate-500 mb-2 text-center">{cfg.subtitle}</p>
+        <p className="text-[0.75rem] text-slate-500 mb-2 text-center">{cfg.subtitle}</p>
         <div className="bg-slate-50 rounded-lg p-2 flex items-center justify-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
               src={cfg.qrSrc}
               alt={`${cfg.title}二维码`}
-              className="w-full max-w-[200px] h-auto"
+              className="w-full max-w-[12.5rem] h-auto"
           />
         </div>
-        <p className="md:hidden text-[12px] text-slate-400 mt-2 text-center">长按或截图后扫描</p>
+        <p className="md:hidden text-[0.75rem] text-slate-400 mt-2 text-center">长按或截图后扫描</p>
       </div>
   );
 }
@@ -269,7 +269,7 @@ function QuickNav() {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                      "text-slate-600 hover:text-slate-900 transition-colors w-fit text-[15px] sm:text-[15px]",
+                      "text-slate-600 hover:text-slate-900 transition-colors w-fit text-[0.9375rem] sm:text-[0.9375rem]",
                       "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400/50 focus-visible:rounded",
                   )}
               >
@@ -299,15 +299,15 @@ function LogoIntro() {
             <img src="/icons/global/组织标识.jpg" className="w-full h-full object-fill rounded-xl" alt=""/>
           </div>
           <div>
-            <div className="font-bold text-slate-700 text-[16px] sm:text-[18px] leading-tight group-hover:text-emerald-500 transition-colors">
+            <div className="font-bold text-slate-700 text-[1rem] sm:text-[1.125rem] leading-tight group-hover:text-emerald-500 transition-colors">
               云城像素社
             </div>
-            <div className="text-[10px] sm:text-[11px] text-slate-500 uppercase tracking-[0.2em] font-semibold mt-0.5 ml-0.5">
+            <div className="text-[0.625rem] sm:text-[0.6875rem] text-slate-500 uppercase tracking-[0.2em] font-semibold mt-0.5 ml-0.5">
               GDUFS·MC
             </div>
           </div>
         </Link>
-        <p className="text-[14px] sm:text-[16px] text-slate-600 max-w-sm leading-relaxed mt-3">
+        <p className="text-[0.875rem] sm:text-[1rem] text-slate-600 max-w-sm leading-relaxed mt-3">
           广外人的 Minecraft 服务器。一砖一瓦，都是回忆。
         </p>
       </div>
@@ -373,7 +373,7 @@ function ServerGroupCard({
           )}
       >
         <div className="flex items-center justify-between gap-2 mb-1.5">
-        <span className={cn("text-[12px] sm:text-[14px] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-600")}>
+        <span className={cn("text-[0.75rem] sm:text-[0.875rem] font-semibold uppercase tracking-wider", recommended ? "text-emerald-600" : "text-slate-600")}>
           {line}
           {bandwidth && (
               <span
@@ -387,7 +387,7 @@ function ServerGroupCard({
           )}
         </span>
           {recommended && (
-              <span className="flex items-center text-center gap-1 text-[12px] sm:text-[12px] text-emerald-600 font-medium">
+              <span className="flex items-center text-center gap-1 text-[0.75rem] sm:text-[0.75rem] text-emerald-600 font-medium">
                 <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-500 animate-pulse" />
                 推荐
               </span>
@@ -396,9 +396,9 @@ function ServerGroupCard({
         <div className="space-y-0.5">
           {servers.map((s) => (
               <div key={s.host}>
-                <div className="flex font-mono text-[13px] sm:text-[14px] text-slate-800 justify-between">
+                <div className="flex font-mono text-[0.8125rem] sm:text-[0.875rem] text-slate-800 justify-between">
                   <span className="truncate">{s.host}</span>
-                  <span className="text-[11px] sm:text-[13px] text-slate-600 flex-shrink-0">
+                  <span className="text-[0.6875rem] sm:text-[0.8125rem] text-slate-600 flex-shrink-0">
                       {s.version}
                   </span>
                 </div>
@@ -490,7 +490,7 @@ export function Footer() {
             <div
                 className={cn(
                     "mt-1 sm:mt-8 pt-1 border-t border-slate-200/60",
-                    "text-center text-xs sm:text-[13px] text-slate-500",
+                    "text-center text-xs sm:text-[0.8125rem] text-slate-500",
                 )}
             >
               <span className="font-semibold text-slate-600">

@@ -37,7 +37,7 @@ function NewsCardFeatured({ item }: { item: NewsItem }) {
           />
           {item.badge && (
             <div className="absolute top-4 left-6">
-              <span className="text-[13px] font-semibold px-2 py-1 rounded-md bg-rose-500 text-white">
+              <span className="text-[0.8125rem] font-semibold px-2 py-1 rounded-md bg-rose-500 text-white">
                 {item.badge}
               </span>
             </div>
@@ -48,13 +48,13 @@ function NewsCardFeatured({ item }: { item: NewsItem }) {
           <div className="flex items-center gap-2 mb-3 flex-wrap">
             <span
               className={cn(
-                "text-[12px] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
+                "text-[0.75rem] font-semibold px-2 py-0.5 rounded-md uppercase tracking-wider",
                 CATEGORY_BADGE_CLASS[item.category] ?? CATEGORY_BADGE_CLASS["公告"],
               )}
             >
               {item.category}
             </span>
-            <time className="text-[14px] text-slate-600 font-mono tabular-nums ml-0.5">{item.date}</time>
+            <time className="text-[0.875rem] text-slate-600 font-mono tabular-nums ml-0.5">{item.date}</time>
           </div>
           <h3 className="text-xl sm:text-2xl font-bold text-slate-800 leading-tight mb-2 sm:mb-3 group-hover:text-brand-600 transition-colors">
             {item.title}
@@ -95,7 +95,7 @@ function NewsCardDefault({ item }: { item: NewsItem }) {
         />
         {item.badge && (
           <div className="absolute top-2.5 left-3.5">
-            <span className="text-[11px] font-semibold px-1.5 py-1 rounded bg-rose-500 text-white">
+            <span className="text-[0.6875rem] font-semibold px-1.5 py-1 rounded bg-rose-500 text-white">
               {item.badge}
             </span>
           </div>
@@ -105,18 +105,18 @@ function NewsCardDefault({ item }: { item: NewsItem }) {
         <div className="flex items-center gap-2 mb-2 flex-wrap">
           <span
             className={cn(
-              "text-[12px] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider",
+              "text-[0.75rem] font-semibold px-1.5 py-0.5 rounded uppercase tracking-wider",
               CATEGORY_BADGE_CLASS[item.category] ?? CATEGORY_BADGE_CLASS["公告"],
             )}
           >
             {item.category}
           </span>
-          <time className="text-[13px] text-slate-600 font-mono tabular-nums">{item.date}</time>
+          <time className="text-[0.8125rem] text-slate-600 font-mono tabular-nums">{item.date}</time>
         </div>
-        <h3 className="text-[16px] font-bold text-slate-800 leading-snug mb-1 sm:mb-2 line-clamp-2 group-hover:text-brand-600 transition-colors">
+        <h3 className="text-[1rem] font-bold text-slate-800 leading-snug mb-1 sm:mb-2 line-clamp-2 group-hover:text-brand-600 transition-colors">
           {item.title}
         </h3>
-        <p className="text-[13px] text-slate-600 leading-relaxed line-clamp-2">{item.summary}</p>
+        <p className="text-[0.8125rem] text-slate-600 leading-relaxed line-clamp-2">{item.summary}</p>
       </div>
     </Link>
   );

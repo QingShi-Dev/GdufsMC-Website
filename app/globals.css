@@ -6,6 +6,36 @@
   --foreground: #171717;
 }
 
+/**
+ * 流式根字号 — 适配不同屏幕密度 / 缩放
+ *
+ * 设计稿基线: 1080p @ 125% 缩放 (笔记本默认, ~1536px viewport).
+ * 这种条件下 root ≈ 16px, 视觉效果是经过验证的"好".
+ *
+ * 2K @ 100% 缩放 (2560px viewport) 不缩放, 全站用 px 写死的元素会显得偏小.
+ * clamp() 让 root font-size 随 viewport 平滑过渡:
+ *   - viewport ≤ ~1455px (含手机/平板): 16px (浏览器默认, 不缩)
+ *   - viewport ≈ 1536px (1080p@125%): ~16.45px (轻微放大, 跟默认接近)
+ *   - viewport ≈ 2560px (2K@100%): 19px (顶到 MAX)
+ *
+ * 公式: clamp(MIN, IDEAL, MAX), IDEAL = 0.55vw + 0.5rem
+ *   - 0.5rem = 基线下最小 8px (假设 root=16px)
+ *   - 0.55vw = 每 100vw 多 0.55px (2560vw * 0.55% = 14px)
+ *   - MIN = 16px 防止手机/平板字号缩水 (浏览器默认, 不退化)
+ *   - MAX = 19px 顶到 2K 屏幕的物理字号, 补偿 1/0.8 OS 缩放差
+ *
+ * 物理字号验证 (text-[15px] = 0.9375rem 在 2K@100% 物理像素):
+ *   - 1080p@125%:  0.9375 × 16.45px × 1.25 device-pixel = ~19.27 device px
+ *   - 2K@100%:     0.9375 × 19px × 1.00 device-pixel = ~17.81 device px
+ *   - 差异 < 8%, 用户视觉感受接近
+ *
+ * 注意: 只对用 rem/em 的元素 (Tailwind 默认 text-* / padding-*) 生效;
+ *      写死 text-[Npx] 的元素需要单独转 rem 才能跟着缩放.
+ */
+html {
+  font-size: clamp(16px, 0.55vw + 0.5rem, 19px);
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);

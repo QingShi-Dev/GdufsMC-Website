@@ -38,7 +38,7 @@ export function InlineLink({ href, label, accent = "sky", className }: InlineLin
       className={cn(
         "inline-flex items-center gap-1 align-middle",
         "px-1.5 py-0.5 rounded-md",
-        "text-[12px] font-medium",
+        "text-[0.75rem] font-medium",
         "border transition-colors no-underline whitespace-nowrap",
         ACCENT_STYLES[accent],
         className,

@@ -62,7 +62,7 @@ export function CopyHost({ host }: { host: string }) {
       className={cn(
         "inline-flex items-center gap-1.5 align-middle",
         "px-1.5 py-0.5 rounded-md cursor-pointer",
-        "font-mono text-[12px] font-medium",
+        "font-mono text-[0.75rem] font-medium",
         "border transition-colors tabular-nums",
         copied
           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
@@ -70,7 +70,7 @@ export function CopyHost({ host }: { host: string }) {
       )}
       aria-label={copied ? "已复制" : `复制 ${host}`}
     >
-      <span className="sm:text-[14px]">{host}</span>
+      <span className="sm:text-[0.875rem]">{host}</span>
       {copied ? (
         <IconCheck className="w-3 h-3" stroke={2.5} />
       ) : (

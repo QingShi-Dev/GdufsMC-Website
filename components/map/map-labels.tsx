@@ -132,7 +132,7 @@ export function MapLabels({
         // 紧凑模式默认 10px, 全屏再减 2px; 不带 sm 覆盖。
         //   用户最新反馈: 全屏状态还能再小 1px → 默认 9 → 8 (减 2 而不是 1)
         let sizeClass = compactLabels
-          ? (isFullscreen ? "text-[8px]" : "text-[10px]")
+          ? (isFullscreen ? "text-[0.5rem]" : "text-[0.625rem]")
           : "text-xs sm:text-sm";
         let inRange = true;
         const fontSizeConfig = resolved.fontSize;

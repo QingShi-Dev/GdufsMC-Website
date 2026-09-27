@@ -253,7 +253,7 @@ function CopyButton({ text }: { text: string }) {
       <button
           type="button"
           onClick={handleClick}
-          className="inline-flex items-center gap-1 px-1 py-0.5 text-[12px] sm:text-[13px] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+          className="inline-flex items-center gap-1 px-1 py-0.5 text-[0.75rem] sm:text-[0.8125rem] rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
           aria-label="复制地址"
       >
         <IconCopy className="w-3.5 h-3.5" />
@@ -297,8 +297,8 @@ function GroupSection({
                 className="w-5 h-5 flex-shrink-0"
             />
             <div className="flex flex-col md:flex-row items-start md:items-center gap-0 md:gap-1.5">
-              <span className="text-[14px] sm:text-[15px] font-semibold text-slate-800 truncate">{meta.label}</span>
-              <span className="text-[14px] sm:text-[15px] font-semibold text-slate-800 truncate">{meta.desc}</span>
+              <span className="text-[0.875rem] sm:text-[0.9375rem] font-semibold text-slate-800 truncate">{meta.label}</span>
+              <span className="text-[0.875rem] sm:text-[0.9375rem] font-semibold text-slate-800 truncate">{meta.desc}</span>
             </div>
           </div>
           <div className="flex items-center gap-1.5">
@@ -313,7 +313,7 @@ function GroupSection({
               )}
           />
             <span
-                className="text-[12px] sm:text-[13px] md:px-1.5 py-px rounded  text-slate-600 font-normal tracking-tight whitespace-nowrap"
+                className="text-[0.75rem] sm:text-[0.8125rem] md:px-1.5 py-px rounded  text-slate-600 font-normal tracking-tight whitespace-nowrap"
                 title={meta.needMUA ? "需 MUA 联合群组验证" : "无需 MUA 验证"}
             >
               {meta.needMUA ? "MUA 验证" : "无需验证"}
@@ -339,7 +339,7 @@ function GroupSection({
                   {servers.length > 0 ? (
                       servers.map((s) => <ServerRow key={s.key} s={s} />)
                   ) : (
-                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[12px] text-slate-500 text-center">
+                      <div className="px-2.5 py-2 rounded-lg bg-slate-50/70 border border-dashed border-slate-200 text-[0.75rem] text-slate-500 text-center">
                         {loading ? "检查通讯中..." : "暂无数据"}
                       </div>
                   )}
@@ -357,14 +357,14 @@ function ServerRow({ s }: { s: ServerStatusT }) {
         <div className="flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-lg bg-emerald-50/80 border border-dashed border-emerald-300/70">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="text-[13px] sm:text-[14px] font-medium text-emerald-900">{s.label}</span>
-              <span className="hidden md:flex text-[11px] px-1 py-px ml-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">仅限校内</span>
+              <span className="text-[0.8125rem] sm:text-[0.875rem] font-medium text-emerald-900">{s.label}</span>
+              <span className="hidden md:flex text-[0.6875rem] px-1 py-px ml-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">仅限校内</span>
             </div>
-            <div className="font-light text-[12px] sm:text-[13px] text-emerald-700/80 mt-0.5">{s.host}</div>
+            <div className="font-light text-[0.75rem] sm:text-[0.8125rem] text-emerald-700/80 mt-0.5">{s.host}</div>
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {s.campusOnly && (
-                <span className="flex md:hidden text-[10px] px-1 py-px mt-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">
+                <span className="flex md:hidden text-[0.625rem] px-1 py-px mt-0.5 rounded bg-emerald-200 text-emerald-800 border border-emerald-300">
                     仅限校内
                   </span>
             )}
@@ -393,17 +393,17 @@ function ServerRow({ s }: { s: ServerStatusT }) {
                   )}
               />
               <span className="flex flex-col md:flex-row gap-0.5 md:gap-1">
-                <span className="text-[13px] sm:text-[14px] font-medium text-slate-800 truncate overflow-visible">{s.label}</span>
-                <span className="text-[11px] sm:text-[14px] font-medium text-slate-800">{s.desc}</span>
+                <span className="text-[0.8125rem] sm:text-[0.875rem] font-medium text-slate-800 truncate overflow-visible">{s.label}</span>
+                <span className="text-[0.6875rem] sm:text-[0.875rem] font-medium text-slate-800">{s.desc}</span>
               </span>
               {!s.online && (
-                  <span className="hidden md:flex text-[11px] px-1 py-px ml-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
+                  <span className="hidden md:flex text-[0.6875rem] px-1 py-px ml-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
                   离线
                 </span>
               )}
             </div>
             <div className="flex items-center gap-1.5 flex-shrink-0 ml-1.5">
-              <span className="flex items-center gap-0.5 text-[12px] sm:text-[13px] text-slate-600 font-mono">
+              <span className="flex items-center gap-0.5 text-[0.75rem] sm:text-[0.8125rem] text-slate-600 font-mono">
                 <IconUsers className="w-2.5 h-2.5" />
                   {s.online ? (
                     <>
@@ -417,7 +417,7 @@ function ServerRow({ s }: { s: ServerStatusT }) {
                     </>
                   )}
               </span>
-              <span className="flex items-center gap-0.5 text-[12px] text-slate-600 font-mono">
+              <span className="flex items-center gap-0.5 text-[0.75rem] text-slate-600 font-mono">
                 <IconBolt className="w-2.5 h-2.5" />
                 {s.online ? s.latencyMs : "--"}
               </span>
@@ -425,7 +425,7 @@ function ServerRow({ s }: { s: ServerStatusT }) {
           </div>
           <div className="flex flex-col items-end gap-1 flex-shrink-0">
             {!s.online && (
-                <span className="flex md:hidden text-[10px] px-1 py-px mt-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
+                <span className="flex md:hidden text-[0.625rem] px-1 py-px mt-0.5 rounded bg-red-100 text-red-700 border border-red-300/70 font-medium">
                 离线
               </span>
             )}
@@ -558,10 +558,10 @@ export function StatusCard() {
                 )}
               </div>
               <div>
-                <div className="text-[16px] sm:text-[17px] font-semibold flex items-center text-slate-800">
+                <div className="text-[1rem] sm:text-[1.0625rem] font-semibold flex items-center text-slate-800">
                   <span>实时状态</span>
                 </div>
-                <div className="text-[12px] sm:text-[13px] text-slate-600">
+                <div className="text-[0.75rem] sm:text-[0.8125rem] text-slate-600">
                   {loading
                       ? "正在查询…"
                       : `${onlineCount}条公网线路 正常运行`}
@@ -593,7 +593,7 @@ export function StatusCard() {
                           mass: 0.7,
                           opacity: { duration: 0.16, ease: "easeOut" },
                         }}
-                        className="absolute right-full mr-1.5 top-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300/70 text-emerald-700 text-[12px] sm:text-[13px] font-medium whitespace-nowrap shadow-sm shadow-emerald-500/10"
+                        className="absolute right-full mr-1.5 top-1/2 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-emerald-50 border border-emerald-300/70 text-emerald-700 text-[0.75rem] sm:text-[0.8125rem] font-medium whitespace-nowrap shadow-sm shadow-emerald-500/10"
                         role="status"
                         aria-live="polite"
                     >
@@ -642,7 +642,7 @@ export function StatusCard() {
           </div>
 
           {/* tip */}
-          <div className="mt-3 pt-3 border-t border-slate-200/70 flex items-center gap-1.5 text-[12px] sm:text-[13px] text-slate-600">
+          <div className="mt-3 pt-3 border-t border-slate-200/70 flex items-center gap-1.5 text-[0.75rem] sm:text-[0.8125rem] text-slate-600">
             <span className="px-2">校园网地址外网无法连接；推荐优先使用公网主线，备线仅作应急。</span>
           </div>
         </div>
