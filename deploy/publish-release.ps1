@@ -387,9 +387,13 @@ function Write-StateAtomic {
     [System.IO.File]::WriteAllText($tmp, $json, $Utf8NoBom)
     if (Test-Path -LiteralPath $StateFile) {
         # Atomic replace (same directory => same volume).
-        [System.IO.File]::Replace($tmp, $StateFile, $null)
+        # PowerShell 5.1 binds $null to "" when calling [System.IO.File]::Replace,
+        # which makes .NET throw "The path is not of a legal form" on the third
+        # (backupFileName) argument. Move-Item -Force uses Win32 MoveFileEx with
+        # REPLACE_EXISTING and is atomic on the same NTFS volume.
+        Move-Item -LiteralPath $tmp -Destination $StateFile -Force
     } else {
-        [System.IO.File]::Move($tmp, $StateFile)
+        Move-Item -LiteralPath $tmp -Destination $StateFile
     }
 }
 
