@@ -33,12 +33,10 @@ www.gdufscraft.top {
 # 主域
 # -----------------------------------------------------------------------------
 gdufscraft.top {
-    # favicon 静态服务 (替代 nginx 的 alias /favicon.ico → H:\GDUFSMC-web\app\favicon.ico)
-    # GitHub Actions deploy workflow 会同步 .next/static/media/favicon.<hash>.ico 到 app/favicon.ico
-    handle /favicon.ico {
-        root * H:\GDUFSMC-web\app
-        file_server
-    }
+    # favicon 直接由 Next.js (端口 3000) 处理, 不在 Caddy 这层静态服务
+    #   Next.js App Router 会在 HTML 里输出 <link rel="icon" href="/favicon.ico?favicon=<hash>.ico">,
+    #   standalone 构建自带 /favicon.ico 路由 + hash 版本路由, 都由 Node 处理
+    #   避免把 favicon 物理路径写在 Caddyfile 里 (跨 release 不稳定, 也跟容器化冲突)
 
     # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入
     #   secrets.caddy 在 .gitignore, 服务器本地维护, 部署时不会从 git 同步进来
