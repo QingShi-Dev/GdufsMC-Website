@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
+import { SERVERS } from "@/data/global/servers";
 
 /* -------------------- 石头分隔条（保持之前样式） -------------------- */
 
@@ -314,54 +315,45 @@ function LogoIntro() {
 }
 
 /* -------------------- 服务器地址 --------------------
- * 合并规则：纯生存 + 机械动力并到同一条线路（每个分组最多 2 个 host）
- * 删除：整合包 (bmc) 和 hemc 复原项目
- * 剩余 4 个分组：校园网 / 公网主线 / 公网备线 / 粤高联
+ * 4 张卡片：校园网 / 公网主线 / 公网备线 / 粤高联
+ * - 数据从 @/data/global/servers 派生 (权威源)
+ * - 渲染规则跟之前一致, 但同一个 host 只写一次
  */
 
-interface ServerEntry {
+interface FooterServer {
   host: string;
   version: string;
 }
 
-interface ServerGroup {
+interface FooterLine {
   line: string;
   bandwidth?: string;
   recommended?: boolean;
-  servers: ServerEntry[];
+  servers: FooterServer[];
 }
 
-const SERVER_GROUPS: ServerGroup[] = [
-  {
-    line: "校园网",
-    bandwidth: "无限带宽",
-    recommended: true,
-    servers: [
-      { host: "mc.gdufscraft.top", version: "26.2 原版" },
-    ],
-  },
-  {
-    line: "公网主线",
-    bandwidth: "24M",
-    recommended: true,
-    servers: [
-      { host: "mc2.gdufscraft.top", version: "26.2 原版" },
-    ],
-  },
-  {
-    line: "公网备线",
-    bandwidth: "3M",
-    servers: [
-      { host: "mc3.gdufscraft.top", version: "26.2 原版" },
-    ],
-  },
+/**
+ * 从 canonical SERVERS 派生 footer 展示结构:
+ *   - survival 组: 每个 entry 一条独立 line (校园网/公网主线/公网备线)
+ *   - hemc 组: 合并成一条 "粤高联" line, servers 是 hemc 组所有 entry
+ */
+const FOOTER_LINES: FooterLine[] = [
+  ...SERVERS
+      .filter((s) => s.group === "survival")
+      .sort((a, b) => a.order - b.order)
+      .map((s) => ({
+        line: s.line,
+        bandwidth: s.bandwidth,
+        recommended: s.recommended,
+        servers: [{ host: s.host, version: s.version ?? "" }],
+      })),
   {
     line: "粤高联",
     bandwidth: "联合服务器",
-    servers: [
-      { host: "mc.ghmmua.net", version: "联合门户群组" },
-      { host: "hemc.ghmmua.net", version: "大学城复原项目" },
-    ],
+    servers: SERVERS
+        .filter((s) => s.group === "hemc")
+        .sort((a, b) => a.order - b.order)
+        .map((s) => ({ host: s.host, version: s.version ?? "" })),
   },
 ];
 
@@ -370,7 +362,7 @@ function ServerGroupCard({
                            bandwidth,
                            recommended,
                            servers,
-                         }: ServerGroup) {
+                         }: FooterLine) {
   return (
       <li
           className={cn(
@@ -420,7 +412,7 @@ function ServerGroupCard({
 function ServerList() {
   return (
       <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
-        {SERVER_GROUPS.map((g) => (
+        {FOOTER_LINES.map((g) => (
             <ServerGroupCard key={g.line} {...g} />
         ))}
       </ul>

@@ -1,18 +1,15 @@
 import { queryMCServer, extractMotd } from "./ping";
 import { DEFAULT_MC_PORT, PING_TIMEOUT_MS, QUERY_CONCURRENCY } from "./status-constants";
+import { SERVERS } from "@/data/global/servers";
 
 export type ServerKey =
     | "survival-main"
     | "survival-backup"
     | "survival-campus"
-    | "create-main"
-    | "create-backup"
-    | "create-campus"
-    | "bmc"
     | "gh-mua"
     | "hemc";
 
-export type ServerGroup = "survival" | "create" | "bmc" | "hemc";
+export type ServerGroup = "survival" | "hemc";
 
 export interface ServerTarget {
   key: ServerKey;
@@ -35,16 +32,21 @@ export interface ServerTarget {
 /**
  * 服务器地址（按群公告汇总）。
  * - 校园网地址公网 ping 不通，所以查询会超时，但展示上仍保留，方便校内同学对照。
+ * - 数据源在 @/data/global/servers 的 SERVERS, 这里附加 port 派生
+ *   (port 不属于"业务元数据", 放 lib 层更合适)。
+ * - label 用 s.label (status card 显示完整标签, e.g. "群组服 校园网");
+ *   line 字段 (e.g. "校园网") 只在 guide / footer 用, status 不读。
  */
-export const SERVER_TARGETS: ServerTarget[] = [
-  // 群组服（原版 26.2）
-  { key: "survival-campus", group: "survival", label: "群组服 校园网", desc: "", host: "mc.gdufscraft.top", port: DEFAULT_MC_PORT, campusOnly: true, order: 0 },
-  { key: "survival-main", group: "survival", label: "群组服 公网主线", desc: "", host: "mc2.gdufscraft.top", port: DEFAULT_MC_PORT, order: 1 },
-  { key: "survival-backup", group: "survival", label: "群组服 公网备线", desc: "", host: "mc3.gdufscraft.top", port: DEFAULT_MC_PORT, order: 2 },
-  // 粤高联联合群组门户
-  { key: "gh-mua", group: "hemc", label: "联合群组门户", desc: "- 1.21", host: "mc.ghmmua.net", port: DEFAULT_MC_PORT, order: 0 },
-  { key: "hemc", group: "hemc", label: "大学城复原项目", desc: "- 1.20.1", host: "hemc.ghmmua.net", port: DEFAULT_MC_PORT, order: 0 },
-];
+export const SERVER_TARGETS: ServerTarget[] = SERVERS.map((s) => ({
+  key: s.id as ServerKey,
+  group: s.group,
+  label: s.label,
+  desc: s.desc ?? "",
+  host: s.host,
+  port: DEFAULT_MC_PORT,
+  campusOnly: s.campusOnly,
+  order: s.order,
+}));
 
 export interface ServerStatus {
   key: ServerKey;

@@ -291,7 +291,7 @@ function GroupSection({
           <div className="flex items-center gap-2 min-w-0">
             {/* eslint-disable-next-line @next/next/no-img-element -- 4 个本地静态小 SVG，无需 next/image 优化 */}
             <img
-                src={meta.svg}
+                src={meta.icon}
                 alt=""
                 aria-hidden="true"
                 className="w-5 h-5 flex-shrink-0"
