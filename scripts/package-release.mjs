@@ -390,20 +390,41 @@ mkdirSync(OUTPUT_ROOT, { recursive: true });
 const tarName = releaseId + ".tar.xz";
 const tarPath = join(OUTPUT_ROOT, tarName);
 
-// use paths relative to the repo root for both -C and -f so tar does not
+// Use paths relative to the repo root for both -C and -f so tar does not
 // misinterpret a Windows drive letter (e.g. "G:") as a remote tape device.
-// -cJf uses xz compression (~40% smaller than gzip, slower to compress).
-// Decompression on Windows tar.exe is fast (<10s for our size).
+//
+// We split the work into TWO separate processes instead of relying on
+// `tar -cJf` (xz short flag). Different Windows runners expose different
+// `tar` implementations in PATH -- the GitHub Actions windows-2022 runner
+// resolves `tar` to the GNU tar shipped with Git for Windows, which does
+// not accept `-J` (it reports "Unsupported compression option --xz").
+// The xz command line tool is shipped in the same Git for Windows msys2
+// directory and IS on PATH, so we pipe uncompressed tar output into xz:
+//
+//   1. tar -cf <id>.tar       -> intermediate uncompressed archive
+//   2. xz -T0 -6 -f <id>.tar   -> compressed to <id>.tar.xz (removes .tar)
+//
+// Decompression on Windows is still `tar -xJf` (works on both bsdtar and
+// GNU tar). The split costs ~2 s of extra wall time on local machines but
+// makes the script portable across every Windows runner flavor.
+const tarTempPath = join(OUTPUT_ROOT, releaseId + ".tar");
 const stageRel = relative(ROOT, STAGE);
-const outRel = join(relative(ROOT, OUTPUT_ROOT), tarName);
 
 const tarRes = spawnSync(
   "tar",
-  ["-cJf", outRel, "-C", stageRel, "."],
+  ["-cf", tarTempPath, "-C", stageRel, "."],
   { stdio: "inherit" }
 );
 if (tarRes.status !== 0) {
   fail("tar failed with exit code " + String(tarRes.status));
+}
+const xzRes = spawnSync(
+  "xz",
+  ["-T0", "-6", "-f", tarTempPath],
+  { stdio: "inherit" }
+);
+if (xzRes.status !== 0) {
+  fail("xz failed with exit code " + String(xzRes.status));
 }
 console.log("package-release: created tarball " + tarPath);
 
