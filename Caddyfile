@@ -38,6 +38,16 @@ gdufscraft.top {
     #   standalone 构建自带 /favicon.ico 路由 + hash 版本路由, 都由 Node 处理
     #   避免把 favicon 物理路径写在 Caddyfile 里 (跨 release 不稳定, 也跟容器化冲突)
 
+    # /images/* 静态资源直接由 Caddy 服务, 不走 Next.js
+    #   E2 架构: public/images/ 不进 release, 维护在 H:\GDUFSMC-web\public\images\
+    #   Caddy file_server 直接吐, 比过 Node 快 10x
+    #   新增图片需要手动同步到 H:\GDUFSMC-web\public\images\ (或扩展 publish-release.ps1 加 sync 步骤)
+    @publicImages path /images/*
+    handle @publicImages {
+        root * H:\GDUFSMC-web\public
+        file_server
+    }
+
     # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入
     #   secrets.caddy 在 .gitignore, 服务器本地维护, 部署时不会从 git 同步进来
     #   首次部署: Copy-Item secrets.caddy.example secrets.caddy + 填入真密码哈希

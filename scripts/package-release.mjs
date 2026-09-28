@@ -132,7 +132,25 @@ function copyIn(src, destRel) {
   copyReleaseTree(src, dest, copyLog);
   console.log("package-release: copied " + src + " -> " + dest);
 }
-copyIn(PUBLIC_DIR, "public");
+// E2 architecture: public/images/ is shared across all releases via Caddy's
+// file_server, not bundled per-release. Copy everything else from public/,
+// but skip the images/ subdirectory (served from H:\GDUFSMC-web\public\images\).
+if (existsSync(PUBLIC_DIR)) {
+  const publicDest = join(STAGE, "public");
+  mkdirSync(publicDest, { recursive: true });
+  for (const entry of readdirSync(PUBLIC_DIR, { withFileTypes: true })) {
+    if (entry.name === "images") {
+      copyLog("skip public/images (shared via Caddy)");
+      continue;
+    }
+    const srcPath = join(PUBLIC_DIR, entry.name);
+    const destPath = join(publicDest, entry.name);
+    copyReleaseTree(srcPath, destPath, copyLog);
+  }
+  copyLog("copied public/* (excluding images) -> " + publicDest);
+} else {
+  console.warn("package-release: skip missing source: " + PUBLIC_DIR);
+}
 copyIn(NEXT_STATIC, join(".next", "static"));
 copyIn(CONTENT_DIR, "content");
 
