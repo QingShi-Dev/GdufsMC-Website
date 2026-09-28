@@ -87,3 +87,11 @@ CLAUDE.md
 /scripts/rebuild-images-from-origin.mjs
 /scripts/relayout-overworld-tiles.cjs
 /scripts/verify-search.mjs
+
+# 本地 agent / 调试产物 (一次性脚本输出, 不是项目源代码)
+# .clean.js            — 测试 helper, 触发 stripDuplicates 修复时用过
+# .test-compress.ps1   — zstd/xz 对比压缩格式时写的临时 PowerShell
+# stderr.log           — 各种本地 build/package 测试时 node 的 stderr 泄漏
+/.clean.js
+/.test-compress.ps1
+/stderr.log
