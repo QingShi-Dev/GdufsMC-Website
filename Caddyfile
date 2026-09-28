@@ -42,10 +42,13 @@ gdufscraft.top {
     #   E2 架构: public/images/ 不进 release, 维护在 H:\GDUFSMC-web\public\images\
     #   Caddy file_server 直接吐, 比过 Node 快 10x
     #   新增图片需要手动同步到 H:\GDUFSMC-web\public\images\ (或扩展 publish-release.ps1 加 sync 步骤)
+    #   Cache-Control: max-age=60 浏览器短缓存 (改图后 1 分钟内刷新能看到)
+    #     不设 s-maxage → EdgeOne 按默认规则 (通常继承 max-age 或按站点 cache rule)
     @publicImages path /images/*
     handle @publicImages {
         root * H:\GDUFSMC-web\public
         file_server
+        header Cache-Control "public, max-age=60"
     }
 
     # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入

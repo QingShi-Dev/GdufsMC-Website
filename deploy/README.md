@@ -49,6 +49,95 @@ Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
 
 `H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。
 
+## 部署后自动清 EdgeOne 缓存
+
+`publish-release.ps1` 在 DEPLOY / ROLLBACK 成功后会自动调用 `tccli teo CreatePurgeTask --Type purge_all`，让用户访问到新版本（不用等 s-maxage=86400 自然过期）。失败时仅 warn，不阻塞发布。
+
+### 一次性配置（管理员 PowerShell，仅需一次）
+
+```powershell
+# 1. 装 tccli
+pip install tccli
+
+# 2. 腾讯云 CAM 控制台 → 用户 → 新建子用户
+#    用户名: gdufsmc-edgeone-purge
+#    访问方式: 仅勾选"编程访问"（不要勾控制台登录）
+#    操作保护: 禁用（MFA 设备未绑定会卡 API 调用）
+
+# 3. 创建策略 GdufsmcEdgeOnePurgeOnly（策略内容 JSON 见下）
+
+# 4. 子用户 → API 密钥 → 新建 → 复制 SecretId + SecretKey（仅显示一次）
+
+# 5. tccli 配凭证
+tccli configure set secretId   "AKIDxxx..."
+tccli configure set secretKey  "xxx..."
+tccli configure set region    "ap-guangzhou"
+tccli configure set output    "json"
+
+# 6. 验证（应返回 TotalCount: 0 + 空 Tasks）
+tccli teo DescribePurgeTasks --cli-unfold-argument `
+    --StartTime "2026-09-28T00:00:00+08:00" `
+    --EndTime   "2026-09-28T23:59:59+08:00" `
+    --Limit 1
+
+# 7. 创建 secrets 文件
+ni "H:\GDUFSMC-web\secrets.edgeone.json" -ItemType File -Force
+notepad "H:\GDUFSMC-web\secrets.edgeone.json"
+# 填入（注意 ZoneId 必须填对，region 可选）:
+{
+  "zoneId": "zone-3vdw90vs6duq",
+  "region": "ap-guangzhou"
+}
+
+# 8. ACL 限制为只允许 Administrator + SYSTEM 读
+$acl = Get-Acl "H:\GDUFSMC-web\secrets.edgeone.json"
+$acl.SetAccessRuleProtection($true, $false)
+$adminRule = New-Object Security.AccessControl.FileSystemAccessRule("Administrator", "Read", "Allow")
+$sysRule   = New-Object Security.AccessControl.FileSystemAccessRule("NT AUTHORITY\SYSTEM", "Read", "Allow")
+$acl | Set-Acl "H:\GDUFSMC-web\secrets.edgeone.json"
+```
+
+### CAM 策略内容（`GdufsmcEdgeOnePurgeOnly`）
+
+```json
+{
+  "version": "2.0",
+  "statement": [
+    {
+      "action": [
+        "teo:CreatePurgeTask",
+        "teo:DescribePurgeTasks"
+      ],
+      "effect": "allow",
+      "resource": [
+        "qcs::teo::uin/<主账号UIN>:zone/<zone-id>"
+      ]
+    }
+  ]
+}
+```
+
+⚠️ EdgeOne CAM 资源格式**不是 6 段式**（跳过 region 段，resource 用 `uin/<UIN>:zone/<zoneId>`）：
+- 第 3 段（region）**留空**，不是 `*` 也不是 `ap-guangzhou`
+- 第 4 段是 `uin/<主账号UIN>`，不是 `*`
+- 整段用 `:::` 分割，不是 `::::`
+
+主账号 UIN 查法：腾讯云控制台右上角 → 账号信息 → 账号 ID（UIN），形如 `10001xxxxx`。
+
+### next.config.ts 配套改动
+
+`MAIN_SECURITY_HEADERS` 已设 `Cache-Control: public, max-age=0, s-maxage=86400, stale-while-revalidate=86400`：
+- `max-age=0`：浏览器不缓存 HTML（避免用户刷新看不到新版本）
+- `s-maxage=86400`：CDN 边缘缓存 1 天，配合部署后自动 purge
+- `/api/*` 单独覆盖为 `no-store`，`/_next/static/*` 单独覆盖为 `immutable`
+
+### 手动 fallback（purge 失败时）
+
+```powershell
+# EdgeOne 控制台 → 站点列表 → 缓存清理 → 提交全站刷新
+# URL: https://console.cloud.tencent.com/edgeone
+```
+
 这次改造将依赖安装和构建移出生产服务器，**不会修复 Realtek 网卡驱动导致的 0x139 蓝屏**，驱动问题仍需单独处理。稳定后可关闭临时 Caddy `debug` 日志。
 
 ---

@@ -816,6 +816,92 @@ function Clear-OldReleases {
 }
 
 # ===========================================================================
+# EdgeOne cache purge (deploy automation)
+# After a successful switch (deploy or rollback), purge all cached HTML for
+# the EdgeOne zone so users see the new version immediately instead of waiting
+# up to s-maxage=86400 (1 day) for the cache to expire naturally.
+#
+# This step is intentionally NON-FATAL: a purge failure does NOT roll back a
+# successful deploy. The HTML s-maxage=86400 set in next.config.ts is the
+# safety net -- worst case, users see stale content for up to 1 day instead
+# of 1 year.
+#
+# Operator requirements:
+#   * tccli (Tencent Cloud CLI) installed on the operator host:
+#       pip install tccli
+#       tccli configure set secretId   <CAM sub-account SecretId>
+#       tccli configure set secretKey <CAM sub-account SecretKey>
+#       tccli configure set region    <EdgeOne region, e.g. ap-guangzhou>
+#   * <Root>/secrets.edgeone.json (NOT shipped in dev repo; created on the
+#     operator host with restricted ACL -- Administrator + SYSTEM read only):
+#       {
+#         "zoneId": "zone-3vdw90vs6duq",
+#         "region": "ap-guangzhou"
+#       }
+#   * A CAM sub-account with a least-privilege policy (see deploy/README.md):
+#       Action  : teo:CreatePurgeTask, teo:DescribePurgeTasks
+#       Resource: qcs::teo::uin/<主账号UIN>:zone/<zone-id>
+# ===========================================================================
+function Invoke-EdgeOnePurge {
+    param(
+        [string]$SecretsFile = (Join-Path $Root 'secrets.edgeone.json'),
+        [int]$MaxRetries    = 3,
+        [int]$RetryDelaySec = 5
+    )
+
+    if (-not (Test-Path -LiteralPath $SecretsFile)) {
+        Write-Warning "EdgeOne secrets file not found: $SecretsFile (skipping cache purge)"
+        Write-Warning "  Deploy succeeded, but users may see stale HTML for up to 1 day."
+        return
+    }
+    try {
+        $secrets = Read-JsonFile $SecretsFile
+    } catch {
+        Write-Warning "EdgeOne secrets JSON unreadable: $_ (skipping cache purge)"
+        return
+    }
+    if (-not $secrets.zoneId) {
+        Write-Warning "EdgeOne zoneId missing in $SecretsFile (skipping cache purge)"
+        return
+    }
+    $zoneId = [string]$secrets.zoneId
+    $region = if ($secrets.region) { [string]$secrets.region } else { '' }
+
+    # Build the tccli argument vector. --region is OPTIONAL for the EdgeOne API,
+    # but tccli requires it as a top-level flag (it is not a teo CreatePurgeTask
+    # input parameter, despite the API doc listing Region as 'public params').
+    $purgeArgs = @('--cli-unfold-argument', '--ZoneId', $zoneId, '--Type', 'purge_all')
+    if ($region) {
+        $purgeArgs = @('--region', $region) + $purgeArgs
+    }
+
+    $attempt = 0
+    while ($attempt -lt $MaxRetries) {
+        $attempt++
+        Write-Host "EdgeOne purge: attempt $attempt/$MaxRetries (zone=$zoneId, type=purge_all)"
+        # PS5.1: a native command writing to stderr raises NativeCommandError when
+        # $ErrorActionPreference is 'Stop'. Downgrade locally to capture the real
+        # exit code via $LASTEXITCODE, then restore the preference.
+        $prevEap = $ErrorActionPreference
+        $ErrorActionPreference = 'Continue'
+        try {
+            $out = & tccli @purgeArgs 2>&1
+            $exitCode = $LASTEXITCODE
+        } finally {
+            $ErrorActionPreference = $prevEap
+        }
+        if ($exitCode -eq 0) {
+            Write-Host "EdgeOne purge submitted successfully (zone=$zoneId)"
+            return
+        }
+        Write-Warning "EdgeOne purge attempt $attempt failed (exit $exitCode): $out"
+        if ($attempt -lt $MaxRetries) { Start-Sleep -Seconds $RetryDelaySec }
+    }
+    Write-Warning "EdgeOne purge FAILED after $MaxRetries attempts. Users may see stale HTML for up to 1 day."
+    Write-Warning "  Manually purge via EdgeOne console: https://console.cloud.tencent.com/edgeone"
+}
+
+# ===========================================================================
 # Main
 # ===========================================================================
 Assert-AncestorNoReparse
@@ -892,6 +978,7 @@ try {
             try {
                 Write-StateAtomic -StateFile $StateFile -State $state
                 Write-Host "ROLLBACK SUCCEEDED to $([string]$target.id)"
+                Invoke-EdgeOnePurge
             } catch {
                 # The live app is already running the previous version, but the state
                 # file could not be written. Switch the live app BACK to current so we
@@ -1055,6 +1142,7 @@ try {
             }
             Clear-OldReleases -State $newState -RetiredIds $retiredIds
             Write-Host "DEPLOY SUCCEEDED: $([string]$manifest.id)"
+            Invoke-EdgeOnePurge
         } catch {
             Write-Warning "DEPLOY FAILED: $_"
             # The failed candidate release under releases/<id> is retained for diagnosis.

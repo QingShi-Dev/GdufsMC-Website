@@ -20,6 +20,7 @@ import {
   writeFileSync,
   readdirSync,
   writeSync,
+  rmSync,
 } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
@@ -151,6 +152,16 @@ if (existsSync(PUBLIC_DIR)) {
 } else {
   console.warn("package-release: skip missing source: " + PUBLIC_DIR);
 }
+
+// IMPORTANT: Next.js's standalone build copies the project's public/ directory
+// into .next/standalone/public/, including public/images/. We already skipped
+// the redundant copy from the project root above, but the standalone copy is
+// still sitting in STAGE/public/. Remove it so images stay out of the release.
+const stagedPublicImages = join(STAGE, "public", "images");
+if (existsSync(stagedPublicImages)) {
+  rmSync(stagedPublicImages, { recursive: true, force: true });
+  copyLog("removed STAGE/public/images (served by Caddy from H:\\GDUFSMC-web\\public)");
+}
 copyIn(NEXT_STATIC, join(".next", "static"));
 copyIn(CONTENT_DIR, "content");
 
@@ -227,6 +238,107 @@ const SECRETS_NAME = "secrets.caddy";
 const KEY_EXT_RE = /\.(pem|key|pfx|keystore|jks|asc)$/;
 const KEY_NAME_RE = /^(id_rsa|id_dsa|id_ecdsa|id_ed25519)/;
 
+// ---------------------------------------------------------------------------
+// 5b. strip dev-only files from STAGE
+//     outputFileTracingExcludes only affects the trace output, but the
+//     standalone's node_modules (copied via copyReleaseTree from pnpm's
+//     .pnpm/ virtual directory) ships .map / .ts / .md files we don't need
+//     at runtime. Strip them to reduce the tarball ~75 MB.
+//
+//     NOTE: We deliberately do NOT strip directories (next/dist/build,
+//     next/dist/trace, next/dist/telemetry, next/dist/compiled/@opentelemetry
+//     etc.) because Next.js runtime requires helper modules from those paths
+//     at boot. Aggressive directory stripping breaks the server with errors
+//     like "Cannot find module '../build/output/log'" or
+//     "Cannot find module 'next/dist/compiled/@opentelemetry/api'". The
+//     .map/.ts/.md file extension strip alone saves ~62 MB; further cuts
+//     are not safe without deeper analysis.
+// ---------------------------------------------------------------------------
+const RUNTIME_SKIP_EXTS = new Set(["map", "ts", "md"]);
+
+function stripDevFiles(dir) {
+  const entries = readdirSync(dir, { withFileTypes: true });
+  for (const entry of entries) {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      stripDevFiles(full);
+    } else if (entry.isFile()) {
+      const ext = entry.name.includes(".")
+        ? entry.name.slice(entry.name.lastIndexOf(".") + 1).toLowerCase()
+        : "";
+      if (RUNTIME_SKIP_EXTS.has(ext)) {
+        rmSync(full, { force: true });
+      }
+    }
+  }
+}
+
+stripDevFiles(STAGE);
+console.log("package-release: stripped dev-only files (.map/.ts/.md) from STAGE");
+
+// ---------------------------------------------------------------------------
+// 5c. strip duplicate and unused packages from STAGE/node_modules
+//
+//     After pnpm dereference + Next.js standalone tracing, the staged
+//     node_modules has several known duplications and dead code:
+//
+//     (a) .pnpm/node_modules/ — pnpm's "hoisted" reverse-lookup layer.
+//         Next.js resolves dependencies via .pnpm/<pkg>@ver/node_modules/<pkg>
+//         directly; the reverse-lookup layer is never read at runtime.
+//         Raw savings: ~20 MB.
+//
+//     (c) capsize-font-metrics.json appears in both
+//         node_modules/next/dist/server/ and
+//         .pnpm/next@.../node_modules/next/dist/server/. The first is what
+//         Next.js loads at runtime; the second is a tracing artifact. Drop
+//         the .pnpm/.../next/ copy. Raw savings: ~4 MB.
+//
+//     (d) sharp + @img/sharp-* — runtime never requires sharp. The project
+//         uses <img> (HTML) and SVG <image>, not next/image. sharp is only
+//         used in scripts/convert-news-images.mjs, which runs inside the
+//         convert-news-images GitHub Action that installs sharp on the
+//         runner itself. Deleting sharp drops the libvips-42.dll native
+//         binary (~36 MB) as well. Raw savings: ~55 MB.
+// ---------------------------------------------------------------------------
+function stripDuplicates(stage) {
+  const nm = join(stage, "node_modules");
+  const pnpm = join(nm, ".pnpm");
+  if (!existsSync(pnpm)) {
+    copyLog("stripDuplicates: no .pnpm/ layout, skipping");
+    return;
+  }
+
+  // (a) pnpm hoisted reverse-lookup layer
+  const pnpmNm = join(pnpm, "node_modules");
+  if (existsSync(pnpmNm)) {
+    rmSync(pnpmNm, { recursive: true, force: true });
+    copyLog("stripDuplicates: removed .pnpm/node_modules/ (pnpm hoisted reverse layer)");
+  }
+
+  // (c) duplicate capsize-font-metrics.json inside each .pnpm/<pkg>/.../next/dist/server/
+  let capsizeCount = 0;
+  for (const pkg of readdirSync(pnpm)) {
+    const capsizePath = join(pnpm, pkg, "node_modules", "next", "dist", "server", "capsize-font-metrics.json");
+    if (existsSync(capsizePath)) {
+      rmSync(capsizePath, { force: true });
+      capsizeCount++;
+    }
+  }
+  if (capsizeCount) {
+    copyLog(`stripDuplicates: removed ${capsizeCount} duplicate capsize-font-metrics.json copy/copies`);
+  }
+
+  // (d) entire sharp + @img — no runtime importer exists in this project
+  for (const dropName of ["sharp", "@img"]) {
+    const dropPath = join(nm, dropName);
+    if (existsSync(dropPath)) {
+      rmSync(dropPath, { recursive: true, force: true });
+      copyLog(`stripDuplicates: removed node_modules/${dropName} (no runtime import)`);
+    }
+  }
+}
+stripDuplicates(STAGE);
+
 function scanSensitive(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });
   for (const e of entries) {
@@ -275,17 +387,19 @@ console.log("package-release: symlink scan passed");
 // 7. tarball + sha256 sidecar
 // ---------------------------------------------------------------------------
 mkdirSync(OUTPUT_ROOT, { recursive: true });
-const tarName = releaseId + ".tar.gz";
+const tarName = releaseId + ".tar.xz";
 const tarPath = join(OUTPUT_ROOT, tarName);
 
 // use paths relative to the repo root for both -C and -f so tar does not
 // misinterpret a Windows drive letter (e.g. "G:") as a remote tape device.
+// -cJf uses xz compression (~40% smaller than gzip, slower to compress).
+// Decompression on Windows tar.exe is fast (<10s for our size).
 const stageRel = relative(ROOT, STAGE);
 const outRel = join(relative(ROOT, OUTPUT_ROOT), tarName);
 
 const tarRes = spawnSync(
   "tar",
-  ["-czf", outRel, "-C", stageRel, "."],
+  ["-cJf", outRel, "-C", stageRel, "."],
   { stdio: "inherit" }
 );
 if (tarRes.status !== 0) {

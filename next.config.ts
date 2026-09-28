@@ -48,6 +48,25 @@ const MAIN_SECURITY_HEADERS: { key: string; value: string }[] = [
       "frame-ancestors 'none'",
     ].join("; "),
   },
+  // HTML 边缘缓存策略: 浏览器不缓存 (max-age=0), CDN 缓存 1 天 (s-maxage=86400),
+  //   过期后 1 天内继续 serve stale + 后台刷新 (stale-while-revalidate=86400).
+  // 部署后通过 publish-release.ps1 调 EdgeOne purge API 立即 invalidate, 让用户
+  //   看到新版本无需等待 s-maxage 到期. 这条会被下方的 /api/*, /_next/static/*,
+  //   /admin/* 独立 header 覆盖.
+  {
+    key: "Cache-Control",
+    value: "public, max-age=0, s-maxage=86400, stale-while-revalidate=86400",
+  },
+];
+
+// /_next/static/* — Next.js hashed 静态资源, 永久缓存 (immutable)
+const STATIC_ASSET_HEADERS: { key: string; value: string }[] = [
+  { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
+];
+
+// /api/* — 动态响应, 永不缓存
+const API_HEADERS: { key: string; value: string }[] = [
+  { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
 ];
 
 // /admin/* 安全头 — 放宽 CSP 允许 unpkg (Sveltia CMS), 加 no-store + noindex
@@ -104,9 +123,30 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     "/*": ["./content/**/*"],
   },
+  // E2: tile images are served by Caddy from H:\GDUFSMC-web\public\images\,
+  // not by Next.js. Exclude them from the standalone trace so they stay out
+  // of the release tarball. lib/map/loader.ts reads these at build time via
+  // fs.readdirSync + path.join(process.cwd(), "public", ...), but Next.js
+  // sees the dynamic filesystem ops and conservatively traces everything.
+  // Excluding here tells the tracer the files don't need to ship with the
+  // app at runtime.
+  outputFileTracingExcludes: {
+    "/*": [
+      "./public/images/**/*",
+      // Next.js's dist/ ships .map (sourcemaps, ~70 MB), .ts (types, ~2 MB),
+      // .md (docs, ~2.6 MB). None of these are needed at runtime; only the
+      // compiled .js matters. Stripping these cuts the tarball ~75 MB.
+      "**/*.map",
+      "**/*.ts",
+      "**/*.md",
+    ],
+  },
   async headers() {
     return [
-      // 主路径: 安全 CSP, 不含外部 CDN
+      // 主路径: 安全 CSP + HTML 边缘缓存 (s-maxage=86400)
+      //  - max-age=0: 浏览器不缓存 HTML, 刷新必拿最新
+      //  - s-maxage=86400: CDN 边缘缓存 1 天 (部署后调 EdgeOne purge 立即失效)
+      //  - stale-while-revalidate=86400: 过期后 1 天内 serve stale + 后台刷新
       {
         source: "/:path*",
         headers: MAIN_SECURITY_HEADERS,
@@ -115,6 +155,16 @@ const nextConfig: NextConfig = {
       {
         source: "/admin/:path*",
         headers: ADMIN_SECURITY_HEADERS,
+      },
+      // /api/* 路径: 动态响应, no-store (覆盖 MAIN 的 s-maxage)
+      {
+        source: "/api/:path*",
+        headers: API_HEADERS,
+      },
+      // /_next/static/* 路径: hashed 静态资源, immutable (覆盖 MAIN 的 s-maxage)
+      {
+        source: "/_next/static/:path*",
+        headers: STATIC_ASSET_HEADERS,
       },
     ];
   },
