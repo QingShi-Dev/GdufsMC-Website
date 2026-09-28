@@ -5,23 +5,24 @@
 **以下为当前流程。后面的 self-hosted 初始化和服务器构建内容仅为历史参考，不要再次执行，也不要改动现有开机启动服务。**
 
 1. 提交并推送代码到 `main`（本次改造不会自动替你提交或推送）。在 Actions 的 `Build release (manual publish)` 等待安装、类型检查、lint、构建、解包冒烟测试全部通过。
-2. 下载该次运行的 `windows-release-...` artifact，在服务器解压到一个新的独立下载目录。应包含 `outputs/*.tar.gz`、同名 `.sha256.txt`、`deploy/publish-release.ps1` 和本说明。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
+2. 下载该次运行的 `windows-release-...` artifact，在服务器解压到一个新的独立下载目录。应包含 `outputs/*.tar.xz`、同名 `.sha256.txt`、`deploy/publish-release.ps1` 和本说明。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
 3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。不要从 NETWORK SERVICE 的 Runner 调用发布脚本。
 4. 在 artifact 解压目录运行下面的校验/解包命令，再执行发布。
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$archives = @(Get-ChildItem .\outputs\*.tar.gz)
+$archives = @(Get-ChildItem .\outputs\*.tar.xz)
 if ($archives.Count -ne 1) { throw 'Expected exactly one archive' }
 $archive = $archives[0]
-$id = $archive.Name -replace '\.tar\.gz$', ''
+$id = $archive.Name -replace '\.tar\.xz$', ''
 $expected = ((Get-Content -LiteralPath ".\outputs\$id.sha256.txt" -Raw).Trim() -split '\s+')[0]
 $actual = (Get-FileHash -LiteralPath $archive.FullName -Algorithm SHA256).Hash
 if ($actual -ne $expected) { throw 'SHA256 mismatch; stop here' }
 $incoming = "H:\GDUFSMC-web\incoming\$id"
 if (Test-Path -LiteralPath $incoming) { throw 'Use a fresh incoming directory' }
 New-Item -ItemType Directory -Path $incoming | Out-Null
-tar -xzf $archive.FullName -C $incoming
+# -xJf works on both bsdtar and GNU tar (e.g. Git Bash on Windows).
+tar -xJf $archive.FullName -C $incoming
 if ($LASTEXITCODE -ne 0) { throw 'Archive extraction failed' }
 $manifest = Get-Content "$incoming\release.json" -Raw | ConvertFrom-Json
 $nodeVersion = (& 'C:\Program Files\nodejs\node.exe' --version).Trim().TrimStart('v')
