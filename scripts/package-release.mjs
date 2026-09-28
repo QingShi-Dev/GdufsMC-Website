@@ -336,6 +336,37 @@ function stripDuplicates(stage) {
       copyLog(`stripDuplicates: removed node_modules/${dropName} (no runtime import)`);
     }
   }
+
+  // (e) pnpm virtual-store entries for sharp / @img. The project source
+  //     has 0 references to next/image and next.config.ts has no `images:`
+  //     block, so the image optimizer is never invoked and the sharp native
+  //     binary under .pnpm/ is dead weight at runtime. next's own
+  //     require('sharp') is lazy inside getSharp() and is not exercised by
+  //     the smoke-tested routes. Drops ~20.74 MB raw (mainly sharp@0.34.5's
+  //     libvips-42.dll and the @img+sharp-win32-x64 native shim).
+  for (const entry of readdirSync(pnpm)) {
+    if (
+      entry.startsWith("sharp@") ||
+      entry.startsWith("sharp+") ||
+      entry.startsWith("@img+")
+    ) {
+      const dropPath = join(pnpm, entry);
+      rmSync(dropPath, { recursive: true, force: true });
+      copyLog(`stripDuplicates: removed .pnpm/${entry} (project has no sharp importer)`);
+    }
+  }
+
+  // (f) Next.js 16 standalone + outputFileTracing double-copies the entire
+  //     project public/ tree under STAGE/public/public/. That nested copy
+  //     carries the full public/images directory (~93 MB raw), which gzip
+  //     cannot fold. Drop it -- package-release.mjs only needs the top-level
+  //     admin/ icons/ sw.js copies that come from copying the project's
+  //     public/ directly (images/ is intentionally skipped below).
+  const nestedPublic = join(STAGE, "public", "public");
+  if (existsSync(nestedPublic)) {
+    rmSync(nestedPublic, { recursive: true, force: true });
+    copyLog("stripDuplicates: removed STAGE/public/public/ (Next.js 16 standalone + outputFileTracing double-copy of public/)");
+  }
 }
 stripDuplicates(STAGE);
 
