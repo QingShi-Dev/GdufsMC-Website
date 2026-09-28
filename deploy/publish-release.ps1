@@ -885,7 +885,7 @@ function Invoke-EdgeOnePurge {
         $prevEap = $ErrorActionPreference
         $ErrorActionPreference = 'Continue'
         try {
-            $out = & tccli @purgeArgs 2>&1
+            $out = & tccli teo CreatePurgeTask @purgeArgs 2>&1
             $exitCode = $LASTEXITCODE
         } finally {
             $ErrorActionPreference = $prevEap
