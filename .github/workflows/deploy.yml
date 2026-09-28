@@ -56,6 +56,11 @@ jobs:
           Write-Host "package-release process exit code: $code"
           if ($code -ne 0) { exit $code }
       - name: Test extracted archive (not source workspace)
+        # Bound this step so a stuck smoke test surfaces quickly. If this
+        # fires, the next deploy run should add a `Write-Host` in
+        # test-release.mjs to localize the hang (tar extract, server
+        # startup, or health-check fetch).
+        timeout-minutes: 8
         run: |
           $archive = @(Get-ChildItem outputs/*.tar.xz)
           if ($archive.Count -ne 1) { throw 'Expected one release archive' }

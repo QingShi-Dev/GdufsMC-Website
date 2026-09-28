@@ -147,6 +147,7 @@ function getFreePort() {
 const PORT = await getFreePort();
 const HOST = "127.0.0.1";
 const BASE = "http://" + HOST + ":" + PORT;
+console.log("test-release: bound to " + BASE);
 
 let child = null;
 let childExited = false;
@@ -175,6 +176,7 @@ function cleanup() {
 }
 
 try {
+  console.log("test-release: spawning node server.js...");
   child = spawn(process.execPath, ["server.js"], {
     cwd: stageDir,
     env: { ...process.env, HOSTNAME: HOST, PORT: String(PORT) },
@@ -192,12 +194,18 @@ try {
     );
   });
 
-  // wait for health (poll /__release.json)
+  // wait for health (poll /__release.json). On the GitHub Actions
+  // windows-2022 runner, Windows Defender real-time inspection of every
+  // newly-extracted file can slow the first node + Next.js startup to
+  // several minutes; bump the deadline accordingly and log progress.
   const HEALTH_URL = BASE + "/__release.json";
-  const deadline = Date.now() + 45000;
+  const STARTUP_DEADLINE_MS = 240000; // 4 min
+  const deadline = Date.now() + STARTUP_DEADLINE_MS;
   let healthy = false;
+  let polls = 0;
   while (Date.now() < deadline) {
     if (childExited) die("server exited before becoming healthy");
+    polls++;
     try {
       const r = await fetch(HEALTH_URL, { signal: AbortSignal.timeout(2000) });
       if (r.status === 200) {
@@ -207,10 +215,14 @@ try {
     } catch {
       // not up yet
     }
+    if (polls % 10 === 0) {
+      const elapsed = Math.round((Date.now() - (deadline - STARTUP_DEADLINE_MS)) / 1000);
+      console.log(`test-release: still waiting for healthy after ${elapsed}s (poll #${polls})`);
+    }
     await new Promise((res) => setTimeout(res, 500));
   }
-  if (!healthy) die("server did not become healthy within timeout");
-  console.log("test-release: server healthy at " + BASE);
+  if (!healthy) die("server did not become healthy within " + String(Math.round(STARTUP_DEADLINE_MS / 1000)) + "s");
+  console.log("test-release: server healthy at " + BASE + " after " + polls + " polls");
 
   // run checks
   const checks = [];
