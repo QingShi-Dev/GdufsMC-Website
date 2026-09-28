@@ -57,13 +57,16 @@ jobs:
           if ($code -ne 0) { exit $code }
       - name: Test extracted archive (not source workspace)
         run: |
-          $archive = @(Get-ChildItem outputs/*.tar.gz)
+          $archive = @(Get-ChildItem outputs/*.tar.xz)
           if ($archive.Count -ne 1) { throw 'Expected one release archive' }
           # Outside the checkout so missing runtime dependencies cannot fall
           # back to the build workspace's node_modules.
           $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           New-Item -ItemType Directory $smoke -ErrorAction Stop | Out-Null
-          tar -xzf $archive[0].FullName -C $smoke
+          # -xJf works on both bsdtar and GNU tar (the GitHub Actions
+          # windows-2022 runner ships GNU tar via Git for Windows). Same
+          # xz compression format used by package-release.mjs.
+          tar -xJf $archive[0].FullName -C $smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
           node scripts/test-release.mjs $smoke
@@ -75,7 +78,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           path: |
-            outputs/*.tar.gz
+            outputs/*.tar.xz
             outputs/*.sha256.txt
             deploy/publish-release.ps1
             deploy/README.md
