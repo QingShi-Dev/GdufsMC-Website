@@ -387,44 +387,30 @@ console.log("package-release: symlink scan passed");
 // 7. tarball + sha256 sidecar
 // ---------------------------------------------------------------------------
 mkdirSync(OUTPUT_ROOT, { recursive: true });
-const tarName = releaseId + ".tar.xz";
+const tarName = releaseId + ".tar.gz";
 const tarPath = join(OUTPUT_ROOT, tarName);
 
 // Use paths relative to the repo root for both -C and -f so tar does not
 // misinterpret a Windows drive letter (e.g. "G:") as a remote tape device.
 //
-// We split the work into TWO separate processes instead of relying on
-// `tar -cJf` (xz short flag). Different Windows runners expose different
-// `tar` implementations in PATH -- the GitHub Actions windows-2022 runner
-// resolves `tar` to the GNU tar shipped with Git for Windows, which does
-// not accept `-J` (it reports "Unsupported compression option --xz").
-// The xz command line tool is shipped in the same Git for Windows msys2
-// directory and IS on PATH, so we pipe uncompressed tar output into xz:
-//
-//   1. tar -cf <id>.tar       -> intermediate uncompressed archive
-//   2. xz -T0 -6 -f <id>.tar   -> compressed to <id>.tar.xz (removes .tar)
-//
-// Decompression on Windows is still `tar -xJf` (works on both bsdtar and
-// GNU tar). The split costs ~2 s of extra wall time on local machines but
-// makes the script portable across every Windows runner flavor.
-const tarTempPath = join(OUTPUT_ROOT, releaseId + ".tar");
+// We previously produced .tar.xz (~18 MB) but xz decompression on the
+// GitHub Actions windows-2022 runner hangs for 8+ minutes (the runner's
+// tar is the GNU tar from Git for Windows, and decompressing ~7400 small
+// files with xz is bound by Windows Defender real-time AV inspection of
+// every newly-extracted file). gzip decompression is ~8x faster on the
+// same content and still universally supported (`-z` works on both bsdtar
+// and GNU tar). The artifact grows from ~18 MB to ~25 MB; at 3 MB/s that
+// is ~2 seconds longer upload, which is negligible.
 const stageRel = relative(ROOT, STAGE);
+const outRel = relative(ROOT, tarPath);
 
 const tarRes = spawnSync(
   "tar",
-  ["-cf", tarTempPath, "-C", stageRel, "."],
+  ["-czf", outRel, "-C", stageRel, "."],
   { stdio: "inherit" }
 );
 if (tarRes.status !== 0) {
   fail("tar failed with exit code " + String(tarRes.status));
-}
-const xzRes = spawnSync(
-  "xz",
-  ["-T0", "-6", "-f", tarTempPath],
-  { stdio: "inherit" }
-);
-if (xzRes.status !== 0) {
-  fail("xz failed with exit code " + String(xzRes.status));
 }
 console.log("package-release: created tarball " + tarPath);
 

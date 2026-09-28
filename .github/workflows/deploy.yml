@@ -55,25 +55,35 @@ jobs:
           $code = $LASTEXITCODE
           Write-Host "package-release process exit code: $code"
           if ($code -ne 0) { exit $code }
-      - name: Test extracted archive (not source workspace)
-        # Bound this step so a stuck smoke test surfaces quickly. If this
-        # fires, the next deploy run should add a `Write-Host` in
-        # test-release.mjs to localize the hang (tar extract, server
-        # startup, or health-check fetch).
-        timeout-minutes: 8
+      - name: Extract release archive with Windows tar
+        timeout-minutes: 4
         run: |
-          $archive = @(Get-ChildItem outputs/*.tar.xz)
+          $ErrorActionPreference = 'Stop'
+          $archive = @(Get-ChildItem outputs/*.tar.gz)
           if ($archive.Count -ne 1) { throw 'Expected one release archive' }
-          # Outside the checkout so missing runtime dependencies cannot fall
-          # back to the build workspace's node_modules.
+          # Use Windows libarchive explicitly; do not depend on PATH's tar.
+          # It accepts drive-letter paths and auto-detects gzip compression
+          # from the file extension (-xf with no filter flag).
+          $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
+          if (-not (Test-Path -LiteralPath $tar)) { throw 'Windows tar.exe not found' }
+          Write-Host "Extraction executable: $tar"
+          & $tar --version
+          if ($LASTEXITCODE -ne 0) { throw 'Cannot query tar version' }
+          # Keep the extracted runtime outside the checkout.
           $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           New-Item -ItemType Directory $smoke -ErrorAction Stop | Out-Null
-          # -xJf works on both bsdtar and GNU tar (the GitHub Actions
-          # windows-2022 runner ships GNU tar via Git for Windows). Same
-          # xz compression format used by package-release.mjs.
-          tar -xJf $archive[0].FullName -C $smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Write-Host "Extracting $($archive[0].Name) ($($archive[0].Length) bytes) into $smoke"
+          $timer = [System.Diagnostics.Stopwatch]::StartNew()
+          & $tar -xf $archive[0].FullName -C $smoke
+          if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed: $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath (Join-Path $smoke 'server.js'))) { throw 'Extracted server.js missing' }
+          Write-Host "Extraction completed in $($timer.Elapsed.TotalSeconds) seconds"
+      - name: Test extracted archive (not source workspace)
+        timeout-minutes: 8
+        run: |
+          $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
+          Write-Host "Starting smoke test from $smoke"
           node scripts/test-release.mjs $smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Upload verified release and manual publisher
@@ -83,7 +93,7 @@ jobs:
           if-no-files-found: error
           retention-days: 7
           path: |
-            outputs/*.tar.xz
+            outputs/*.tar.gz
             outputs/*.sha256.txt
             deploy/publish-release.ps1
             deploy/README.md
