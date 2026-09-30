@@ -113,6 +113,27 @@ jobs:
           Write-Host "Starting smoke test from $smoke"
           node scripts/test-release.mjs $smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test image API from extracted archive
+        timeout-minutes: 5
+        env:
+          CONTENT_ROOT: ${{ github.workspace }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          if (-not (Test-Path -LiteralPath (Join-Path $smoke 'server.js'))) { throw 'Extracted server.js missing' }
+          Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
+          # Workspace sharp generates fixtures only. HTTP conversion must use
+          # the extracted release's own dependencies, outside the checkout.
+          node scripts/test-image-api.mjs $smoke outputs/image-api-http-test.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload image API test report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: image-api-test-${{ github.sha }}-${{ github.run_attempt }}
+          path: outputs/image-api-http-test.json
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Upload verified release and manual publisher
         uses: actions/upload-artifact@v4
         with:

@@ -54,7 +54,7 @@ gdufscraft.top {
     # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入
     #   secrets.caddy 在 .gitignore, 服务器本地维护, 部署时不会从 git 同步进来
     #   首次部署: Copy-Item secrets.caddy.example secrets.caddy + 填入真密码哈希
-    @adminPath path /admin/*
+    @adminPath path /admin /admin/* /api/admin /api/admin/*
     import secrets.caddy
 
     # 反代到 PM2 启动的 Next.js (端口 3000)

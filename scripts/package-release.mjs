@@ -334,12 +334,8 @@ console.log("package-release: stripped dev-only files (.map/.ts/.md) from STAGE"
 //         Next.js loads at runtime; the second is a tracing artifact. Drop
 //         the .pnpm/.../next/ copy. Raw savings: ~4 MB.
 //
-//     (d) sharp + @img/sharp-* — runtime never requires sharp. The project
-//         uses <img> (HTML) and SVG <image>, not next/image. sharp is only
-//         used in scripts/convert-news-images.mjs, which runs inside the
-//         convert-news-images GitHub Action that installs sharp on the
-//         runner itself. Deleting sharp drops the libvips-42.dll native
-//         binary (~36 MB) as well. Raw savings: ~55 MB.
+//     (d) sharp + @img/sharp-* are runtime dependencies of the image API. Keep them.
+//         Native binaries must remain available after packaging.
 // ---------------------------------------------------------------------------
 function stripDuplicates(stage) {
   const nm = join(stage, "node_modules");
@@ -369,33 +365,8 @@ function stripDuplicates(stage) {
     copyLog(`stripDuplicates: removed ${capsizeCount} duplicate capsize-font-metrics.json copy/copies`);
   }
 
-  // (d) entire sharp + @img — no runtime importer exists in this project
-  for (const dropName of ["sharp", "@img"]) {
-    const dropPath = join(nm, dropName);
-    if (existsSync(dropPath)) {
-      rmSync(dropPath, { recursive: true, force: true });
-      copyLog(`stripDuplicates: removed node_modules/${dropName} (no runtime import)`);
-    }
-  }
-
-  // (e) pnpm virtual-store entries for sharp / @img. The project source
-  //     has 0 references to next/image and next.config.ts has no `images:`
-  //     block, so the image optimizer is never invoked and the sharp native
-  //     binary under .pnpm/ is dead weight at runtime. next's own
-  //     require('sharp') is lazy inside getSharp() and is not exercised by
-  //     the smoke-tested routes. Drops ~20.74 MB raw (mainly sharp@0.34.5's
-  //     libvips-42.dll and the @img+sharp-win32-x64 native shim).
-  for (const entry of readdirSync(pnpm)) {
-    if (
-      entry.startsWith("sharp@") ||
-      entry.startsWith("sharp+") ||
-      entry.startsWith("@img+")
-    ) {
-      const dropPath = join(pnpm, entry);
-      rmSync(dropPath, { recursive: true, force: true });
-      copyLog(`stripDuplicates: removed .pnpm/${entry} (project has no sharp importer)`);
-    }
-  }
+  // Keep sharp and @img, including virtual-store entries: the admin
+  // image conversion route now loads them at runtime.
 
   // (f) Next.js 16 standalone + outputFileTracing double-copies the entire
   //     project public/ tree under STAGE/public/public/. That nested copy
