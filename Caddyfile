@@ -51,6 +51,30 @@ gdufscraft.top {
         header Cache-Control "public, max-age=60"
     }
 
+    # /download/* 公开下载目录, 直接由 Caddy 服务, 不走 Next.js
+    #   目录: H:\GDUFSMC-web\download\ (跟 public\images 一样是部署根下的
+    #   共享目录, 不进 release; 新增文件不需要重新发布)
+    #   用法: 把文件丢进去, 链接就是 https://gdufscraft.top/download/<文件名>
+    #         例如 H:\GDUFSMC-web\download\map.zip -> /download/map.zip
+    #   handle_path (不是 handle) 会把 /download 前缀从路径里剥掉, 因此
+    #     root 指向 download 目录本身, 服务范围被限制在这一个目录内 ——
+    #     部署根下还有 secrets.caddy / secrets.edgeone.json / shared\*.json
+    #     这些带凭据的文件, 不该被路径技巧碰到。
+    #   不开 browse: 目录请求返回 404, 只能按精确文件名访问, 没有列表页
+    #   Content-Disposition: attachment 强制浏览器下载而不是 inline 渲染
+    #     (.txt/.json/.md 默认会被浏览器直接显示出来)。刻意不带 filename=
+    #     参数 —— 浏览器改从 URL 推断文件名并自行解码 percent-encoding,
+    #     这样中文名不需要 RFC 6266 的 filename*=UTF-8'' 编码。
+    #   换文件用同一个链接时, 浏览器本地缓存 5 分钟内会拿到旧文件;
+    #     EdgeOne 是否缓存这份响应取决于站点侧的 cache rule, 换大文件建议
+    #     改文件名 (带版本号) 而不是覆盖同名文件。
+    handle_path /download/* {
+        root * H:\GDUFSMC-web\download
+        file_server
+        header Content-Disposition "attachment"
+        header Cache-Control "public, max-age=300"
+    }
+
     # /admin/* 需要 basic auth — 密码哈希从 ./secrets.caddy 导入
     #   secrets.caddy 在 .gitignore, 服务器本地维护, 部署时不会从 git 同步进来
     #   首次部署: Copy-Item secrets.caddy.example secrets.caddy + 填入真密码哈希
