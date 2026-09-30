@@ -115,8 +115,43 @@ if (!publicAsset) {
   console.warn("test-release: no public asset found; public check skipped");
 }
 
+// Where content lives for this run.
+//
+// A release built with RELEASE_EXTERNAL_CONTENT=1 ships no content/ at all and
+// expects the runtime env CONTENT_ROOT to point at the live directory. The
+// smoke test has to look in the SAME place the server will look, otherwise it
+// probes an image the server cannot serve and reports a false failure.
+//
+//   RELEASE_EXTERNAL_CONTENT=1  -> <CONTENT_ROOT>/content/news/images
+//   otherwise                   -> <stageDir>/content/news/images
+//
+// CONTENT_ROOT itself is inherited from the environment (package-release sets
+// it for the child below), so a caller can point the smoke test at any tree.
+const externalContent = process.env.RELEASE_EXTERNAL_CONTENT === "1";
+const contentRoot = externalContent ? process.env.CONTENT_ROOT : stageDir;
+if (externalContent) {
+  // An external-content release has no bundled content, so CONTENT_ROOT is not
+  // optional and a wrong value is not a degraded-but-working state: the app
+  // starts, answers 200 on every route, and shows an empty news list. Refuse
+  // to "pass" a smoke test that only skipped the content checks.
+  if (!contentRoot) {
+    fail(
+      "RELEASE_EXTERNAL_CONTENT=1 but CONTENT_ROOT is not set; the release has " +
+        "no content/ and the server would read nothing"
+    );
+  }
+  if (!existsSync(join(contentRoot, "content"))) {
+    fail(
+      "RELEASE_EXTERNAL_CONTENT=1 and CONTENT_ROOT='" +
+        contentRoot +
+        "' does not contain a content/ directory. The server would fall back " +
+        "to <release>/content, which does not exist in an external release."
+    );
+  }
+}
+
 function firstContentImage() {
-  const imgDir = join(stageDir, "content", "news", "images");
+  const imgDir = join(contentRoot, "content", "news", "images");
   if (!existsSync(imgDir)) return null;
   for (const e of readdirSync(imgDir, { withFileTypes: true })) {
     if (e.isFile() && /\.(webp|png|jpe?g|gif|svg)$/i.test(e.name)) {
@@ -127,7 +162,19 @@ function firstContentImage() {
 }
 const contentImage = firstContentImage();
 if (!contentImage) {
-  console.warn("test-release: no content image found; content-image check skipped");
+  console.warn(
+    "test-release: no content image found at " +
+      join(contentRoot, "content", "news", "images") +
+      "; content-image check skipped"
+  );
+}
+
+function countNewsFiles() {
+  const dir = join(contentRoot, "content", "news");
+  if (!existsSync(dir)) return 0;
+  return readdirSync(dir, { withFileTypes: true }).filter(
+    (e) => e.isFile() && e.name.toLowerCase().endsWith(".md")
+  ).length;
 }
 
 // ---------------------------------------------------------------------------
@@ -263,6 +310,48 @@ try {
       const ct = r.headers.get("content-type") || "";
       return ct.startsWith("image/");
     });
+  }
+
+  // Content-backed rendering, not just content-backed bytes.
+  //
+  // /news returning 200 proves the route exists, not that it found any
+  // articles. When content lives outside the release, the failure mode is
+  // silent in exactly that way: misconfigured CONTENT_ROOT yields an empty
+  // news page that still answers 200. Count the article links on the rendered
+  // list and compare against what the content tree on disk actually holds.
+  const expectedArticles = countNewsFiles();
+  if (expectedArticles > 0) {
+    await check(
+      "news-list-renders-content(" + expectedArticles + " article(s))",
+      "/news",
+      async (r) => {
+        if (r.status !== 200) return false;
+        const html = await r.text();
+        // Article cards link to /news/<slug>. Count distinct hrefs so the
+        // header nav (which may link to /news once) does not inflate this.
+        const hrefs = new Set();
+        for (const m of html.matchAll(/href="\/news\/([^"?#]+)"/g)) {
+          hrefs.add(m[1]);
+        }
+        return hrefs.size >= expectedArticles;
+      }
+    );
+  } else if (externalContent) {
+    // Bundled releases may legitimately ship an empty content/ (a fresh
+    // project), so this only skips. An EXTERNAL release exists precisely to
+    // serve articles, and an empty tree means the operator pointed
+    // CONTENT_ROOT at the wrong place or wiped the directory. Fail.
+    fail(
+      "RELEASE_EXTERNAL_CONTENT=1 but no markdown articles found in " +
+        join(contentRoot, "content", "news") +
+        ". The external content root is empty or wrong."
+    );
+  } else {
+    console.warn(
+      "test-release: no markdown articles found in " +
+        join(contentRoot, "content", "news") +
+        "; news-list-renders-content check skipped"
+    );
   }
 
   // report

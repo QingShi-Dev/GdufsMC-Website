@@ -163,7 +163,48 @@ if (existsSync(stagedPublicImages)) {
   copyLog("removed STAGE/public/images (served by Caddy from H:\\GDUFSMC-web\\public)");
 }
 copyIn(NEXT_STATIC, join(".next", "static"));
-copyIn(CONTENT_DIR, "content");
+
+// content/ is optionally EXTERNAL.
+//
+// Default (RELEASE_EXTERNAL_CONTENT unset or "0"): content/ ships inside the
+// release exactly as before, and the app reads <release>/content because
+// lib/news + lib/leaderboard + app/content fall back to process.cwd().
+// This is the safe legacy path; nothing changes for an existing deployment.
+//
+// "1": content/ is assumed to live outside the release, at the path the
+// runtime env var CONTENT_ROOT points to (e.g. H:/GDUFSMC-web/content, which
+// is where CMS edits land). The release then ships no content at all, which
+// keeps news edits off the deploy path: changing an article is a file change
+// in that directory, not a rebuild + republish.
+//
+// A release built with "1" MUST be started with CONTENT_ROOT set. Without it
+// the app falls back to <release>/content, which does not exist, and every
+// content-backed page degrades to empty (news list empty, leaderboard shows
+// its default, /content/... images 404). That is a loud, visible failure
+// rather than a silent one, but it is still a deploy-order dependency, so
+// set CONTENT_ROOT in the PM2 ecosystem before publishing such a release.
+const externalContent = process.env.RELEASE_EXTERNAL_CONTENT === "1";
+if (externalContent) {
+  copyLog(
+    "SKIP content/ (RELEASE_EXTERNAL_CONTENT=1): content is served from " +
+      "CONTENT_ROOT, which the runtime MUST provide (PM2 ecosystem or env)"
+  );
+  // next.config.ts traces ./content/**/* into .next/standalone, so a stale
+  // copy can still land in STAGE even though we skipped our own copyIn().
+  // Shipping it would be worse than shipping nothing: the release would look
+  // self-contained while actually serving a frozen snapshot that CMS edits
+  // never reach. Fail loudly instead of producing a misleading artifact.
+  const leakedContent = join(STAGE, "content");
+  if (existsSync(leakedContent)) {
+    rmSync(leakedContent, { recursive: true, force: true });
+    copyLog(
+      "removed STAGE/content (traced in by outputFileTracingIncludes; " +
+        "external content must come from CONTENT_ROOT at runtime)"
+    );
+  }
+} else {
+  copyIn(CONTENT_DIR, "content");
+}
 
 // Include every declared Next production dependency, not one missing package
 // at a time. Use exactly the versions installed from the frozen lockfile.

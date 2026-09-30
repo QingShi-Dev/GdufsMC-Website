@@ -50,6 +50,80 @@ Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
 
 `H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。
 
+## 内容外置（content/ 不再随 release 发布）
+
+默认行为**不变**：release 自带 `content/`，站点从 `<release>/content` 读新闻、积分榜和图片。改文章仍然要走"改代码 → GitHub 构建 → 下载 artifact → 重新发布"。
+
+启用外置后，release 不再打包 content，站点改从固定目录读，CMS 改文章只需改文件，不用重新发布。
+
+### 一次性切换
+
+```powershell
+# 1. 在服务器上建 content 基线（从 dev repo 同步一次）
+$src = 'G:\Project\NodeProject\gdufsmc-site-dev\content'      # 开发机路径
+$dst = 'H:\GDUFSMC-web\content'
+New-Item -ItemType Directory $dst -Force | Out-Null
+robocopy $src $dst /MIR /XD .git
+if ($LASTEXITCODE -ge 8) { throw "robocopy failed: $LASTEXITCODE" }
+
+# 2. 校验 content 树（frontmatter 必填字段 / slug 唯一 / 图片引用存在）
+node <dev-repo>\scripts\verify-content-root.mjs 'H:\GDUFSMC-web'
+
+# 3. 让运行中的 app 带上 CONTENT_ROOT
+#    publish-release.ps1 从 live app 继承环境变量，所以只要设置一次，
+#    之后每次发布都会自动带上。
+$env:CONTENT_ROOT = 'H:\GDUFSMC-web'
+& 'C:\npm\pm2.cmd' restart gdufsmc --update-env
+& 'C:\npm\pm2.cmd' save
+```
+
+### 之后发版
+
+GitHub Actions 的 build job 加一个 env（`deploy.yml`）：
+
+```yaml
+      - name: Package release
+        env:
+          RELEASE_EXTERNAL_CONTENT: '1'
+        run: node scripts/package-release.mjs
+```
+
+之后 artifact 里的 release 不含 content，发布流程不变。
+
+### 安全网
+
+`publish-release.ps1` 在复制候选 release 之后、切换 PM2 之前会检查：
+
+- 候选带 content → 正常发布（日志打印 `content: bundled in this release`）
+- 候选不带 content + live app 有 `CONTENT_ROOT` 且目录存在 → 正常发布
+- 候选不带 content + `CONTENT_ROOT` 指向的目录不存在 → **拒绝发布**
+- 候选不带 content + 没有 `CONTENT_ROOT` → **拒绝发布**
+
+最后两种情况本来会让服务正常启动、所有路由返回 200、但新闻列表空白——一个能骗过所有健康检查的静默内容故障。现在它在切换之前就中止。
+
+`scripts/test-release.mjs` 在 `RELEASE_EXTERNAL_CONTENT=1` 时会：
+
+- `CONTENT_ROOT` 未设或目录不存在 → 直接 exit 1
+- content 树里没有 `.md` → 在 news 检查处 exit 1
+- 正常时新增 `news-list-renders-content(N article(s))` 检查，比对磁盘上的文章数与页面实际渲染出的 `/news/<slug>` 链接数
+
+GitHub Actions 里跑 smoke test 时需要给两个 env：
+
+```yaml
+        env:
+          RELEASE_EXTERNAL_CONTENT: '1'
+          CONTENT_ROOT: ${{ github.workspace }}
+```
+
+### 回退到内置 content
+
+把 `RELEASE_EXTERNAL_CONTENT` 从 workflow 里去掉重新构建即可。运行中的 app 即使还带着 `CONTENT_ROOT` 也不影响——`lib/news` 会优先用 `CONTENT_ROOT`，所以要**同时**清掉 live app 的环境变量：
+
+```powershell
+$env:CONTENT_ROOT = ''
+& 'C:\npm\pm2.cmd' restart gdufsmc --update-env
+```
+
 ## 部署后自动清 EdgeOne 缓存
 
 `publish-release.ps1` 在 DEPLOY / ROLLBACK 成功后会自动调用 `tccli teo CreatePurgeTask --Type purge_all`，让用户访问到新版本（不用等 s-maxage=86400 自然过期）。失败时仅 warn，不阻塞发布。

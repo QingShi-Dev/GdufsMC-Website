@@ -484,6 +484,22 @@ function New-DeployEnv {
     $e['HOSTNAME']  = '127.0.0.1'
     $e['PORT']      = '3000'
     $e['NODE_ENV']  = 'production'
+    # CONTENT_ROOT selects where news / leaderboard / content images are read
+    # from at runtime. It is inherited from the live app's env above, so once a
+    # single release has been published with it set, every later release keeps
+    # it automatically. When the source release ships content/ inside itself
+    # (the default, RELEASE_EXTERNAL_CONTENT unset) the variable is absent and
+    # lib/news falls back to <release>/content, which is correct.
+    #
+    # Setting it here is therefore a no-op for the bundled case. It only
+    # matters when the operator deliberately exports CONTENT_ROOT for an
+    # external-content release, and then the value we propagate must be the one
+    # the app is actually running with, not a guess.
+    if ($e.ContainsKey('CONTENT_ROOT')) {
+        Write-Host "  content root (inherited from live app): $($e['CONTENT_ROOT'])"
+    } else {
+        Write-Host "  content root: bundled in release (no CONTENT_ROOT)"
+    }
     return $e
 }
 
@@ -1047,6 +1063,37 @@ try {
         # Copy only after PM2 parsing and live-state preflight have succeeded.
         Copy-Item -LiteralPath $ReleaseDirectory -Destination $newReleasePath -Recurse -Force
         Assert-ReleaseStructure $newReleasePath $manifest
+
+        # Content-root preflight.
+        #
+        # A release that ships no content/ can only render news if the runtime
+        # knows where to read it from. Publishing one without CONTENT_ROOT set
+        # would come up green (server starts, /news returns 200) and show an
+        # empty news list, empty leaderboard, and 404 images -- a silent
+        # content outage that survives every health check in this script.
+        # Detect the two release shapes from disk and refuse the bad pairing.
+        $releaseContentDir = Join-Path $newReleasePath 'content'
+        $releaseHasContent = Test-Path -LiteralPath $releaseContentDir
+        $liveContentRoot = $null
+        if ($live.env -and $live.env.PSObject.Properties['CONTENT_ROOT']) {
+            $liveContentRoot = [string]$live.env.CONTENT_ROOT
+        }
+        if ($releaseHasContent) {
+            Write-Host "  content: bundled in this release"
+        } elseif ($liveContentRoot) {
+            Write-Host "  content: external, CONTENT_ROOT=$liveContentRoot"
+            if (-not (Test-Path -LiteralPath $liveContentRoot)) {
+                throw ("Candidate ships no content/ and the inherited CONTENT_ROOT " +
+                       "'$liveContentRoot' does not exist. Publishing would start the app " +
+                       "with an empty news list. Fix CONTENT_ROOT or publish a release " +
+                       "that bundles content.")
+            }
+        } else {
+            throw ("Candidate ships no content/ and no CONTENT_ROOT is set on the live app. " +
+                   "lib/news would fall back to <release>/content, which does not exist, " +
+                   "and every news page would render empty. Either set CONTENT_ROOT on the " +
+                   "running app or publish a release built without RELEASE_EXTERNAL_CONTENT=1.")
+        }
 
         # Rollback baseline config stored privately under shared WITH A UNIQUE GUID NAME
         # so we never overwrite a config that state.previous still references.
