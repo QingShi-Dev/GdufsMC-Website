@@ -26,7 +26,12 @@ import type { LeaderboardData, LeaderboardEntry } from "./types";
 // 重新导出类型, 让 `@/lib/leaderboard` 仍然是完整入口
 export type { LeaderboardData, LeaderboardEntry, RankChange } from "./types";
 
-const DATA_PATH = join(process.cwd(), "content", "leaderboard", "index.yml");
+// 内容根目录, 与 lib/news 共用同一解析规则. 生产可用 CONTENT_ROOT 指向
+// 外置目录; 路径在模块加载时求值一次, 切换后需重启进程.
+const CONTENT_ROOT = process.env.CONTENT_ROOT
+  ? join(process.env.CONTENT_ROOT, "content")
+  : join(process.cwd(), "content");
+const DATA_PATH = join(CONTENT_ROOT, "leaderboard", "index.yml");
 
 const DEFAULT_DATA: LeaderboardData = {
   title: "🏆 小游戏积分榜",

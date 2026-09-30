@@ -28,7 +28,14 @@ import type { NewsFrontmatter, NewsItem } from "./types";
 export type { NewsItem, NewsCategory, NewsFrontmatter } from "./types";
 export { CATEGORY_BADGE_CLASS } from "./types";
 
-const CONTENT_DIR = join(process.cwd(), "content", "news");
+// 内容根目录. 默认 <cwd>/content (随 release 打包), 生产可用
+// CONTENT_ROOT 指向外置目录 (例如 H:/GDUFSMC-web/content), 让 CMS 改内容
+// 不必重新 build / 发布整个 release. 路径在模块加载时求值一次, 所以
+// 切换 CONTENT_ROOT 需要重启进程 (pm2 restart --update-env).
+const CONTENT_ROOT = process.env.CONTENT_ROOT
+  ? join(process.env.CONTENT_ROOT, "content")
+  : join(process.cwd(), "content");
+const CONTENT_DIR = join(CONTENT_ROOT, "news");
 
 /**
  * 读取所有 news 文件, 解析 frontmatter + body, 按 date 倒序排列

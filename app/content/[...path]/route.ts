@@ -20,7 +20,11 @@ import { readFile, stat } from "node:fs/promises";
 import { resolve, extname, relative, isAbsolute } from "node:path";
 import { NextResponse } from "next/server";
 
-const CONTENT_ROOT = resolve(process.cwd(), "content");
+// 内容根目录, 与 lib/news / lib/leaderboard 共用同一解析规则. 生产可用
+// CONTENT_ROOT 指向外置目录; 路径在模块加载时求值一次, 切换后需重启进程.
+const CONTENT_ROOT = process.env.CONTENT_ROOT
+  ? resolve(process.env.CONTENT_ROOT, "content")
+  : resolve(process.cwd(), "content");
 
 const MIME: Record<string, string> = {
   ".webp": "image/webp",

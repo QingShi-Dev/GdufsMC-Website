@@ -1,14 +1,24 @@
 /**
  * News 详情页 — /news/[slug]
  *
- * 纯静态渲染, 走 lib/news.ts 抽象层
+ * 纯 server component 渲染, 走 lib/news.ts 抽象层
  * - 顶部 cover (16:10) + 标题 + meta
  * - summary 摘要卡
  * - content 长文 (white-space: pre-line 保留换行)
  * - 底部"返回新闻列表" + 上一篇/下一篇导航
- * - generateStaticParams 预生成所有 slug (SSG)
  * - notFound() 处理 404
+ *
+ * 渲染策略: 强制动态渲染, 不用 generateStaticParams.
+ *   本页读取 content/news/*.md, content 可通过 CONTENT_ROOT 指向 release
+ *   之外的外置目录 (CMS 改内容不需要重新 build / 发布). generateStaticParams
+ *   在 build 时枚举 slug 并预渲染, 会把文章内容固化进
+ *   .next/server/app/news/<slug>.html, 外置 content 后续修改不生效, 新增文章
+ *   也要等首次请求现场渲染后即被冻结. 强制动态渲染让每次请求都现读盘.
+ *   代价是每次请求一次 readFile + 一次 readdir (为上一篇/下一篇导航),
+ *   几十 ms 量级; 用户侧新鲜度另由 EdgeOne purge 保证.
+ *   若将来需要静态直出, 改用 revalidate (ISR) 而非 generateStaticParams.
  */
+export const dynamic = "force-dynamic";
 
 import { notFound } from "next/navigation";
 import Link from "next/link";
@@ -16,12 +26,6 @@ import { getNewsList, getNewsBySlug, CATEGORY_BADGE_CLASS } from "@/lib/news";
 import { MarkdownContent } from "@/components/news/markdown";
 
 type Props = { params: Promise<{ slug: string }> };
-
-/** SSG: 预生成所有 news slug, build 时跑, ISR 60s 缓存 */
-export async function generateStaticParams() {
-  const list = await getNewsList();
-  return list.map((n) => ({ slug: n.slug }));
-}
 
 /** 详情页 metadata: 标题 + 描述给 SEO */
 export async function generateMetadata({ params }: Props) {

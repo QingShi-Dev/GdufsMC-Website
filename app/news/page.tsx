@@ -13,7 +13,19 @@ import { Leaderboard } from "@/components/news/leaderboard";
  *     - 侧栏 (lg:w-72): 小游戏积分榜 (sticky 跟随滚动)
  *
  * 数据走 lib/news + lib/leaderboard 抽象层, 后期换后台 0 改动
+ *
+ * 渲染策略: 强制动态渲染.
+ *   页面读取 content/news/*.md + content/leaderboard/index.yml, 而 content
+ *   可以通过 CONTENT_ROOT 指向 release 之外的外置目录 (CMS 改内容不需要
+ *   重新 build / 发布整个 release). 预渲染会把 build 时刻的内容固化进
+ *   .next/server/app/news.html, 外置 content 改了也不会反映, 所以这里
+ *   必须每次请求现读盘.
+ *   代价是每次请求 N 次 readFile (N = 文章数), 几十 ms 量级; 校园站点
+ *   访问量下无所谓. 用户侧的新鲜度靠 EdgeOne purge 保证, 源站这里始终最新.
+ *   若将来文章数增长到需要缓存, 可换成 revalidate (ISR) 保留静态直出.
  */
+export const dynamic = "force-dynamic";
+
 export default async function NewsPage() {
   // server component 调抽象层, 后期换 fetch 不动这里
   const [carousel, list, leaderboard] = await Promise.all([
