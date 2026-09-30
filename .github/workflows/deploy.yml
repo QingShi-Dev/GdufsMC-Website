@@ -50,11 +50,29 @@ jobs:
           pnpm build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package release
+        env:
+          # Build a release with no content/ inside. The news, leaderboard,
+          # and /content/... images are read at runtime from the directory
+          # CONTENT_ROOT points at (H:\GDUFSMC-web\content on the prod host),
+          # so editing an article becomes a file change instead of a rebuild
+          # plus republish. publish-release.ps1 refuses to publish such a
+          # release unless the live app already carries a valid CONTENT_ROOT,
+          # so a missing env var fails the deploy instead of shipping a site
+          # with an empty news list.
+          RELEASE_EXTERNAL_CONTENT: '1'
         run: |
           node scripts/package-release.mjs
           $code = $LASTEXITCODE
           Write-Host "package-release process exit code: $code"
           if ($code -ne 0) { exit $code }
+          # Confirm the artifact really has no content/. package-release.mjs
+          # removes a traced-in copy too, so this is a cheap end-to-end check
+          # that the external-content build did what it claims.
+          $leaked = @(Get-ChildItem .release-stage -Directory | Where-Object { Test-Path (Join-Path $_.FullName 'content') })
+          if ($leaked.Count -gt 0) {
+            throw "external content build leaked content/ in: $($leaked.Name -join ', ')"
+          }
+          Write-Host 'verified: stage has no content/ (external mode)'
       - name: Extract release archive with Windows tar
         timeout-minutes: 4
         run: |
@@ -80,6 +98,15 @@ jobs:
           Write-Host "Extraction completed in $($timer.Elapsed.TotalSeconds) seconds"
       - name: Test extracted archive (not source workspace)
         timeout-minutes: 8
+        env:
+          # The archive under test has no content/. Point the smoke test at the
+          # checked-out content so it probes the same tree the prod host will
+          # serve from, and so its content checks actually run instead of
+          # being skipped. test-release.mjs exits non-zero when CONTENT_ROOT is
+          # unset, missing, or holds no markdown, which is the point: a release
+          # that would come up with an empty news list must not pass CI.
+          RELEASE_EXTERNAL_CONTENT: '1'
+          CONTENT_ROOT: ${{ github.workspace }}
         run: |
           $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
           Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
