@@ -8,6 +8,7 @@ import { writeFileSync } from "node:fs";
 import { randomBytes } from "node:crypto";
 import assert from "node:assert/strict";
 import sharp from "sharp";
+import { verifySharp } from "./sharp-runtime.mjs";
 const stage = resolve(process.argv[2] || ".next/standalone");
 const socket = createServer();
 socket.listen(0, "127.0.0.1");
@@ -46,6 +47,8 @@ async function image(buf, width, height, quality, alpha) {
   return { r, output };
 }
 try {
+  await check("Sharp native preflight", () => verifySharp(stage));
+  if (results.some(r => !r.pass)) throw new Error("Sharp preflight failed; see exact resolution diagnostics above");
   let ready = false;
   const deadline = Date.now() + 60000;
   while (Date.now() < deadline) {

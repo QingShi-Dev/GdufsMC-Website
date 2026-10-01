@@ -27,6 +27,7 @@ import { createHash } from "node:crypto";
 import { join, resolve, relative } from "node:path";
 import { copyReleaseTree } from "./copy-release-tree.mjs";
 import { includeRuntimePackage, resolveRuntimeManifest } from "./include-runtime-package.mjs";
+import { supplementSharp, verifySharp, pruneRedundantSharp, assertSharpRuntimeBounded } from "./sharp-runtime.mjs";
 import { createRequire } from "node:module";
 
 const copyLog = (message) => writeSync(1, "package-release: " + message + "\n");
@@ -208,7 +209,7 @@ if (externalContent) {
 
 // Include every declared Next production dependency, not one missing package
 // at a time. Use exactly the versions installed from the frozen lockfile.
-// Platform-specific optional dependencies remain supplied by standalone tracing.
+// Sharp platform optional dependencies are supplemented explicitly below.
 beginPhase("include and verify Next production dependencies");
 const workspaceRequire = createRequire(join(ROOT, "package.json"));
 const nextManifestPath = workspaceRequire.resolve("next/package.json");
@@ -381,6 +382,11 @@ function stripDuplicates(stage) {
   }
 }
 stripDuplicates(STAGE);
+beginPhase("supplement and verify Sharp native runtime");
+supplementSharp(STAGE, ROOT, copyLog);
+await verifySharp(STAGE, copyLog);
+pruneRedundantSharp(STAGE, copyLog);
+assertSharpRuntimeBounded(STAGE, copyLog);
 
 function scanSensitive(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });

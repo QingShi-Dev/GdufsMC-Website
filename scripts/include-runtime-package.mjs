@@ -1,5 +1,5 @@
 import { createRequire } from "node:module";
-import { readFileSync, mkdirSync, existsSync } from "node:fs";
+import { readFileSync, mkdirSync, existsSync, realpathSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { copyReleaseTree } from "./copy-release-tree.mjs";
 
@@ -8,10 +8,17 @@ export function resolveRuntimeManifest(name, fromManifest) {
   try { return req.resolve(`${name}/package.json`); }
   catch (error) {
     if (error.code !== "ERR_PACKAGE_PATH_NOT_EXPORTED") throw error;
+    // Some native packages export only subpaths (e.g. ./sharp.node),
+    // exposing neither package.json nor a main entry. Search Node's exact
+    // requester-relative module paths without guessing an entry filename.
+    for (const base of req.resolve.paths(name) || []) {
+      const candidate = join(base, ...name.split("/"), "package.json");
+      if (existsSync(candidate) && JSON.parse(readFileSync(candidate, "utf8")).name === name) return realpathSync(candidate);
+    }
     let dir = dirname(req.resolve(name));
     while (true) {
       const candidate = join(dir, "package.json");
-      if (existsSync(candidate) && JSON.parse(readFileSync(candidate, "utf8")).name === name) return candidate;
+      if (existsSync(candidate) && JSON.parse(readFileSync(candidate, "utf8")).name === name) return realpathSync(candidate);
       const parent = dirname(dir);
       if (parent === dir) throw new Error(`Cannot locate manifest for ${name}`);
       dir = parent;
