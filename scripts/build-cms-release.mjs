@@ -1,0 +1,25 @@
+import {spawnSync} from "node:child_process";
+import {mkdirSync,cpSync,readFileSync,writeFileSync,readdirSync} from "node:fs";
+import {resolve,join,dirname,delimiter,relative} from "node:path";
+import {fileURLToPath} from "node:url";
+import {createHash} from "node:crypto";
+const project=resolve(dirname(fileURLToPath(import.meta.url)),"..");
+if(!process.argv[2])throw Error("Usage: node scripts/build-cms-release.mjs <fixed-source> [output]");
+const source=resolve(process.argv[2]);
+const output=resolve(process.argv[3]||join(project,"outputs/cms-release"));
+mkdirSync(output,{recursive:true});
+if(readdirSync(output).length)throw Error("CMS output must be empty; use a fresh output directory");
+const run=(args,cwd)=>{const r=spawnSync(process.execPath,args,{cwd,stdio:"inherit",env:{...process.env,PATH:[dirname(process.execPath),join(source,"node_modules/.bin"),process.env.PATH].join(delimiter)}});if(r.status!==0)throw Error(`CMS build failed: ${r.status}`);};
+run([join(project,"scripts/patch-cms.mjs"),source],project);
+writeFileSync(join(source,"vite.release.config.mjs"),"import config from './vite.config.js';\nexport default {...config, plugins:config.plugins.filter(p=>p?.name !== 'build-npm')};\n");
+run([join(source,"node_modules/vite/bin/vite.js"),"build","--config","vite.release.config.mjs"],source);
+mkdirSync(output,{recursive:true});
+for(const dir of ["dist","locales"])cpSync(join(source,"package",dir),join(output,dir),{recursive:true,filter:(p)=>! /\.(map|ts|md)$/.test(p)});
+cpSync(join(source,"LICENSE.txt"),join(output,"LICENSE.txt"));
+const bundle=readFileSync(join(output,"dist/sveltia-cms.js"));
+if(!bundle.includes(Buffer.from("/api/admin/image-convert")))throw Error("Image patch absent");
+const hashes={};
+function scan(dir){for(const e of readdirSync(dir,{withFileTypes:true})){const p=join(dir,e.name);if(e.isDirectory())scan(p);else hashes[relative(output,p).replaceAll("\\","/")]=createHash("sha256").update(readFileSync(p)).digest("hex");}}
+scan(output);
+writeFileSync(join(output,"manifest.json"),JSON.stringify({version:"0.227.0",commit:"38d382dfc6b2c7ec471f6724f42c889df91396ae",files:hashes},null,2));
+console.log(`CMS release built: ${output}`);

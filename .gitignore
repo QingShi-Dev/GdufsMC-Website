@@ -51,6 +51,22 @@ next-env.d.ts
 /.release-stage/
 /.release-smoke/
 
+# CMS vendor is built and verified by CI, never committed.
+/public/admin/vendor/
+
+# Local CMS preview and test-repository administration only.
+# Keep test-cms-image-converter.mjs and test-cms-patch.mjs: release CI runs them.
+/scripts/build-cms-preview.mjs
+/scripts/prepare-cms-test.mjs
+/scripts/serve-cms-test.mjs
+/scripts/unify-cms-test.mjs
+/scripts/install-cms-lifecycle-test.mjs
+/scripts/install-cms-maintain-test.mjs
+/scripts/cms-maintain-test.mjs
+/scripts/cms-validate-content-test.mjs
+/scripts/test-cms-branch-lifecycle.mjs
+/scripts/test-cms-maintenance-guards.mjs
+
 # local runtime and diagnostic output
 /logs/
 /pnpm-store/

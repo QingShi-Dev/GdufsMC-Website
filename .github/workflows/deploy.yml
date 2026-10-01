@@ -49,6 +49,35 @@ jobs:
         run: |
           pnpm build
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build pinned CMS vendor bundle
+        timeout-minutes: 12
+        env:
+          CMS_COMMIT: 38d382dfc6b2c7ec471f6724f42c889df91396ae
+          CMS_VERSION: 0.227.0
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cmsRoot = Join-Path $env:RUNNER_TEMP "sveltia-cms-$env:CMS_VERSION"
+          $archive = Join-Path $env:RUNNER_TEMP "sveltia-cms-$env:CMS_COMMIT.tar.gz"
+          Invoke-WebRequest -Uri "https://codeload.github.com/sveltia/sveltia-cms/tar.gz/$env:CMS_COMMIT" -OutFile $archive
+          New-Item -ItemType Directory -Force $cmsRoot | Out-Null
+          $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+          & $tar -xf $archive -C $cmsRoot --strip-components=1
+          if ($LASTEXITCODE -ne 0) { throw 'CMS source extraction failed' }
+          node scripts/patch-cms.mjs $cmsRoot
+          if ($LASTEXITCODE -ne 0) { throw 'CMS source validation failed' }
+          Push-Location $cmsRoot
+          try {
+            pnpm install --frozen-lockfile --config.package-import-method=copy --ignore-scripts
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          } finally { Pop-Location }
+          node --test scripts/test-cms-image-converter.mjs
+          if ($LASTEXITCODE -ne 0) { throw 'CMS converter tests failed' }
+          node scripts/test-cms-patch.mjs $cmsRoot
+          if ($LASTEXITCODE -ne 0) { throw 'CMS patch tests failed' }
+          node scripts/build-cms-release.mjs $cmsRoot (Join-Path $env:GITHUB_WORKSPACE 'public/admin/vendor/sveltia-0.227.0')
+          if ($LASTEXITCODE -ne 0) { throw 'CMS build failed' }
+          node scripts/verify-cms-release.mjs (Join-Path $env:GITHUB_WORKSPACE 'public/admin/vendor/sveltia-0.227.0')
+          if ($LASTEXITCODE -ne 0) { throw 'CMS verification failed' }
       - name: Package release
         env:
           # Build a release with no content/ inside. The news, leaderboard,
@@ -96,6 +125,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed: $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $smoke 'server.js'))) { throw 'Extracted server.js missing' }
           Write-Host "Extraction completed in $($timer.Elapsed.TotalSeconds) seconds"
+          node scripts/verify-cms-release.mjs (Join-Path $smoke 'public/admin/vendor/sveltia-0.227.0')
+          if ($LASTEXITCODE -ne 0) { throw 'Extracted CMS verification failed' }
       - name: Test extracted archive (not source workspace)
         timeout-minutes: 8
         env:
