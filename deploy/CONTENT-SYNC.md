@@ -73,7 +73,7 @@ $zoneId = '<现有 EdgeOne zone-id>'
 
 管理员任务**必须**在仅管理员/SYSTEM 可读的 `shared/content-sync-secrets.json` 配置只读仓库 token：`{"githubToken":"..."}`，权限限定目标仓库 Contents: Read。runner 的临时 GITHUB_TOKEN 不会传给独立计划任务；匿名限额不足以持续逐提交及逐文件检查，因此缺少管理员凭据会明确拒绝。用受控本地编辑器创建，不把真实 token 放进命令历史、仓库或聊天。
 
-按 [部署手册](README.md#当前发布方式github-构建管理员手动发布) 下载、校验并解包 `windows-release`，使用该 artifact 内的新版 `publish-release.ps1` 和同目录 `content-operations.ps1` 完整发布一次。新包有 `contentSyncVersion: 1` 和 `content-snapshot/{manifest.json,content/}`。
+按 [部署手册](README.md#当前发布方式github-构建服务器自动发布) 下载、校验并解包 `windows-release`，使用该 artifact 内的新版 `publish-release.ps1` 和同目录 `content-operations.ps1` 完整发布一次。也可在安装独立发布任务后按 [AUTOPUBLISH.md](AUTOPUBLISH.md) 自动完成；无需修改本内容队列。新包有 `contentSyncVersion: 1` 和 `content-snapshot/{manifest.json,content/}`。
 
 publisher 会先用候选配套内容在临时端口验包，再在停服窗口同步程序和固定内容目录，建立 `shared/content-state.json`。首次旧生产文件会保留备份；若旧内容没有可证实的 Git commit，不会编造基线。未建立配套基线时，纯内容任务只会转回完整构建。
 

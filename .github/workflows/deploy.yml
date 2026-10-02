@@ -1,5 +1,5 @@
-# Code builds stay on GitHub. The server runner submits bounded data requests
-# to preinstalled administrator-owned tools; it never installs or operates PM2.
+# Code builds stay on GitHub. The server runner submits content requests or
+# full release ZIPs to separate administrator tasks; it never operates PM2.
 name: Deliver content or build release
 on:
   push:
@@ -46,6 +46,8 @@ jobs:
     if: always() && github.ref == 'refs/heads/main' && (needs.content.result == 'skipped' || (needs.content.result == 'success' && needs.content.outputs.mode == 'full'))
     runs-on: windows-2022
     timeout-minutes: 40
+    outputs:
+      release_artifact_id: ${{ steps.release.outputs.artifact-id }}
     env:
       NEXT_TELEMETRY_DISABLED: '1'
     defaults:
@@ -87,6 +89,12 @@ jobs:
           powershell -NoProfile -NonInteractive -File scripts/test-content-activation.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell -NoProfile -NonInteractive -File scripts/test-content-purge.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test automatic release preparation and delivery
+        run: |
+          powershell -NoProfile -NonInteractive -File scripts/test-artifact-publish.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -NonInteractive -File scripts/test-artifact-publish.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package standalone trusted content tools
         run: |
@@ -217,7 +225,8 @@ jobs:
           path: outputs/image-api-http-test.json
           if-no-files-found: ignore
           retention-days: 7
-      - name: Upload verified release and manual publisher
+      - name: Upload verified release and publishing tools
+        id: release
         uses: actions/upload-artifact@v4
         with:
           name: windows-release-${{ github.sha }}-${{ github.run_attempt }}
@@ -228,5 +237,49 @@ jobs:
             outputs/*.sha256.txt
             deploy/publish-release.ps1
             deploy/content-operations.ps1
+            deploy/artifact-operations.ps1
+            deploy/publish-from-artifacts.ps1
+            deploy/process-release-queue.ps1
+            deploy/submit-release.ps1
+            deploy/setup-release-publish.ps1
+            deploy/AUTOPUBLISH.md
             deploy/README.md
             deploy/CONTENT-SYNC.md
+
+  publish:
+    needs: build
+    if: always() && !cancelled() && github.ref == 'refs/heads/main' && needs.build.result == 'success' && vars.RELEASE_PUBLISH_ENABLED == 'true'
+    runs-on: [self-hosted, Windows, X64, gdufsmc]
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      # Deliberately no checkout or execution of downloaded scripts on the runner.
+      - name: Check fixed delivery client and artifact ID
+        shell: powershell
+        env:
+          RELEASE_ARTIFACT_ID: ${{ needs.build.outputs.release_artifact_id }}
+        run: |
+          if ($env:RELEASE_ARTIFACT_ID -notmatch '^[0-9]+$') { throw 'Build returned no release artifact ID.' }
+          if (-not (Test-Path -LiteralPath 'H:/GDUFSMC-web/release-tools/submit-release.ps1' -PathType Leaf)) {
+            throw 'Install deploy/setup-release-publish.ps1 as Administrator before enabling RELEASE_PUBLISH_ENABLED.'
+          }
+      - name: Download this build's verified release
+        uses: actions/download-artifact@v4
+        with:
+          artifact-ids: ${{ needs.build.outputs.release_artifact_id }}
+          merge-multiple: true
+          path: ${{ runner.temp }}/full-release-${{ github.run_id }}-${{ github.run_attempt }}
+      - name: Deliver ZIP and wait for administrator publisher
+        shell: powershell
+        env:
+          RELEASE_DOWNLOAD: ${{ runner.temp }}/full-release-${{ github.run_id }}-${{ github.run_attempt }}
+          RELEASE_REQUEST_ID: ${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $client = 'H:/GDUFSMC-web/release-tools/submit-release.ps1'
+          if (-not (Test-Path -LiteralPath $client -PathType Leaf)) {
+            throw 'Install deploy/setup-release-publish.ps1 as Administrator before enabling RELEASE_PUBLISH_ENABLED.'
+          }
+          & $client -ArtifactDirectory $env:RELEASE_DOWNLOAD -RequestId $env:RELEASE_REQUEST_ID

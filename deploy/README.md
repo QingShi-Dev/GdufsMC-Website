@@ -1,14 +1,16 @@
 # gdufsmc-site 部署手册
 
-## 当前发布方式：GitHub 构建，管理员手动发布
+## 当前发布方式：GitHub 构建，服务器自动发布
 
 **以下为当前流程。后面的 self-hosted 初始化和服务器构建内容仅为历史参考，不要再次执行，也不要改动现有开机启动服务。**
 
-2026-10-02：内容快速通道及完整发布配套已在本地实现，**尚未在生产安装、启用或验收**。启用后，符合生产代码基线的纯内容提交通过现有 runner 入队，由固定的管理员计划任务在短暂停服窗口替换 `H:\GDUFSMC-web\content`；需要代码更新时仍由 GitHub 构建、管理员手动发布。安装、权限、开关和故障恢复以 [CONTENT-SYNC.md](CONTENT-SYNC.md) 为准；旧交接文档保留历史背景。
+2026-10-03：新增完整构建自动发布。按 [AUTOPUBLISH.md](AUTOPUBLISH.md) 安装独立管理员任务，再开启 `RELEASE_PUBLISH_ENABLED=true`：Actions 构建成功后自动投递 ZIP，服务器校验、解包、调用原 publisher，并回传结果。新通道仍需生产安装和现场验收。纯内容提交继续使用现有 `GdufsmcContentQueue`，安装与恢复见 [CONTENT-SYNC.md](CONTENT-SYNC.md)。
+
+未开启自动发布时仍提供 artifact。管理员可把 ZIP 放进 `artifacts/`，运行 `release-tools/publish-from-artifacts.ps1 -DryRun` 预览，去掉 `-DryRun` 发布。以下低层手工步骤保留作排查参考，不要与自动发布并行运行。
 
 1. 提交并推送代码到 `main`（本次改造不会自动替你提交或推送）。在 Actions 的 `Deliver content or build release` 查看分流；初次迁移保持 `CONTENT_SYNC_ENABLED` 未设置或为 `false`，等待完整构建、类型检查、lint 和解包冒烟测试通过。
 2. 完整构建提供两个发布 artifact：`content-sync-tools-...` 是管理员安装的固定工具与依赖，`windows-release-...` 是程序包及 publisher。首次发布先按 [一次性上线步骤](CONTENT-SYNC.md#一次性上线步骤) 安装工具。将程序 artifact 解压到新的独立下载目录，应包含 `outputs/*.tar.gz`、同名 `.sha256.txt`、`deploy/publish-release.ps1`、**同目录的 `content-operations.ps1`** 和部署文档；不能只复制 publisher 单文件。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
-3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。不要从现有非管理员 runner 调用发布脚本；它的具体服务账户尚待现场核对。
+3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。现有 NETWORK SERVICE runner 通过固定客户端投递，不能直接调用管理员 publisher。
 4. 在 artifact 解压目录运行下面的校验/解包命令，再执行发布。
 
 ```powershell
@@ -23,8 +25,8 @@ if ($actual -ne $expected) { throw 'SHA256 mismatch; stop here' }
 $incoming = "H:\GDUFSMC-web\incoming\$id"
 if (Test-Path -LiteralPath $incoming) { throw 'Use a fresh incoming directory' }
 New-Item -ItemType Directory -Path $incoming | Out-Null
-# -xzf works on both bsdtar and GNU tar (e.g. Git Bash on Windows).
-tar -xzf $archive.FullName -C $incoming
+# Use the same explicit Windows tar executable as CI and automatic publishing.
+& "$env:SystemRoot\System32\tar.exe" -xf $archive.FullName -C $incoming
 if ($LASTEXITCODE -ne 0) { throw 'Archive extraction failed' }
 $manifest = Get-Content "$incoming\release.json" -Raw | ConvertFrom-Json
 $nodeVersion = (& 'C:\Program Files\nodejs\node.exe' --version).Trim().TrimStart('v')
@@ -50,7 +52,7 @@ Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
 & .\deploy\publish-release.ps1 -Rollback
 ```
 
-`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。新版回滚同时恢复该程序版本对应的内容备份，并保留当前内容以便反向恢复。`content-backups/`、`content-failed/`、失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态、journal 与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。未完成 journal 会阻止后续发布，先按 [恢复说明](CONTENT-SYNC.md) 核对和恢复。
+`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。新版回滚同时恢复该程序版本对应的内容备份，并保留当前内容以便反向恢复。`content-backups/`、`content-failed/` 和失败候选保留供排查。自动包装器每次尝试后清空 `incoming`，保留失败的 `candidate` 与本次 `artifacts`；原 publisher 单独运行不清 incoming。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态、journal 与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。未完成 journal 会阻止后续发布，先按 [恢复说明](CONTENT-SYNC.md) 核对和恢复。
 
 ## 内容外置与内容自动同步
 
@@ -75,7 +77,7 @@ GitHub Actions 的 build job 已有以下 env（`deploy.yml`），无需重复�
         run: node scripts/package-release.mjs
 ```
 
-之后管理员继续使用本文的校验、解包与发布命令；配套内容由新版 publisher 一起处理。纯内容任务通过版本检查后只替换完整内容目录并重启同一个 PM2 应用，不构建程序，也不改变程序 release。生产代码落后于内容所需代码、基线未知或历史不能充分核验时，会回到完整构建。
+开启完整自动发布后无需手工校验、解包或运行 publisher，配套内容仍由现有 publisher 一起处理。纯内容任务通过版本检查后只替换完整内容目录并重启同一个 PM2 应用，不构建程序，也不改变程序 release。生产代码落后于内容所需代码、基线未知或历史不能充分核验时，会回到完整构建及自动发布。
 
 ### 安全网
 
