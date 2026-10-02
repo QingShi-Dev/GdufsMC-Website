@@ -62,6 +62,16 @@ next-env.d.ts
 
 # Local CMS preview and test-repository administration only.
 # Keep test-cms-image-converter.mjs and test-cms-patch.mjs: release CI runs them.
+#
+# test-cms-branch-lifecycle.mjs is deliberately NOT in this block any more. It
+# was swept in with the local-only tools, but it is not one of them: it touches
+# no external repository and no network, it only builds a throwaway git repo in
+# a temp directory, and it guards the CMS content-branch invariants (a stale
+# compare-and-swap must not clobber a concurrent save). It now runs in CI.
+#
+# The entries below stay ignored on purpose. They operate on the separate
+# GdufsMC-CMS-Test repository or on local preview output, so they must never be
+# committed and must never be wired into a workflow.
 /scripts/build-cms-preview.mjs
 /scripts/prepare-cms-test.mjs
 /scripts/serve-cms-test.mjs
@@ -70,7 +80,6 @@ next-env.d.ts
 /scripts/install-cms-maintain-test.mjs
 /scripts/cms-maintain-test.mjs
 /scripts/cms-validate-content-test.mjs
-/scripts/test-cms-branch-lifecycle.mjs
 /scripts/test-cms-maintenance-guards.mjs
 
 # local runtime and diagnostic output

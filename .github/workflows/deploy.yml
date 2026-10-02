@@ -100,6 +100,10 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell -NoProfile -NonInteractive -File scripts/test-content-backup-retention.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          # CMS content-branch mechanics in a throwaway local repo. Guards the
+          # invariants a production incident would only reveal during a save.
+          node scripts/test-cms-branch-lifecycle.mjs outputs/cms-branch-lifecycle.json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test automatic release preparation and delivery
         run: |
           powershell -NoProfile -NonInteractive -File scripts/test-artifact-publish.ps1
@@ -233,6 +237,14 @@ jobs:
         with:
           name: image-api-test-${{ github.sha }}-${{ github.run_attempt }}
           path: outputs/image-api-http-test.json
+          if-no-files-found: ignore
+          retention-days: 7
+      - name: Upload CMS branch lifecycle report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: cms-branch-lifecycle-${{ github.sha }}-${{ github.run_attempt }}
+          path: outputs/cms-branch-lifecycle.json
           if-no-files-found: ignore
           retention-days: 7
       - name: Upload verified release and publishing tools
