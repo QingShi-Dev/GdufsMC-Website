@@ -3,13 +3,11 @@ slug: welcome-to-our-website
 title: 欢迎来到：云城像素社网站
 date: 2026-09-19
 category: 公告
-summary: 经过数周的开发，云城像素社网站正式上线！诚邀大家一同探索、体验，并帮助我们做得更好
+summary: 经过数周的开发，云城像素社网站正式上线！本网站旨在为社区成员提供一站式信息服务平台，诚邀大家一同探索、体验，并帮助我们做得更好
 cover: /content/news/images/website-home-page.webp
 badge: ''
 pinned: true
 ---
-
-云城像素社网站旨在为社区成员提供一站式信息服务平台。
 
 # 重要功能介绍
 
