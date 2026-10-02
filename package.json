@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test:content": "node --test scripts/test-verify-content-root.mjs scripts/test-release-content-preflight.mjs scripts/test-slugify.mjs scripts/test-content-source.mjs scripts/test-content-snapshot.mjs scripts/test-package-content-tools.mjs scripts/test-content-sync.mjs",
     "audit": "pnpm audit --prod --audit-level=high"
   },
   "dependencies": {
@@ -34,8 +35,10 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.11",
     "puppeteer-core": "^25.11.0",
+    "remark-parse": "11.0.0",
     "sharp": "^0.35.4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "unified": "11.0.5"
   }
 }

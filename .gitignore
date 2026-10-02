@@ -54,6 +54,11 @@ next-env.d.ts
 # CMS vendor is built and verified by CI, never committed.
 /public/admin/vendor/
 
+# Agent handoff notes. These exist to hand context to the next person or
+# model; they are working notes, not documentation of the project itself.
+/deploy/HANDOFF-*.md
+/deploy/CONTENT-EXTERNAL-HANDOFF.md
+
 # Local CMS preview and test-repository administration only.
 # Keep test-cms-image-converter.mjs and test-cms-patch.mjs: release CI runs them.
 /scripts/build-cms-preview.mjs

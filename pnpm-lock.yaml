@@ -72,6 +72,9 @@ importers:
       puppeteer-core:
         specifier: ^25.11.0
         version: 25.11.0
+      remark-parse:
+        specifier: 11.0.0
+        version: 11.0.0
       sharp:
         specifier: ^0.35.4
         version: 0.35.4(@types/node@20.19.43)
@@ -81,6 +84,9 @@ importers:
       typescript:
         specifier: ^5
         version: 5.9.3
+      unified:
+        specifier: 11.0.5
+        version: 11.0.5
 
 packages:
 
