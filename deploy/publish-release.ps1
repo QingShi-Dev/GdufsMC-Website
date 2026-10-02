@@ -77,6 +77,12 @@ param(
     [string]$Pm2Path = 'C:/npm/pm2.cmd',
     [string]$ExpectedUser = 'WINSERVER08\Administrator',
 
+    # How many <Root>/content-backups/<operationId> trees to keep after a
+    # successful publish. Oldest beyond this count are pruned; the current
+    # operation and the backup recorded in shared/content-state.json are always
+    # kept on top of this count because -Rollback reads them.
+    [ValidateRange(1, 500)][int]$ContentBackupRetention = 10,
+
     [Parameter(ParameterSetName = 'SyntaxCheck')]
     [switch]$SyntaxCheck
 )
@@ -1481,6 +1487,19 @@ try {
                 $retiredIds = @([string]$state.previous.id)
             }
             Clear-OldReleases -State $newState -RetiredIds $retiredIds
+            # Content backup retention. Runs after a successful switch + state
+            # commit, never before, so a failed publish cannot consume a slot.
+            # Deletion problems are warnings: housekeeping must not fail a good
+            # publish. content-failed/ is a separate tree and is never touched.
+            $backupKeep = @()
+            if ($contentSwap -and $contentSwap.operationId) { $backupKeep += [string]$contentSwap.operationId }
+            if ($oldContentState -and $oldContentState.backupPath) {
+                $backupKeep += (Split-Path -Leaf (Split-Path -Parent ([string]$oldContentState.backupPath)))
+            }
+            $prune = Clear-OldContentBackups -Root $Root -KeepOperationIds $backupKeep -Keep $ContentBackupRetention
+            if ($prune.removed.Count -gt 0) {
+                Write-Host "CONTENT BACKUP RETENTION: kept $($prune.retained.Count), removed $($prune.removed.Count): $($prune.removed -join ', ')"
+            }
             Write-Host "DEPLOY SUCCEEDED: $([string]$manifest.id)"
             Invoke-EdgeOnePurge
         } catch {

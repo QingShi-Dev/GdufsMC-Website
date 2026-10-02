@@ -147,6 +147,26 @@ test('recovery failure remains critical and journal stays unfinished',()=>{
  assert.equal(r.status,1);assert.equal(r.json.critical,true);assert.equal(read(path.join(f.root,'shared/content-journal.json')).completed,false);
  assert.equal(fs.readFileSync(path.join(f.root,'content-backups',operation,'content/news/live.txt'),'utf8'),'OLD');
 });
+test('successful activation prunes content backups to the retention window',()=>{
+ const f=fixture('retention');
+ // 12 historical slots, each holding a real content/ tree. The activation below
+ // adds a 13th (its own backup). Retention keeps 10, so exactly 2 are pruned and
+ // the current operation's backup must survive.
+ for(let i=1;i<=12;i++)write(path.join(f.root,'content-backups',`op-${String(i).padStart(2,'0')}`,'content/news/old.txt'),'OLD'+i);
+ const r=invoke(f);assert.equal(r.status,0,r.stderr);assert.equal(r.json.success,true);
+ assert.equal(r.json.removedBackups.length,2);
+ const ids=fs.readdirSync(path.join(f.root,'content-backups'));
+ assert.equal(ids.length,11,ids.join(','));
+ assert.ok(ids.includes(operation),'current operation backup was pruned: '+ids.join(','));
+ assert.equal(fs.readFileSync(path.join(f.root,'content-backups',operation,'content/news/live.txt'),'utf8'),'OLD');
+});
+test('failed activation never prunes a backup slot',()=>{
+ const f=fixture('retention-fail');
+ for(let i=1;i<=12;i++)write(path.join(f.root,'content-backups',`op-${String(i).padStart(2,'0')}`,'content/news/old.txt'),'OLD'+i);
+ write(path.join(f.root,'fail-health'),'1');
+ const r=invoke(f);assert.equal(r.status,1);assertOld(f,true);
+ assert.equal(fs.readdirSync(path.join(f.root,'content-backups')).length,13);
+});
 test('queue processes at most ten requests and skips completed results',()=>{
  const f=fixture('queue');for(let i=1;i<=12;i++)json(path.join(f.root,'coordination/queue',content+'-'+i+'-1.json'),{});
  const r=invoke(f,'process-content-queue.ps1');assert.equal(r.status,0,r.stderr);assert.equal(r.json.processed,10);assert.equal(fs.readdirSync(path.join(f.root,'coordination/results')).length,10);

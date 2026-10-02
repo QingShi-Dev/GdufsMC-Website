@@ -277,3 +277,76 @@ function Restore-ContentDirectorySwap {
     }
     return [pscustomobject]@{ failedPath = $failed; operationId = $OperationId }
 }
+
+# ===========================================================================
+# Retention for content-backups.
+#
+# WHY: every successful content activation moves the live tree aside into
+# <Root>/content-backups/<operationId>. Nothing ever removed those, so the
+# directory grew without bound (one full content copy per CMS save). The
+# production check "how much disk is left" was the only feedback loop.
+#
+# GUARDS (do NOT delete anything that is not provably an old backup):
+#   * caller must hold shared/deployment.lock and must have ALREADY completed
+#     the swap, the state write and the journal. Running this earlier would
+#     let a failed publish consume a retention slot.
+#   * only DIRECT children of <Root>/content-backups
+#   * the name must be a valid operation id AND the folder must contain a
+#     'content' subdirectory, i.e. it really is a directory-swap backup.
+#     Anything else is unknown and is RETAINED for diagnosis.
+#   * any operation id in -KeepOperationIds is never removed (the current
+#     operation, and the backup recorded in shared/content-state.json, which
+#     publish-release.ps1 -Rollback depends on)
+#   * the whole tree must contain NO reparse points
+#   * on any delete failure, emit a WARNING and keep going. Pruning is
+#     housekeeping; it must never fail a completed publish.
+#   * content-failed/ is a separate tree and is never touched here.
+# ===========================================================================
+function Clear-OldContentBackups {
+    param(
+        [Parameter(Mandatory = $true)][string]$Root,
+        [string[]]$KeepOperationIds = @(),
+        [ValidateRange(1, 500)][int]$Keep = 10
+    )
+    $Root = Get-ContentFullPath $Root
+    $backupsRoot = Join-Path $Root 'content-backups'
+    $summary = [pscustomobject]@{ retained = @(); removed = @(); skipped = @() }
+    if (-not (Test-Path -LiteralPath $backupsRoot -PathType Container)) { return $summary }
+    Assert-ContentNoReparse $backupsRoot
+    # PowerShell variable names are case-insensitive, so a local called $keep
+    # would overwrite the [int]$Keep parameter and fail the assignment.
+    $pinned = @()
+    if ($KeepOperationIds) { $pinned = @($KeepOperationIds | Where-Object { -not [string]::IsNullOrEmpty([string]$_) }) }
+
+    # Newest first. CreationTimeUtc is set when the <operationId> folder is
+    # created by Invoke-ContentDirectorySwap, i.e. at swap time; a manual
+    # Copy-Item restore may not preserve it, so LastWriteTimeUtc breaks ties.
+    $candidates = @()
+    foreach ($child in (Get-ChildItem -LiteralPath $backupsRoot -Directory -Force)) {
+        if ($child.Name -in $pinned) { continue }
+        if ($child.Name -notmatch '^[a-zA-Z0-9][a-zA-Z0-9-]{0,99}$' -or
+            -not (Test-Path -LiteralPath (Join-Path $child.FullName 'content') -PathType Container)) {
+            $summary.skipped += $child.Name
+            continue
+        }
+        $candidates += $child
+    }
+    $ordered = @($candidates | Sort-Object -Property `
+        @{ Expression = { $_.CreationTimeUtc }; Descending = $true },
+        @{ Expression = { $_.LastWriteTimeUtc }; Descending = $true },
+        @{ Expression = { $_.Name }; Descending = $true })
+
+    for ($i = 0; $i -lt $ordered.Count; $i++) {
+        $child = $ordered[$i]
+        if ($i -lt $Keep) { $summary.retained += $child.Name; continue }
+        try {
+            Assert-ContentNoReparse $child.FullName -Recurse
+            Remove-Item -LiteralPath $child.FullName -Recurse -Force -ErrorAction Stop
+            $summary.removed += $child.Name
+        } catch {
+            Write-Warning "Skip backup removal (retained): $($child.Name): $($_.Exception.Message)"
+            $summary.skipped += $child.Name
+        }
+    }
+    return $summary
+}

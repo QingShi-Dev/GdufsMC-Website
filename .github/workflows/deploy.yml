@@ -90,6 +90,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           powershell -NoProfile -NonInteractive -File scripts/test-content-purge.ps1
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -NonInteractive -File scripts/test-content-backup-retention.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Test automatic release preparation and delivery
         run: |
           powershell -NoProfile -NonInteractive -File scripts/test-artifact-publish.ps1

@@ -7,7 +7,13 @@ param(
     [Parameter(Mandatory = $true)][string]$ContentCommit,
     [Parameter(Mandatory = $true)][string]$CodeCommit,
     [Parameter(Mandatory = $true)][string]$ReleaseId,
-    [switch]$LockHeld
+    [switch]$LockHeld,
+    # How many <Root>/content-backups/<operationId> trees to keep after a
+    # successful activation; oldest beyond this count are pruned. The current
+    # operation id and the backup recorded in shared/content-state.json are
+    # always kept on top of this count (rollback depends on them).
+    # content-failed/ is a separate tree and is never touched.
+    [ValidateRange(1, 500)][int]$ContentBackupRetention = 10
 )
 $ErrorActionPreference = 'Stop'
 $env:NODE_OPTIONS = $null
@@ -221,7 +227,23 @@ try {
         version = 1; commit = $CodeCommit; releaseId = $ReleaseId; contentCommit = $ContentCommit
     })
     Set-ContentJournalPhase 'complete' $true
-    [ordered]@{ success = $true; operationId = $OperationId; codeCommit = $CodeCommit; contentCommit = $ContentCommit; backupPath = $backupPath } | ConvertTo-Json -Compress
+    # Housekeeping, deliberately AFTER the journal is complete: a failed
+    # activation must never consume a retention slot, and a successful one
+    # must never be rolled back by a pruning failure. Deletion problems are
+    # warnings inside Clear-OldContentBackups, so this cannot turn a good
+    # publish into a failed one.
+    #
+    # NOTE: stdout here is a machine contract -- scripts/content-sync.mjs does
+    # JSON.parse() on it. Never Write-Host from this script; report the
+    # retention outcome in the result object instead.
+    $prune = Clear-OldContentBackups -Root $root -KeepOperationIds @(
+        $OperationId
+        $(if ($oldState -and $oldState.backupPath) { Split-Path -Leaf (Split-Path -Parent ([string]$oldState.backupPath)) })
+    ) -Keep $ContentBackupRetention
+    [ordered]@{
+        success = $true; operationId = $OperationId; codeCommit = $CodeCommit; contentCommit = $ContentCommit
+        backupPath = $backupPath; retainedBackups = $prune.retained; removedBackups = $prune.removed
+    } | ConvertTo-Json -Compress -Depth 5
 } catch {
     $failure = $_.Exception.Message
     if ($journalStarted -and $maintenanceStarted) {

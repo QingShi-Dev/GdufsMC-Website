@@ -63,7 +63,7 @@ $zoneId = '<现有 EdgeOne zone-id>'
 | `coordination/results/`、`coordination/code/` | 管理员写，runner 读 |
 | `coordination/staging/` | 管理员下载和校验的候选，runner 不可写 |
 | `shared/` | 原私有锁、PM2 配置、部署/内容状态、journal、诊断；不向 runner 开放 |
-| `content-backups/`、`content-failed/` | 旧内容及失败内容，保留用于恢复 |
+| `content-backups/`、`content-failed/` | 旧内容及失败内容，保留用于恢复。`content-backups/` 在每次**成功**激活后自动剪枝到最新 10 份（`Clear-OldContentBackups`，数量用 `-ContentBackupRetention` 调）；失败的激活不消耗名额，跳过的目录只告警不删。`content-failed/` 不自动清理 |
 
 计划任务 `GdufsmcContentQueue` 用管理员 S4U 身份、最高权限执行固定入口，每分钟及开机触发，同一任务不并发。它不修改既有 PM2 开机服务。安装器不自动开启 GitHub 变量，也不立即替换内容。
 

@@ -52,7 +52,7 @@ Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
 & .\deploy\publish-release.ps1 -Rollback
 ```
 
-`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。新版回滚同时恢复该程序版本对应的内容备份，并保留当前内容以便反向恢复。`content-backups/`、`content-failed/` 和失败候选保留供排查。自动包装器每次尝试后清空 `incoming`，保留失败的 `candidate` 与本次 `artifacts`；原 publisher 单独运行不清 incoming。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态、journal 与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。未完成 journal 会阻止后续发布，先按 [恢复说明](CONTENT-SYNC.md) 核对和恢复。
+`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。新版回滚同时恢复该程序版本对应的内容备份，并保留当前内容以便反向恢复。`content-backups/` 在每次**成功**发布或内容同步后自动剪枝到最新 10 份（`-ContentBackupRetention` 可调；当前 operation 和 `shared/content-state.json` 记录的那份永远保留，失败的发布不消耗名额，跳过项只告警不删）。`content-failed/` 和失败候选保留供排查，不自动清理。自动包装器每次尝试后清空 `incoming`，保留失败的 `candidate` 与本次 `artifacts`；原 publisher 单独运行不清 incoming。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态、journal 与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。未完成 journal 会阻止后续发布，先按 [恢复说明](CONTENT-SYNC.md) 核对和恢复。
 
 ## 内容外置与内容自动同步
 

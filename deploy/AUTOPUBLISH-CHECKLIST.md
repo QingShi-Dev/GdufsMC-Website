@@ -297,9 +297,12 @@ Disable-ScheduledTask -TaskName 'GdufsmcReleasePublish'
 | `release-delivery\inbox\` | 未处理的 zip | 正常情况处理完就空 |
 | `release-delivery\logs\` | transcript 日志 | 累积，**不会自动清**，定期手工删 |
 | `release-delivery\results\` | 每次发布的记录 | 同上 |
-| `content-backups\` | content 备份 | 累积，需定期检查 |
+| `content-backups\` | content 备份 | **自动清理**：每次成功发布/同步后只保留最新 10 份 |
+| `content-failed\` | 失败内容 | 累积，**不会自动清**，排查完手工删 |
 
-**这些都不自动清理。** 磁盘会慢慢涨。建议每月检查一次。
+**除 `content-backups/` 外都不自动清理。** 磁盘会慢慢涨，建议每月检查一次。
+
+`content-backups` 的保留逻辑（`Clear-OldContentBackups`）只在成功之后跑，所以一次失败发布不会消耗名额。它只删 `content-backups/` 的直接子目录，且必须同时满足：目录名是合法 operation id、里面确实有 `content/` 子目录、整棵树没有 reparse point、并且不是当前 operation 也不是 `shared/content-state.json` 里记录的那份。不满足的一律跳过并在日志里告警。数量用 `-ContentBackupRetention` 调（默认 10）。
 
 ---
 
