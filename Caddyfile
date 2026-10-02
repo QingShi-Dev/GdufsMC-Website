@@ -81,6 +81,17 @@ gdufscraft.top {
     @adminPath path /admin /admin/* /api/admin /api/admin/*
     import secrets.caddy
 
+    # basic_auth 在 Next.js 之前短路, 所以 ADMIN_SECURITY_HEADERS 里的
+    # no-store 永远下发不到 401 上。Caddy 的 401 只有 Content-Length: 0,
+    # 没有缓存指令 —— Chrome 会把它缓存下来, 下次访问直接重放缓存的空 401,
+    # 于是表现为"连密码框都不弹"。这里给受保护路径补上不可缓存。
+    #
+    # 只作用于 @adminPath: 顶层的 header 指令先于 handle 运行, 若写成全局,
+    # /images/* 和 /download/* 各自 handle 块里的 max-age 会被它盖掉。
+    header @adminPath {
+        Cache-Control "private, no-store"
+    }
+
     # 反代到 PM2 启动的 Next.js (端口 3000)
     #   X-Forwarded-* 透传真实客户端 IP (proxy.ts 用 XFF 最右)
     handle {
