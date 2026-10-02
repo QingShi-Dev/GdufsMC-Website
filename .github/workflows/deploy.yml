@@ -1,18 +1,45 @@
-# Transition: build on GitHub, publish manually as the existing PM2 owner.
-# Never run install/build or change services on the production runner.
-name: Build release (manual publish)
+# Code builds stay on GitHub. The server runner submits bounded data requests
+# to preinstalled administrator-owned tools; it never installs or operates PM2.
+name: Deliver content or build release
 on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      force_full_build:
+        description: 'Build a full release without using the server content queue'
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
   group: release-build-${{ github.ref }}
   cancel-in-progress: false
 jobs:
+  content:
+    if: github.ref == 'refs/heads/main' && vars.CONTENT_SYNC_ENABLED == 'true' && inputs.force_full_build != true
+    runs-on: [self-hosted, Windows, X64, gdufsmc]
+    timeout-minutes: 20
+    outputs:
+      mode: ${{ steps.sync.outputs.mode }}
+    steps:
+      # No checkout: a content commit must never replace the trusted worker.
+      - name: Submit content request and wait for the administrator task
+        id: sync
+        shell: powershell
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          CANDIDATE_COMMIT: ${{ github.sha }}
+          REQUEST_ID: ${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Remove-Item Env:NODE_OPTIONS -ErrorAction SilentlyContinue
+          Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
+          & 'C:/Program Files/nodejs/node.exe' 'H:/GDUFSMC-web/content-tools/scripts/content-sync.mjs' enqueue --config 'H:/GDUFSMC-web/content-tools/config.json' --candidate $env:CANDIDATE_COMMIT --request-id $env:REQUEST_ID
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
   build:
-    if: github.ref == 'refs/heads/main'
+    needs: content
+    if: always() && github.ref == 'refs/heads/main' && (needs.content.result == 'skipped' || (needs.content.result == 'success' && needs.content.outputs.mode == 'full'))
     runs-on: windows-2022
     timeout-minutes: 40
     env:
@@ -45,6 +72,33 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm lint
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate content and regression tests
+        run: |
+          pnpm test:content
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node scripts/verify-content-root.mjs . --json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -NonInteractive -File scripts/test-content-operations.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -NonInteractive -File scripts/test-content-activation.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          powershell -NoProfile -NonInteractive -File scripts/test-content-purge.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Package standalone trusted content tools
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP "content-sync-tools-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
+          node scripts/package-content-tools.mjs $tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          Remove-Item Env:NODE_PATH -ErrorAction SilentlyContinue
+          node (Join-Path $tools 'scripts/verify-content-root.mjs') $env:GITHUB_WORKSPACE --json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Upload trusted content tools for administrator installation
+        uses: actions/upload-artifact@v4
+        with:
+          name: content-sync-tools-${{ github.sha }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/content-sync-tools-${{ github.run_id }}-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 7
       - name: Build standalone
         run: |
           pnpm build
@@ -80,14 +134,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'CMS verification failed' }
       - name: Package release
         env:
-          # Build a release with no content/ inside. The news, leaderboard,
-          # and /content/... images are read at runtime from the directory
-          # CONTENT_ROOT points at (H:\GDUFSMC-web\content on the prod host),
-          # so editing an article becomes a file change instead of a rebuild
-          # plus republish. publish-release.ps1 refuses to publish such a
-          # release unless the live app already carries a valid CONTENT_ROOT,
-          # so a missing env var fails the deploy instead of shipping a site
-          # with an empty news list.
+          # Runtime reads H:/GDUFSMC-web/content. The content-snapshot sidecar
+          # pairs this build with its validated data for publish and rollback.
           RELEASE_EXTERNAL_CONTENT: '1'
         run: |
           node scripts/package-release.mjs
@@ -175,4 +223,6 @@ jobs:
             outputs/*.tar.gz
             outputs/*.sha256.txt
             deploy/publish-release.ps1
+            deploy/content-operations.ps1
             deploy/README.md
+            deploy/CONTENT-SYNC.md

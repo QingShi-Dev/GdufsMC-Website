@@ -4,9 +4,11 @@
 
 **以下为当前流程。后面的 self-hosted 初始化和服务器构建内容仅为历史参考，不要再次执行，也不要改动现有开机启动服务。**
 
-1. 提交并推送代码到 `main`（本次改造不会自动替你提交或推送）。在 Actions 的 `Build release (manual publish)` 等待安装、类型检查、lint、构建、解包冒烟测试全部通过。
-2. 下载该次运行的 `windows-release-...` artifact，在服务器解压到一个新的独立下载目录。应包含 `outputs/*.tar.gz`、同名 `.sha256.txt`、`deploy/publish-release.ps1` 和本说明。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
-3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。不要从 NETWORK SERVICE 的 Runner 调用发布脚本。
+2026-10-02：内容快速通道及完整发布配套已在本地实现，**尚未在生产安装、启用或验收**。启用后，符合生产代码基线的纯内容提交通过现有 runner 入队，由固定的管理员计划任务在短暂停服窗口替换 `H:\GDUFSMC-web\content`；需要代码更新时仍由 GitHub 构建、管理员手动发布。安装、权限、开关和故障恢复以 [CONTENT-SYNC.md](CONTENT-SYNC.md) 为准；旧交接文档保留历史背景。
+
+1. 提交并推送代码到 `main`（本次改造不会自动替你提交或推送）。在 Actions 的 `Deliver content or build release` 查看分流；初次迁移保持 `CONTENT_SYNC_ENABLED` 未设置或为 `false`，等待完整构建、类型检查、lint 和解包冒烟测试通过。
+2. 完整构建提供两个发布 artifact：`content-sync-tools-...` 是管理员安装的固定工具与依赖，`windows-release-...` 是程序包及 publisher。首次发布先按 [一次性上线步骤](CONTENT-SYNC.md#一次性上线步骤) 安装工具。将程序 artifact 解压到新的独立下载目录，应包含 `outputs/*.tar.gz`、同名 `.sha256.txt`、`deploy/publish-release.ps1`、**同目录的 `content-operations.ps1`** 和部署文档；不能只复制 publisher 单文件。只使用自己仓库可信提交生成的包；校验和用于检测损坏，不是来源认证。
+3. 用 **WINSERVER08\Administrator 的管理员 PowerShell** 操作。先确认网站当前在 PM2 中 online，且本机 `http://127.0.0.1:3000/` 返回 200。不要从现有非管理员 runner 调用发布脚本；它的具体服务账户尚待现场核对。
 4. 在 artifact 解压目录运行下面的校验/解包命令，再执行发布。
 
 ```powershell
@@ -30,9 +32,9 @@ if ($nodeVersion -ne $manifest.nodeVersion) { throw 'Node version differs from r
 & .\deploy\publish-release.ps1 -ReleaseDirectory $incoming
 ```
 
-工作流固定的 Node/pnpm 版本必须确实可下载；生产 Node 必须与发布清单中的版本完全一致。不要为通过校验直接替换正在运行的 Node；先核实服务器实际版本，再统一构建配置及运行时。首次构建和真实发布尚需在实际环境验证。
+工作流固定的 Node/pnpm 版本必须确实可下载；生产 Node 必须与发布清单中的版本完全一致。不要为通过校验直接替换正在运行的 Node；先核实服务器实际版本，再统一构建配置及运行时。本轮新工作流和服务器任务仍需远端 CI 与生产现场验证，不能沿用旧版本构建成功作为验收结果。
 
-发布脚本会先在临时回环端口验证新包，再切换 `gdufsmc` 并检查首页、版本标记；切换失败会尝试恢复旧进程。**切换使用 stop/delete/start，会有短暂停机，不是零停机发布。** 成功后执行 `pm2 save`，不安装或修改开机启动机制，不改 Caddy。其他 PM2 应用不受操作。
+新版程序包通过 `contentSyncVersion: 1` 声明配套内容，保存于 `content-snapshot/{manifest.json,content/}`。publisher 先调用已安装的固定工具校验 sidecar，再用候选内容在临时回环端口验证程序。正式切换时先停止并移除 `gdufsmc`，保留旧内容后替换固定目录，再启动新程序，验证源站实际内容并记录配套代码/内容状态。失败会尝试恢复旧内容和旧进程。**切换使用 stop/delete/start，会有短暂停机，不是零停机发布。** 成功后执行 `pm2 save`；publisher 不修改既有开机服务或 Caddy，其他 PM2 应用不受操作。
 
 成功发布后检查：
 
@@ -48,38 +50,23 @@ Invoke-WebRequest https://gdufscraft.top/ -UseBasicParsing
 & .\deploy\publish-release.ps1 -Rollback
 ```
 
-`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。
+`H:\GDUFSMC-web\releases` 保留当前和上一个成功版本；只清理状态中明确被淘汰的旧成功版本。新版回滚同时恢复该程序版本对应的内容备份，并保留当前内容以便反向恢复。`content-backups/`、`content-failed/`、失败候选与 `incoming` 下载包保留供排查，不自动清理。首次迁移的旧根目录也保留，不删除它：初次回滚还依赖旧文件。状态、journal 与私有 PM2 配置位于 `shared`，可能含环境变量，不要上传或公开。未完成 journal 会阻止后续发布，先按 [恢复说明](CONTENT-SYNC.md) 核对和恢复。
 
-## 内容外置（content/ 不再随 release 发布）
+## 内容外置与内容自动同步
 
-默认行为**不变**：release 自带 `content/`，站点从 `<release>/content` 读新闻、积分榜和图片。改文章仍然要走"改代码 → GitHub 构建 → 下载 artifact → 重新发布"。
+打包脚本在**不设置外置开关**时默认仍把 `content/` 放入 release；运行时未设置 `CONTENT_ROOT` 才会从 `<release>/content` 读取新闻、积分榜和图片。
 
-启用外置后，release 不再打包 content，站点改从固定目录读，CMS 改文章只需改文件，不用重新发布。
+CI 设置 `RELEASE_EXTERNAL_CONTENT=1`，运行时仍固定从 `CONTENT_ROOT=H:\GDUFSMC-web` 下的 `content/` 读取新闻、榜单和图片。程序包不带供运行时直接读取的顶层 `content/`，但现在附带 `content-snapshot/` 作为完整发布的配套输入；publisher 将其校验后同步到生产固定目录。
 
-### 一次性切换
+### 从旧手工方式迁移
 
-```powershell
-# 1. 在服务器上建 content 基线（从 dev repo 同步一次）
-$src = 'G:\Project\NodeProject\gdufsmc-site-dev\content'      # 开发机路径
-$dst = 'H:\GDUFSMC-web\content'
-New-Item -ItemType Directory $dst -Force | Out-Null
-robocopy $src $dst /MIR /XD .git
-if ($LASTEXITCODE -ge 8) { throw "robocopy failed: $LASTEXITCODE" }
+早期外置改造采用人工复制内容、设置 PM2 环境变量并手工 purge。该流程仅为历史说明，不再提供对在线目录逐文件镜像覆盖的命令。
 
-# 2. 校验 content 树（frontmatter 必填字段 / slug 唯一 / 图片引用存在）
-node <dev-repo>\scripts\verify-content-root.mjs 'H:\GDUFSMC-web'
-
-# 3. 让运行中的 app 带上 CONTENT_ROOT
-#    publish-release.ps1 从 live app 继承环境变量，所以只要设置一次，
-#    之后每次发布都会自动带上。
-$env:CONTENT_ROOT = 'H:\GDUFSMC-web'
-& 'C:\npm\pm2.cmd' restart gdufsmc --update-env
-& 'C:\npm\pm2.cmd' save
-```
+当前顺序是：先核对生产内容有无未回写 Git 的改动，管理员安装可信工具和受限队列任务，再完整发布一次含 sidecar 的新程序包，最后明确开启 `CONTENT_SYNC_ENABLED=true` 并做真实 CMS 验收。第一次完整发布会保留旧生产内容。工具尚未安装时，新包会拒绝发布，不会默默降级为旧流程。详细命令及账户检查见 [CONTENT-SYNC.md](CONTENT-SYNC.md)。
 
 ### 之后发版
 
-GitHub Actions 的 build job 加一个 env（`deploy.yml`）：
+GitHub Actions 的 build job 已有以下 env（`deploy.yml`），无需重复添加：
 
 ```yaml
       - name: Package release
@@ -88,24 +75,21 @@ GitHub Actions 的 build job 加一个 env（`deploy.yml`）：
         run: node scripts/package-release.mjs
 ```
 
-之后 artifact 里的 release 不含 content，发布流程不变。
+之后管理员继续使用本文的校验、解包与发布命令；配套内容由新版 publisher 一起处理。纯内容任务通过版本检查后只替换完整内容目录并重启同一个 PM2 应用，不构建程序，也不改变程序 release。生产代码落后于内容所需代码、基线未知或历史不能充分核验时，会回到完整构建。
 
 ### 安全网
 
-`publish-release.ps1` 在复制候选 release 之后、切换 PM2 之前会检查：
+新版完整发布和内容任务使用固定工具校验候选快照与清单哈希，拒绝缺内容、格式错误和不安全路径；它们共用私有 `shared/deployment.lock`，防止内容更新与人工发布互相覆盖。候选验证、停服换目录、实际源站验证、状态记录和失败恢复分别有明确步骤。旧程序包没有 `contentSyncVersion: 1` 时仍保留旧兼容分支，其父目录检查不能替代新版内容验证。
 
-- 候选带 content → 正常发布（日志打印 `content: bundled in this release`）
-- 候选不带 content + live app 有 `CONTENT_ROOT` 且目录存在 → 正常发布
-- 候选不带 content + `CONTENT_ROOT` 指向的目录不存在 → **拒绝发布**
-- 候选不带 content + 没有 `CONTENT_ROOT` → **拒绝发布**
-
-最后两种情况本来会让服务正常启动、所有路由返回 200、但新闻列表空白——一个能骗过所有健康检查的静默内容故障。现在它在切换之前就中止。
+开发机运行 `pnpm test:content` 执行回归，运行 `node scripts/verify-content-root.mjs . --json` 校验完整快照。工具会拒绝缺目录、空新闻、非法字段/日期/slug、缺图、越界路径和异常文件；`summary` 不要求必填。独立校验器的 `--allow-empty-news` 不等于自动发布渠道允许空内容；生产渠道保持默认闸门。
 
 `scripts/test-release.mjs` 在 `RELEASE_EXTERNAL_CONTENT=1` 时会：
 
 - `CONTENT_ROOT` 未设或目录不存在 → 直接 exit 1
 - content 树里没有 `.md` → 在 news 检查处 exit 1
 - 正常时新增 `news-list-renders-content(N article(s))` 检查，比对磁盘上的文章数与页面实际渲染出的 `/news/<slug>` 链接数
+
+外置失败分支的 `fail()` 错误已修复：缺目录/空新闻在启动服务器前拒绝；启动后的错误会执行子进程清理。CI 使用 checkout 内容的测试结果仍不能证明生产外置目录的状态或内容版本。
 
 GitHub Actions 里跑 smoke test 时需要给两个 env：
 
@@ -115,18 +99,15 @@ GitHub Actions 里跑 smoke test 时需要给两个 env：
           CONTENT_ROOT: ${{ github.workspace }}
 ```
 
-### 回退到内置 content
+### 停用快速通道或回滚
 
-把 `RELEASE_EXTERNAL_CONTENT` 从 workflow 里去掉重新构建即可。运行中的 app 即使还带着 `CONTENT_ROOT` 也不影响——`lib/news` 会优先用 `CONTENT_ROOT`，所以要**同时**清掉 live app 的环境变量：
-
-```powershell
-$env:CONTENT_ROOT = ''
-& 'C:\npm\pm2.cmd' restart gdufsmc --update-env
-```
+将 `CONTENT_SYNC_ENABLED` 设为 `false` 可让后续 push 回到完整构建；检查已有队列及正在执行的任务，不能把关闭开关视为已取消服务器任务。程序及配套内容用新版 publisher 的 `-Rollback` 恢复。回到内置 content 属于另一次部署方案变更，需要同时处理运行环境、任务开关和内容来源，不能只删掉打包开关。
 
 ## 部署后自动清 EdgeOne 缓存
 
 `publish-release.ps1` 在 DEPLOY / ROLLBACK 成功后会自动调用 `tccli teo CreatePurgeTask --Type purge_all`，让用户访问到新版本（不用等 s-maxage=86400 自然过期）。失败时仅 warn，不阻塞发布。
+
+这条历史 publisher 路径只确认提交 purge，**不轮询完成状态**；新版内容状态因此保留 `purge: pending`。固定内容 worker 会查询 purge 任务结果并记录完成/失败，可在内容已激活后单独重试清缓存。源站更新成功与 CDN 刷新完成是两个状态，具体重试命令见 [CONTENT-SYNC.md](CONTENT-SYNC.md)。
 
 ### 一次性配置（管理员 PowerShell，仅需一次）
 

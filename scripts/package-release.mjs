@@ -29,6 +29,7 @@ import { copyReleaseTree } from "./copy-release-tree.mjs";
 import { includeRuntimePackage, resolveRuntimeManifest } from "./include-runtime-package.mjs";
 import { supplementSharp, verifySharp, pruneRedundantSharp, assertSharpRuntimeBounded } from "./sharp-runtime.mjs";
 import { createRequire } from "node:module";
+import { writeContentSidecar } from "./content-snapshot.mjs";
 
 const copyLog = (message) => writeSync(1, "package-release: " + message + "\n");
 
@@ -172,18 +173,18 @@ copyIn(NEXT_STATIC, join(".next", "static"));
 // lib/news + lib/leaderboard + app/content fall back to process.cwd().
 // This is the safe legacy path; nothing changes for an existing deployment.
 //
-// "1": content/ is assumed to live outside the release, at the path the
-// runtime env var CONTENT_ROOT points to (e.g. H:/GDUFSMC-web/content, which
-// is where CMS edits land). The release then ships no content at all, which
-// keeps news edits off the deploy path: changing an article is a file change
-// in that directory, not a rebuild + republish.
+// "1": content/ is assumed to live outside the release. The runtime env var
+// CONTENT_ROOT points to its parent (e.g. H:/GDUFSMC-web, with CMS content in
+// H:/GDUFSMC-web/content). The release has no default content/ tree. A separate
+// content-snapshot sidecar pairs code and data for administrator publication;
+// later content-only updates replace the external tree without rebuilding.
 //
 // A release built with "1" MUST be started with CONTENT_ROOT set. Without it
 // the app falls back to <release>/content, which does not exist, and every
 // content-backed page degrades to empty (news list empty, leaderboard shows
 // its default, /content/... images 404). That is a loud, visible failure
 // rather than a silent one, but it is still a deploy-order dependency, so
-// set CONTENT_ROOT in the PM2 ecosystem before publishing such a release.
+// the paired publisher explicitly sets CONTENT_ROOT to the deployment root.
 const externalContent = process.env.RELEASE_EXTERNAL_CONTENT === "1";
 if (externalContent) {
   copyLog(
@@ -264,6 +265,7 @@ const manifest = {
   arch: process.arch,
   buildId: buildId,
   createdAt: new Date().toISOString(),
+  ...(externalContent ? { contentSyncVersion: 1 } : {}),
 };
 const manifestStr = JSON.stringify(manifest, null, 2) + "\n";
 writeFileSync(join(STAGE, "release.json"), manifestStr);
@@ -387,6 +389,13 @@ supplementSharp(STAGE, ROOT, copyLog);
 await verifySharp(STAGE, copyLog);
 pruneRedundantSharp(STAGE, copyLog);
 assertSharpRuntimeBounded(STAGE, copyLog);
+
+// Add data AFTER stripping development .md files. This sidecar is consumed by
+// the administrator publisher, never by the runtime's default content path.
+if (externalContent) {
+  beginPhase("validate and package paired content sidecar");
+  await writeContentSidecar(join(STAGE, "content-snapshot"), ROOT, githubSha);
+}
 
 function scanSensitive(dir) {
   const entries = readdirSync(dir, { withFileTypes: true });

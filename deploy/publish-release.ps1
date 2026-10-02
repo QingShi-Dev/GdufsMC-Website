@@ -11,7 +11,8 @@
     IMPORTANT (non-atomic switch): the switch is performed with `pm2 stop` + `pm2 delete`
     + `pm2 start`. This is NOT an atomic operation. If the new app fails health, the
     script automatically reverts to the previous app. The deployment-state.json file
-    itself IS written atomically (temp file + File.Replace); the PM2 stop/start is not.
+    uses temporary-file replacement under the shared lock. There is no cross-file
+    filesystem transaction; failures are recovered with the maintenance journal.
 
     SECURITY MODEL (all enforced before any mutation):
       * Must run as Administrator and as the ExpectedUser (default WINSERVER08\Administrator).
@@ -33,7 +34,7 @@
     under <Root>/shared (with a unique GUID name so state.previous is never corrupted) for
     rollback; the legacy ecosystem/source is never modified.
 
-    State is stored atomically in <Root>/shared/deployment-state.json, protected by a
+    State is stored in <Root>/shared/deployment-state.json, protected by a
     separate exclusive lock file <Root>/shared/deployment.lock (FileShare.None). Only
     `current` and `previous` are retained. Two successful versions are kept; the
     superseded (two-versions-old) release under <Root>/releases is removed only after a
@@ -98,6 +99,8 @@ if ($SyntaxCheck) {
     exit 0
 }
 
+. (Join-Path $PSScriptRoot 'content-operations.ps1')
+
 # Normalize Root to a full, backslash-separated, normalized path.
 $Root = [System.IO.Path]::GetFullPath($Root).Replace('/', '\').TrimEnd('\')
 
@@ -147,6 +150,10 @@ $StateFile        = Join-Path $SharedDir 'deployment-state.json'
 $LockFile         = Join-Path $SharedDir 'deployment.lock'
 $CandidateLogsDir = Join-Path $LogsDir 'candidate'
 $Pm2OpLog         = Join-Path $SharedDir 'pm2-ops.log'
+$ContentStateFile = Join-Path $SharedDir 'content-state.json'
+$ContentSyncConfigPath = Join-Path $Root 'content-tools/config.json'
+$ProjectionFile = Join-Path $Root 'coordination/code/current.json'
+$ContentJournalFile = Join-Path $SharedDir 'content-journal.json'
 
 # Now that identity is established we may create directories (still no mutation
 # of the actual deployment has happened yet).
@@ -683,9 +690,9 @@ function Get-AppOnline {
 }
 
 function Test-CandidateHealth {
-    param([string]$ReleasePath, [string]$ServerJs, [object]$Manifest)
+    param([string]$ReleasePath, [string]$ServerJs, [object]$Manifest, [hashtable]$CandidateEnv)
     $port = Get-FreeTcpPort
-    $cEnv = New-DeployEnv $liveEnv
+    $cEnv = if ($CandidateEnv) { $CandidateEnv.Clone() } else { New-DeployEnv $liveEnv }
     $cEnv['PORT'] = [string]$port
     $cOut = Join-Path $CandidateLogsDir "candidate-$([string]$Manifest.id).out.log"
     $cErr = Join-Path $CandidateLogsDir "candidate-$([string]$Manifest.id).err.log"
@@ -694,12 +701,13 @@ function Test-CandidateHealth {
     try {
         # Quote the path so spaces in the release path are handled safely.
         $proc = Start-Process -FilePath $NodePath -ArgumentList @("`"$ServerJs`"") `
-            -WorkingDirectory $ReleasePath -PassThru -NoNewWindow `
+            -WorkingDirectory $ReleasePath -PassThru -WindowStyle Hidden `
             -RedirectStandardOutput $cOut -RedirectStandardError $cErr
         if ($proc.HasExited) { throw "candidate process exited immediately (code $($proc.ExitCode))" }
         if (-not (Test-HealthEndpoint -Port $port -Id ([string]$Manifest.id) -Commit ([string]$Manifest.commit) -BuildId ([string]$Manifest.buildId) -IsLegacy $false)) {
             throw 'candidate health check (marker + homepage 200) failed'
         }
+        if ($Manifest.contentSyncVersion -eq 1) { Assert-PublishContentHealth -Port $port -Parent $cEnv['CONTENT_ROOT'] }
         Write-Host "Candidate passed pre-switch health check on loopback port $port"
     } finally {
         if ($proc) {
@@ -715,6 +723,31 @@ function Test-CandidateHealth {
     }
 }
 
+function Assert-PublishContentHealth {
+    param([int]$Port, [string]$Parent)
+    $newsPath = Join-Path $Parent 'content/news'
+    $articles = @(Get-ChildItem -LiteralPath $newsPath -File | Where-Object { $_.Extension -ieq '.md' })
+    if ($articles.Count -eq 0) { throw 'Content health check found no markdown articles.' }
+    $response = Invoke-WebRequest -Uri "http://127.0.0.1:$Port/news" -UseBasicParsing -TimeoutSec 15
+    $slugs = @([regex]::Matches($response.Content, 'href="/news/([^"?#]+)"') | ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+    if ($response.StatusCode -ne 200 -or $slugs.Count -lt $articles.Count) { throw 'News route did not render the expected article count.' }
+    $detail = Invoke-WebRequest -Uri ("http://127.0.0.1:$Port/news/" + $slugs[0]) -UseBasicParsing -TimeoutSec 15
+    if ($detail.StatusCode -ne 200) { throw 'News detail route failed content health check.' }
+}
+
+function Assert-PublishWorkerHealth {
+    param([string]$Parent, [string]$CodeCommit, [string]$ReleaseId)
+    $previousEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    try {
+        $healthOutput = & $NodePath (Join-Path $Root 'content-tools/scripts/content-sync.mjs') health `
+            --config $ContentSyncConfigPath --parent $Parent --code-commit $CodeCommit --release-id $ReleaseId
+        $healthExit = $LASTEXITCODE
+        foreach ($line in $healthOutput) { Write-Host $line }
+    } finally { $ErrorActionPreference = $previousEap }
+    if ($healthExit -ne 0) { throw "Live content verification failed (exit $healthExit)." }
+}
+
 # ===========================================================================
 # Switch + automatic revert
 # NOTE: this is intentionally NOT atomic (stop -> delete -> start). On failure
@@ -727,9 +760,43 @@ function Invoke-DeploySwitch {
         [bool]$RevertIsLegacy,
         [bool]$TargetIsLegacy = $false
     )
+    $contentSwap = $null
+    $journal = $null
+    if ($Target.contentSource) {
+        $journalPath = Join-Path $Root 'shared/content-journal.json'
+        $journal = [ordered]@{
+            version = 1; kind = 'program-publish'; completed = $false; phase = 'prepared'
+            operationId = $Target.contentOperationId; candidateParent = (Split-Path -Parent $Target.contentSource)
+            backupPath = (Join-Path $Root ('content-backups/' + $Target.contentOperationId + '/content'))
+            oldAppConfig = $Revert.configPath; newAppConfig = $Target.configPath
+            oldCodeCommit = $Revert.commit; newCodeCommit = $Target.commit
+            updatedAt = [DateTime]::UtcNow.ToString('o')
+        }
+        foreach ($entry in @(
+            @{ key = 'oldDeploymentState'; path = (Join-Path $Root 'shared/deployment-state.json') },
+            @{ key = 'oldContentState'; path = (Join-Path $Root 'shared/content-state.json') },
+            @{ key = 'oldCodeProjection'; path = (Join-Path $Root 'coordination/code/current.json') }
+        )) {
+            $existed = Test-Path -LiteralPath $entry.path -PathType Leaf
+            $journal[$entry.key + 'Exists'] = [bool]$existed
+            $journal[$entry.key] = if ($existed) { Read-ContentJson $entry.path } else { $null }
+        }
+        Write-ContentJsonAtomic -Path $journalPath -Value $journal
+    }
     try {
         Invoke-Pm2 -ArgumentList @('stop', 'gdufsmc') -IgnoreExit | Out-Null
         Invoke-Pm2 -ArgumentList @('delete', 'gdufsmc') -IgnoreExit | Out-Null
+        if ($Target.contentSource -or $Target.restoreContentBackup) { Assert-AppStoppedForContent }
+        if ($journal) { Set-PublishJournalPhase -Phase 'stopped' }
+        if ($Target.restoreContentBackup) {
+            Restore-ContentDirectorySwap -Root $Root -BackupPath $Target.restoreContentBackup `
+                -OperationId ('restore-' + [Guid]::NewGuid().ToString('N')) | Out-Null
+        } elseif ($Target.contentSource) {
+            Set-PublishJournalPhase -Phase 'swapping'
+            $contentSwap = Invoke-ContentDirectorySwap -Root $Root -CandidateContent $Target.contentSource `
+                -OperationId $Target.contentOperationId
+            Set-PublishJournalPhase -Phase 'swapped'
+        }
         Invoke-Pm2 -ArgumentList @('start', $Target.configPath, '--only', 'gdufsmc') | Out-Null
 
         $apps = Get-Pm2AppList
@@ -746,25 +813,162 @@ function Invoke-DeploySwitch {
                 -IsLegacy $TargetIsLegacy -Port 3000)) {
             throw 'post-switch health (marker + homepage 200) failed'
         }
+        if ($Target.contentSource -or $Target.restoreContentBackup) {
+            if ($Target.verifyWithContentWorker -and -not $TargetIsLegacy) {
+                $healthParent = if ($Target.contentSource) { Split-Path -Parent $Target.contentSource } else { $Root }
+                Assert-PublishWorkerHealth -Parent $healthParent -CodeCommit $Target.commit -ReleaseId $Target.id
+            } else { Assert-PublishContentHealth -Port 3000 -Parent $Root }
+        }
         Invoke-Pm2 -ArgumentList @('save') | Out-Null
+        if ($journal) { Set-PublishJournalPhase -Phase 'app-online' }
     } catch {
         # Write-Warning (not Write-Error) so we do NOT abort before reverting.
         Write-Warning "Switch error: $_"
+        if ($Target.restoreContentBackup) {
+            # This call is already recovering a failed state commit. Restoring its
+            # backup may have consumed the old directory; starting Revert here
+            # could pair the candidate code with the restored previous content.
+            $confirmedStopped = $false
+            try {
+                Invoke-Pm2 -ArgumentList @('stop', 'gdufsmc') -IgnoreExit | Out-Null
+                Invoke-Pm2 -ArgumentList @('delete', 'gdufsmc') -IgnoreExit | Out-Null
+                Assert-AppStoppedForContent
+                $confirmedStopped = $true
+            } catch { Write-Warning "CRITICAL: could not confirm application stopped during recovery: $_" }
+            try { Set-PublishJournalPhase -Phase 'recovery-failed' }
+            catch { Write-Warning "CRITICAL: could not persist recovery failure: $_" }
+            throw "CRITICAL: recovery switch failed; refusing another code/content switch. Application stopped=$confirmedStopped. Manual journal recovery is required."
+        }
         try {
             Invoke-Pm2 -ArgumentList @('stop', 'gdufsmc') -IgnoreExit | Out-Null
             Invoke-Pm2 -ArgumentList @('delete', 'gdufsmc') -IgnoreExit | Out-Null
+            $recoveryBackup = if ($contentSwap) { $contentSwap.backupPath } elseif ($journal) { $journal.backupPath } else { $null }
+            if ($recoveryBackup -and (Test-Path -LiteralPath $recoveryBackup -PathType Container)) {
+                Assert-AppStoppedForContent
+                Restore-ContentDirectorySwap -Root $Root -BackupPath $recoveryBackup `
+                    -OperationId ('failed-' + [Guid]::NewGuid().ToString('N')) | Out-Null
+            } elseif ($contentSwap -or ($journal -and -not (Test-Path -LiteralPath (Join-Path $Root 'content') -PathType Container))) {
+                throw 'Content recovery cannot find the recorded backup or a valid live directory.'
+            }
             Invoke-Pm2 -ArgumentList @('start', $Revert.configPath, '--only', 'gdufsmc') | Out-Null
             if (-not (Get-AppOnline -ReleasePath $Revert.releasePath -ExecPath $Revert.execPath `
                     -Id $Revert.id -Commit $Revert.commit -BuildId $Revert.buildId `
                     -IsLegacy $RevertIsLegacy -Port 3000)) {
                 throw 'revert health check failed'
             }
+            if ($journal) {
+                if ($Target.verifyWithContentWorker -and -not $RevertIsLegacy) {
+                    Assert-PublishWorkerHealth -Parent $Root -CodeCommit $Revert.commit -ReleaseId $Revert.id
+                } else { Assert-PublishContentHealth -Port 3000 -Parent $Root }
+            }
             Invoke-Pm2 -ArgumentList @('save') | Out-Null
+            if ($journal) { Reset-PublishContentPurge -CodeCommit $Revert.commit }
+            if ($journal) { Set-PublishJournalPhase -Phase 'rolled-back' -Completed }
             Write-Warning "Automatically reverted to the previous application."
         } catch {
             Write-Warning "CRITICAL: automatic revert also failed: $_"
         }
-        throw "Switch failed; deployment-state.json was NOT modified."
+        throw 'Switch failed; verify recovery warnings and the maintenance journal before retrying.'
+    }
+    return $contentSwap
+}
+
+function Assert-AppStoppedForContent {
+    $remaining = @(Get-Pm2AppList | Where-Object { $_.name -eq 'gdufsmc' })
+    if ($remaining.Count -ne 0) { throw 'gdufsmc is still registered after stop/delete; refusing to replace live content.' }
+}
+
+function Set-PublishJournalPhase {
+    param([string]$Phase, [switch]$Completed)
+    if ($Completed -and $script:PublishStateRecoveryFailed) { throw 'CRITICAL: state recovery is incomplete; journal must remain unfinished.' }
+    $journalPath = Join-Path $Root 'shared/content-journal.json'
+    $journal = Read-ContentJson $journalPath
+    $journal.phase = $Phase
+    $journal.completed = [bool]$Completed
+    $journal.updatedAt = [DateTime]::UtcNow.ToString('o')
+    Write-ContentJsonAtomic -Path $journalPath -Value $journal
+}
+
+function Get-PublishContentState {
+    param([string]$CodeCommit)
+    if (-not (Test-Path -LiteralPath $ContentStateFile)) { return $null }
+    $contentState = Read-ContentJson $ContentStateFile
+    if ($contentState.version -ne 1 -or [string]$contentState.codeCommit -ne $CodeCommit) {
+        throw 'Content state differs from the current code baseline; resolve drift before publish.'
+    }
+    return $contentState
+}
+
+function Reset-PublishContentPurge {
+    param([string]$CodeCommit)
+    if (-not (Test-Path -LiteralPath $ContentStateFile -PathType Leaf)) { return }
+    $contentState = Read-ContentJson $ContentStateFile
+    if ([string]$contentState.codeCommit -ne $CodeCommit) { throw 'Recovered app and content state differ; journal must remain unfinished.' }
+    # A briefly online candidate may have populated the CDN. The next queue run
+    # must create a new purge for restored content, rather than reuse an old job.
+    $now = [DateTime]::UtcNow.ToString('o')
+    $contentState.purge = [pscustomobject]@{ status = 'pending'; updatedAt = $now }
+    $contentState.updatedAt = $now
+    Write-ContentJsonAtomic -Path $ContentStateFile -Value $contentState
+}
+
+function Write-PublishState {
+    param([object]$DeploymentState, [object]$ContentState)
+    # All participating publishers and the queue processor hold shared/deployment.lock.
+    # Keep an in-memory old value for recovery if any of the coordinated writes fails.
+    $script:PublishStateRecoveryFailed = $false
+    $writes = @()
+    if (Test-Path -LiteralPath $ContentSyncConfigPath) {
+        $projection = Get-ContentDeploymentProjection $DeploymentState.current
+        $projection.contentCommit = $ContentState.contentCommit
+        $writes += @{ path = $ContentStateFile; value = $ContentState }
+        $writes += @{ path = $ProjectionFile; value = $projection }
+    }
+    $writes += @{ path = $StateFile; value = $DeploymentState }
+    $journalPath = Join-Path $Root 'shared/content-journal.json'
+    if (Test-Path -LiteralPath $journalPath) {
+        $journal = Read-ContentJson $journalPath
+        if ($journal.kind -eq 'program-publish' -and $journal.completed -ne $true) {
+            $journal.phase = 'complete'; $journal.completed = $true; $journal.updatedAt = [DateTime]::UtcNow.ToString('o')
+            $writes += @{ path = $journalPath; value = $journal }
+        }
+    }
+    foreach ($write in $writes) {
+        Assert-ContentPathWithinRoot $Root $write.path
+        $write.existed = Test-Path -LiteralPath $write.path
+        $write.previous = if ($write.existed) { Read-ContentJson $write.path } else { $null }
+    }
+    try {
+        foreach ($write in $writes) { Write-ContentJsonAtomic -Path $write.path -Value $write.value }
+    } catch {
+        $failure = $_
+        $recoveryFailures = @()
+        foreach ($write in $writes) {
+            try {
+                if ($write.existed) { Write-ContentJsonAtomic -Path $write.path -Value $write.previous }
+                elseif (Test-Path -LiteralPath $write.path) { [IO.File]::Delete($write.path) }
+            } catch {
+                $recoveryFailures += $write.path
+                Write-Warning "CRITICAL: failed restoring state file '$($write.path)': $_"
+            }
+        }
+        if ($recoveryFailures.Count -gt 0) {
+            $script:PublishStateRecoveryFailed = $true
+            try { Set-PublishJournalPhase -Phase 'recovery-failed' } catch { Write-Warning "CRITICAL: could not persist the unfinished recovery journal: $_" }
+            throw ('CRITICAL: state recovery incomplete for ' + ($recoveryFailures -join ', ') + '. Original failure: ' + $failure.Exception.Message)
+        }
+        throw $failure
+    }
+}
+
+function New-PublishContentState {
+    param([string]$CodeCommit, [AllowNull()][string]$ContentCommit,
+        [AllowNull()][string]$PreviousContentCommit, [AllowNull()][string]$BackupPath)
+    $now = [DateTime]::UtcNow.ToString('o')
+    return [ordered]@{
+        version = 1; codeCommit = $CodeCommit; contentCommit = $ContentCommit
+        previousContentCommit = $PreviousContentCommit; backupPath = $BackupPath
+        purge = [ordered]@{ status = 'pending'; updatedAt = $now }; updatedAt = $now
     }
 }
 
@@ -926,6 +1130,10 @@ Assert-AncestorNoReparse
 $script:DeployLock = Lock-Deployment $LockFile
 try {
     $state = Read-StateFile $StateFile
+    if (Test-Path -LiteralPath $ContentJournalFile) {
+        $pendingJournal = Read-ContentJson $ContentJournalFile
+        if ($pendingJournal.completed -ne $true) { throw 'An unfinished content operation requires recovery before program publish/rollback.' }
+    }
 
     if ($Rollback) {
         # ---------------- ROLLBACK MODE ----------------
@@ -933,6 +1141,9 @@ try {
         if (-not $state.previous) { throw 'No previous deployment recorded; cannot rollback.' }
         $prev = $state.previous
         $cur  = $state.current
+        $oldContentState = Get-PublishContentState -CodeCommit ([string]$cur.commit)
+        $currentContentCommit = if ($oldContentState) { [string]$oldContentState.contentCommit } else { $null }
+        $rollbackContentCommit = if ($prev.PSObject.Properties['contentCommit']) { [string]$prev.contentCommit } else { $currentContentCommit }
 
         # Validate identity / node version / target manifest before switching back.
         Assert-Administrator
@@ -968,6 +1179,15 @@ try {
             commit     = [string]$prev.commit
             buildId    = [string]$prev.buildId
         }
+        if ($prev.PSObject.Properties['contentPath'] -and $prev.contentPath) {
+            Assert-ContentPathWithinRoot $Root ([string]$prev.contentPath)
+            Assert-ContentNoReparse ([string]$prev.contentPath) -Recurse
+            $target.contentSource = [string]$prev.contentPath
+            $target.contentOperationId = 'rollback-' + [Guid]::NewGuid().ToString('N')
+            $target.verifyWithContentWorker = Test-Path -LiteralPath $ContentSyncConfigPath
+        } elseif ($rollbackContentCommit -ne $currentContentCommit) {
+            throw 'Rollback content differs but its retained backup path is missing. Refusing an incompatible code/content pair.'
+        }
         $revert = if ($cur) {
             @{
                 configPath = [string]$cur.configPath
@@ -986,13 +1206,19 @@ try {
             # Switch the live app back to the previous deployment. The target IS
             # $prev, so its legacy flag drives the post-switch health check (legacy
             # skips the /__release marker).
-            Invoke-DeploySwitch -Target $target -Revert $revert -RevertIsLegacy $revertIsLegacy `
+            $contentSwap = Invoke-DeploySwitch -Target $target -Revert $revert -RevertIsLegacy $revertIsLegacy `
                 -TargetIsLegacy ([bool]$prev.legacy)
             $tmp = $state.current
             $state.current = $state.previous
             $state.previous = $tmp
+            $state.current | Add-Member -NotePropertyName contentCommit -NotePropertyValue $rollbackContentCommit -Force
+            $state.previous | Add-Member -NotePropertyName contentCommit -NotePropertyValue $currentContentCommit -Force
+            $state.previous | Add-Member -NotePropertyName contentPath -NotePropertyValue $(if ($contentSwap) { [string]$contentSwap.backupPath } else { $null }) -Force
             try {
-                Write-StateAtomic -StateFile $StateFile -State $state
+                $rollbackContentState = New-PublishContentState -CodeCommit ([string]$target.commit) `
+                    -ContentCommit $rollbackContentCommit -PreviousContentCommit $currentContentCommit `
+                    -BackupPath $(if ($contentSwap) { [string]$contentSwap.backupPath } else { $null })
+                Write-PublishState -DeploymentState $state -ContentState $rollbackContentState
                 Write-Host "ROLLBACK SUCCEEDED to $([string]$target.id)"
                 Invoke-EdgeOnePurge
             } catch {
@@ -1002,16 +1228,24 @@ try {
                 # report the REAL outcome. We must NOT claim rollback succeeded.
                 Write-Warning "Rollback switch succeeded but state write failed: $_. Restoring current app."
                 try {
+                    if ($contentSwap) {
+                        $revert.restoreContentBackup = [string]$contentSwap.backupPath
+                        $revert.verifyWithContentWorker = Test-Path -LiteralPath $ContentSyncConfigPath
+                    }
                     Invoke-DeploySwitch -Target $revert -Revert $target -RevertIsLegacy ([bool]$prev.legacy) `
-                        -TargetIsLegacy $revertIsLegacy
+                        -TargetIsLegacy $revertIsLegacy | Out-Null
+                    if ($contentSwap -and -not $script:PublishStateRecoveryFailed) {
+                        Reset-PublishContentPurge -CodeCommit $revert.commit
+                        Set-PublishJournalPhase -Phase 'rolled-back' -Completed
+                    }
                 } catch {
                     Write-Warning "CRITICAL: restore to current after state-failure also failed: $_"
                 }
-                throw "Rollback failed: state write failed; restoration attempted. Verify PM2 health and warnings above. State unchanged."
+                throw 'Rollback failed: state write failed; restoration attempted. Check PM2, saved state and the maintenance journal before retrying.'
             }
         } catch {
             Write-Warning "ROLLBACK FAILED: $_"
-            throw "Rollback aborted; state unchanged."
+            throw 'Rollback aborted; verify recovery warnings and the maintenance journal before retrying.'
         }
     } else {
         # ---------------- DEPLOY MODE ----------------
@@ -1064,6 +1298,35 @@ try {
         Copy-Item -LiteralPath $ReleaseDirectory -Destination $newReleasePath -Recurse -Force
         Assert-ReleaseStructure $newReleasePath $manifest
 
+        $oldContentState = Get-PublishContentState -CodeCommit ([string]$oldCommit)
+        $oldContentCommit = if ($oldContentState) { [string]$oldContentState.contentCommit } else { $null }
+        $newContentCommit = $oldContentCommit
+        $candidateContentRoot = $null
+        if ($manifest.contentSyncVersion -and $manifest.contentSyncVersion -ne 1) { throw 'Unsupported release contentSyncVersion.' }
+        if ($manifest.contentSyncVersion -eq 1) {
+            if (-not (Test-Path -LiteralPath $ContentSyncConfigPath -PathType Leaf)) {
+                throw 'This release requires content sync setup. Run setup-content-sync.ps1 as Administrator first.'
+            }
+            $tool = Join-Path $Root 'content-tools/scripts/content-sync.mjs'
+            Assert-ContentNoReparse $tool
+            Assert-ContentNoReparse $ContentSyncConfigPath
+            $syncConfig = Read-ContentJson $ContentSyncConfigPath
+            if ((Get-ContentFullPath $syncConfig.root) -ne $Root -or $syncConfig.expectedUser -ne $ExpectedUser) {
+                throw 'Installed content tools target a different root or PM2 owner.'
+            }
+            $previousEap = $ErrorActionPreference
+            $ErrorActionPreference = 'Continue'
+            try {
+                & $NodePath $tool prepare-release --config $ContentSyncConfigPath --release $newReleasePath --lock-held
+                $prepareExit = $LASTEXITCODE
+            } finally { $ErrorActionPreference = $previousEap }
+            if ($prepareExit -ne 0) { throw "Content sidecar verification failed (exit $prepareExit)." }
+            $candidateContentRoot = Join-Path $newReleasePath 'content-snapshot'
+            $contentManifest = Read-ContentJson (Join-Path $candidateContentRoot 'manifest.json')
+            if ([string]$contentManifest.commit -ne [string]$manifest.commit) { throw 'Sidecar content commit differs from release commit.' }
+            $newContentCommit = [string]$contentManifest.commit
+        }
+
         # Content-root preflight.
         #
         # A release that ships no content/ can only render news if the runtime
@@ -1078,7 +1341,9 @@ try {
         if ($live.env -and $live.env.PSObject.Properties['CONTENT_ROOT']) {
             $liveContentRoot = [string]$live.env.CONTENT_ROOT
         }
-        if ($releaseHasContent) {
+        if ($candidateContentRoot) {
+            Write-Host "  content: verified release sidecar, commit=$newContentCommit"
+        } elseif ($releaseHasContent) {
             Write-Host "  content: bundled in this release"
         } elseif ($liveContentRoot) {
             Write-Host "  content: external, CONTENT_ROOT=$liveContentRoot"
@@ -1104,6 +1369,7 @@ try {
         $newConfigPath = Join-Path $SharedDir ("gdufsmc-$($newId).json")
         $newServerJs = Join-Path $newReleasePath 'server.js'
         $deployEnv = New-DeployEnv $live.env
+        if ($candidateContentRoot) { $deployEnv['CONTENT_ROOT'] = $Root }
         New-Pm2Config -Name 'gdufsmc' `
             -Script $newServerJs -Cwd $newReleasePath -Interpreter $NodePath `
             -Env $deployEnv -AppArgs @() -NodeAppArgs @('--max-old-space-size=768') `
@@ -1112,7 +1378,9 @@ try {
             -OutPath $newConfigPath
 
         # Pre-switch candidate health check on a random loopback port.
-        Test-CandidateHealth $newReleasePath $newServerJs $manifest
+        $candidateEnv = $deployEnv.Clone()
+        if ($candidateContentRoot) { $candidateEnv['CONTENT_ROOT'] = $candidateContentRoot }
+        Test-CandidateHealth $newReleasePath $newServerJs $manifest $candidateEnv
 
         # Switch (with automatic revert on failure).
         $target = @{
@@ -1126,6 +1394,11 @@ try {
             commit     = [string]$manifest.commit
             buildId    = [string]$manifest.buildId
         }
+        if ($candidateContentRoot) {
+            $target.contentSource = Join-Path $candidateContentRoot 'content'
+            $target.contentOperationId = 'publish-' + [Guid]::NewGuid().ToString('N')
+            $target.verifyWithContentWorker = $true
+        }
         $revert = @{
             configPath = $rollbackConfigPath
             releasePath= [string]$oldReleasePath
@@ -1136,7 +1409,7 @@ try {
         }
 
         try {
-            Invoke-DeploySwitch -Target $target -Revert $revert -RevertIsLegacy $oldLegacy
+            $contentSwap = Invoke-DeploySwitch -Target $target -Revert $revert -RevertIsLegacy $oldLegacy
             $newState = [ordered]@{
                 current  = [ordered]@{
                     id         = [string]$manifest.id
@@ -1146,6 +1419,7 @@ try {
                     legacy     = $false
                     commit     = [string]$manifest.commit
                     buildId    = [string]$manifest.buildId
+                    contentCommit = $newContentCommit
                 }
                 previous = [ordered]@{
                     id         = [string]$oldId
@@ -1155,29 +1429,48 @@ try {
                     legacy     = $oldLegacy
                     commit     = [string]$oldCommit
                     buildId    = [string]$oldBuildId
+                    contentCommit = $oldContentCommit
+                    contentPath = if ($contentSwap) { [string]$contentSwap.backupPath } else { $null }
                 }
             }
             try {
-                Write-StateAtomic -StateFile $StateFile -State $newState
+                $newContentState = New-PublishContentState -CodeCommit ([string]$manifest.commit) `
+                    -ContentCommit $newContentCommit -PreviousContentCommit $oldContentCommit `
+                    -BackupPath $(if ($contentSwap) { [string]$contentSwap.backupPath } else { $null })
+                Write-PublishState -DeploymentState $newState -ContentState $newContentState
             } catch {
-                # State commit failed: automatically restore the previous app + pm2 save
-                # so the live system is consistent, and leave the OLD state unchanged.
-                Write-Warning "State commit failed: $_. Restoring previous app; old state retained."
+                # State commit failed: restore the previous app/content. State recovery
+                # has its own failure flag; a partial restoration must keep the gate shut.
+                Write-Warning "State commit failed: $_. Restoring previous app and content."
                 try {
                     Invoke-Pm2 -ArgumentList @('stop', 'gdufsmc') -IgnoreExit | Out-Null
                     Invoke-Pm2 -ArgumentList @('delete', 'gdufsmc') -IgnoreExit | Out-Null
+                    if ($contentSwap) {
+                        Assert-AppStoppedForContent
+                        Restore-ContentDirectorySwap -Root $Root -BackupPath $contentSwap.backupPath `
+                            -OperationId ('state-failed-' + [Guid]::NewGuid().ToString('N')) | Out-Null
+                    }
                     Invoke-Pm2 -ArgumentList @('start', $revert.configPath, '--only', 'gdufsmc') | Out-Null
                     if (-not (Get-AppOnline -ReleasePath $revert.releasePath -ExecPath $revert.execPath `
                             -Id $revert.id -Commit $revert.commit -BuildId $revert.buildId `
                             -IsLegacy $oldLegacy -Port 3000)) {
                         throw 'restore-after-state-failure health check failed'
                     }
+                    if ($contentSwap) {
+                        if (-not $oldLegacy) {
+                            Assert-PublishWorkerHealth -Parent $Root -CodeCommit $revert.commit -ReleaseId $revert.id
+                        } else { Assert-PublishContentHealth -Port 3000 -Parent $Root }
+                    }
                     Invoke-Pm2 -ArgumentList @('save') | Out-Null
+                    if ($contentSwap -and -not $script:PublishStateRecoveryFailed) {
+                        Reset-PublishContentPurge -CodeCommit $revert.commit
+                        Set-PublishJournalPhase -Phase 'rolled-back' -Completed
+                    }
                 } catch {
                     Write-Warning "CRITICAL: restore after state failure also failed: $_"
                 }
                 # The failed candidate release is intentionally retained for diagnosis.
-                throw "State write failed; restoration attempted, old state retained. Verify PM2 health and warnings above."
+                throw 'State write failed; restoration attempted. Check PM2, saved state and the maintenance journal before retrying.'
             }
             # Only the explicitly superseded release (the OLD previous, two versions
             # ago) may be cleaned. A legacy previous is never deleted (its path is
@@ -1193,7 +1486,7 @@ try {
         } catch {
             Write-Warning "DEPLOY FAILED: $_"
             # The failed candidate release under releases/<id> is retained for diagnosis.
-            throw "Deploy aborted; deployment-state.json was NOT modified."
+            throw 'Deploy aborted; verify recovery warnings and the maintenance journal before retrying.'
         }
     }
 } finally {

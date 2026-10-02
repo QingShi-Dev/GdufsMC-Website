@@ -118,15 +118,15 @@ if (!publicAsset) {
 // Where content lives for this run.
 //
 // A release built with RELEASE_EXTERNAL_CONTENT=1 ships no content/ at all and
-// expects the runtime env CONTENT_ROOT to point at the live directory. The
+// expects the runtime env CONTENT_ROOT to point at the parent of content/. The
 // smoke test has to look in the SAME place the server will look, otherwise it
 // probes an image the server cannot serve and reports a false failure.
 //
 //   RELEASE_EXTERNAL_CONTENT=1  -> <CONTENT_ROOT>/content/news/images
 //   otherwise                   -> <stageDir>/content/news/images
 //
-// CONTENT_ROOT itself is inherited from the environment (package-release sets
-// it for the child below), so a caller can point the smoke test at any tree.
+// CONTENT_ROOT itself is inherited from the environment by the child below,
+// so a caller can point the smoke test at any tree.
 const externalContent = process.env.RELEASE_EXTERNAL_CONTENT === "1";
 const contentRoot = externalContent ? process.env.CONTENT_ROOT : stageDir;
 if (externalContent) {
@@ -135,17 +135,26 @@ if (externalContent) {
   // starts, answers 200 on every route, and shows an empty news list. Refuse
   // to "pass" a smoke test that only skipped the content checks.
   if (!contentRoot) {
-    fail(
+    failEarly(
       "RELEASE_EXTERNAL_CONTENT=1 but CONTENT_ROOT is not set; the release has " +
         "no content/ and the server would read nothing"
     );
   }
-  if (!existsSync(join(contentRoot, "content"))) {
-    fail(
+  const contentDir = join(contentRoot, "content");
+  if (!existsSync(contentDir) || !statSync(contentDir).isDirectory()) {
+    failEarly(
       "RELEASE_EXTERNAL_CONTENT=1 and CONTENT_ROOT='" +
         contentRoot +
-        "' does not contain a content/ directory. The server would fall back " +
-        "to <release>/content, which does not exist in an external release."
+        "' does not contain a content/ directory. The server reads " +
+        "<CONTENT_ROOT>/content and would not find the external content."
+    );
+  }
+  const newsDir = join(contentDir, "news");
+  if (!existsSync(newsDir) || !statSync(newsDir).isDirectory() || countNewsFiles() === 0) {
+    failEarly(
+      "RELEASE_EXTERNAL_CONTENT=1 but no markdown articles found in " +
+        newsDir +
+        ". The external content root is empty or wrong; server was not started."
     );
   }
 }
@@ -341,7 +350,7 @@ try {
     // project), so this only skips. An EXTERNAL release exists precisely to
     // serve articles, and an empty tree means the operator pointed
     // CONTENT_ROOT at the wrong place or wiped the directory. Fail.
-    fail(
+    die(
       "RELEASE_EXTERNAL_CONTENT=1 but no markdown articles found in " +
         join(contentRoot, "content", "news") +
         ". The external content root is empty or wrong."
