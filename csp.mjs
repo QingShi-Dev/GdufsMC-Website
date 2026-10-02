@@ -83,17 +83,29 @@ export function mainContentSecurityPolicy() {
 /**
  * CSP for the Sveltia CMS admin.
  *
- * No 'unsafe-inline' in script-src and no third-party origin at all. The CMS
- * bundle, its locales and its config schema are all built into
- * public/admin/vendor/ by CI at a pinned commit, so the old unpkg.com /
- * fonts.gstatic.com / cdn.jsdelivr.net allowances described a runtime that no
- * longer exists (upstream bundles the schema specifically so a CDN-blocking CSP
- * works -- see vite.config.js "bundle-schema").
+ * No 'unsafe-inline' in script-src: the only inline script is the committed
+ * IIFE in public/admin/index.html, allow-listed by sha256, and the CMS bundle
+ * itself is vendored into public/admin/vendor at a pinned commit, so 'self'
+ * covers it.
  *
- * style-src keeps 'unsafe-inline' on purpose: the admin shell has a static <style>
- * block, and the Svelte bundle injects styles at runtime. Style injection cannot
- * execute script in any current browser, so this is a far smaller concession
- * than the script-src one and is not worth fighting a third-party bundle over.
+ * The unpkg / gstatic / jsdelivr allowances below are NOT dead weight, despite
+ * looking like it from reading the repo. The bundle fetches
+ * https://unpkg.com/@sveltia/cms@<version>/locales/<locale>.json at runtime,
+ * which shows up in the console as:
+ *
+ *   Refused to connect because it violates the document's Content Security
+ *   Policy.   (sveltia-cms.js, connect-src)
+ *
+ * That URL is assembled at runtime, so grepping the source for "unpkg" is not a
+ * reliable way to find it, and a GitHub code search that returns nothing is
+ * not evidence that it is unused. Do not remove any of these three without
+ * actually loading /admin in a browser and reading the console.
+ *
+ * style-src keeps 'unsafe-inline' on purpose: the admin shell has a static
+ * <style> block and the Svelte bundle injects styles at runtime. Style
+ * injection cannot execute script in any current browser, so that is a much
+ * smaller concession than the script-src one and is not worth fighting a
+ * third-party bundle over.
  */
 export function adminContentSecurityPolicy() {
   return [
@@ -102,8 +114,12 @@ export function adminContentSecurityPolicy() {
     "style-src 'self' 'unsafe-inline'",
     "style-src-attr 'unsafe-inline'",
     "img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com",
-    "font-src 'self' data:",
-    "connect-src 'self' data: https://api.github.com https://raw.githubusercontent.com",
+    // unpkg.com: the bundle fetches its locale JSON from here at runtime.
+    // fonts.gstatic.com / cdn.jsdelivr.net: CMS webfonts. Kept for the same
+    // reason: no evidence they are unused, and removing one silently breaks
+    // typography rather than failing loudly.
+    "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
+    "connect-src 'self' data: https://api.github.com https://raw.githubusercontent.com https://unpkg.com",
     "worker-src 'self' blob:",
     "object-src 'none'",
     "base-uri 'self'",

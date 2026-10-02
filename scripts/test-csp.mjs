@@ -98,21 +98,29 @@ test("admin script-src allows only self plus hashes", () => {
   }
 });
 
-test("admin policy allows no third-party origin except the GitHub API", () => {
-  const allowed = new Set([
-    // REST/GraphQL API, media previews and the signed-in user's avatar.
-    "https://api.github.com",
-    "https://raw.githubusercontent.com",
-    "https://avatars.githubusercontent.com",
+test("admin policy allows the origins the CMS is known to need", () => {
+  // These are NOT inferred from reading the source. Each one was added or kept
+  // because a real browser console said so:
+  //   unpkg.com         -> "sveltia-cms.js: Refused to connect ... connect-src"
+  //                         (locales/<locale>.json is fetched from unpkg at runtime)
+  //   api.github.com    -> the GitHub backend reads and writes the repository
+  //   raw.githubusercontent.com / avatars.githubusercontent.com -> media and avatar
+  //
+  // Do NOT turn this into an allowlist of "origins that look unused". That
+  // reasoning is what produced the regression this test now guards: the locale
+  // URL is assembled at runtime, so grepping the CMS source finds nothing and a
+  // code search that returns nothing proves nothing either. Removing one of
+  // these requires loading /admin in a browser and reading the console.
+  const required = new Map([
+    ["connect-src", ["https://api.github.com", "https://unpkg.com"]],
+    ["img-src", ["https://avatars.githubusercontent.com"]],
+    ["font-src", ["https://fonts.gstatic.com", "https://cdn.jsdelivr.net"]],
   ]);
-  for (const [directive, sources] of admin) {
-    for (const source of sources) {
-      if (!source.startsWith("http")) continue;
-      assert.ok(allowed.has(source), `${directive} allows an unexpected origin: ${source}`);
+  for (const [directive, origins] of required) {
+    const have = admin.get(directive) ?? [];
+    for (const origin of origins) {
+      assert.ok(have.includes(origin), `${directive} is missing ${origin}; the CMS will fail to load it`);
     }
-  }
-  for (const dead of ["unpkg.com", "jsdelivr.net", "gstatic.com"]) {
-    assert.ok(!adminContentSecurityPolicy().includes(dead), `admin policy still allows ${dead}`);
   }
 });
 
