@@ -58,6 +58,7 @@ next-env.d.ts
 # model; they are working notes, not documentation of the project itself.
 /deploy/HANDOFF-*.md
 /deploy/CONTENT-EXTERNAL-HANDOFF.md
+/deploy/AUTOPUBLISH-REQUIREMENTS.md
 
 # Local CMS preview and test-repository administration only.
 # Keep test-cms-image-converter.mjs and test-cms-patch.mjs: release CI runs them.
