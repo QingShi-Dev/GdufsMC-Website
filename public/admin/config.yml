@@ -38,13 +38,26 @@
 #    列表/详情页通过 @/lib/news 读取, slug 由 title 经 pinyin-pro 派生
 #
 # =============================================================================
-publish_mode: editorial_workflow
+# 发布模式: simple — 保存直接 commit 到 main, 不建 PR, 无审核面板
+#
+# 为什么不用 editorial_workflow:
+#   editorial_workflow 是三段式 (保存 → 待审核面板 → 点发布才 merge).
+#   单人使用时, 待审核面板里的条目会累积, 点两次发布就往 main 上推两个
+#   commit, 其中常常一个是空的. 每个 commit 都会触发一次 workflow, 白烧
+#   CI 时间, 而且让 git 历史难以阅读.
+#   simple 下保存即提交, 一次编辑一个 commit.
+#
+# 注意: main 上没有 branch protection 时才可直接 push. 若之后给 main 加了
+#   "Require a pull request" 规则, 这里的直推会被拒绝, 需要改回
+#   open_authoring (自动开 PR) 或 editorial_workflow.
+# =============================================================================
+publish_mode: simple
 
 backend:
   name: github
   repo: QingShi-Dev/GdufsMC-Website # 实际仓库 (owner/repo)
   branch: main # 实际发布分支
-  # PAT 模式 + Editorial Workflow: 隐藏 GitHub OAuth 按钮, 保存走 PR 流程跟 Branch Protection 兼容
+  # PAT 模式: 隐藏 GitHub OAuth 按钮, 登录页直接粘贴 token
   auth_methods: [token]
   # 不要 base_url / app_id — 走 PAT 模式, 登录页直接粘贴 token
   # PAT 在 https://github.com/settings/tokens/new 生成, 勾 repo scope
