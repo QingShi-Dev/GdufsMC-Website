@@ -78,6 +78,14 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           pnpm lint
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Verify Content-Security-Policy invariants
+        run: |
+          # The admin policy carries a sha256 of the inline script in
+          # public/admin/index.html. If that script is edited without the policy
+          # following, the admin renders blank with a console-only CSP error, so
+          # the match is asserted here rather than left to a production smoke test.
+          node scripts/test-csp.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Validate content and regression tests
         run: |
           pnpm test:content

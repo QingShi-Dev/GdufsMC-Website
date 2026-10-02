@@ -1,21 +1,33 @@
 import type { NextConfig } from "next";
 
+import { adminContentSecurityPolicy, mainContentSecurityPolicy } from "./csp.mjs";
+
 /**
  * 安全 HTTP 响应头 + CSP
  *
+ * CSP 的实际内容在 csp.mjs 里构造 (与 scripts/test-csp.mjs 共用同一个模块,
+ * 策略和它的测试不可能对不上)。这里只负责挂到哪条路径上。
+ *
  * 设计权衡:
- * - script-src / style-src 留 'unsafe-inline': Next.js 16 + framer-motion + Tailwind v4
- *   在 prod 仍会注入内联脚本/样式; 改 nonce 方案需要 middleware 配合, 单独项目不值得。
- *   如果以后要更严, 走 Next 官方 nonce 教程加 header 即可。
- * - frame-ancestors 'none': 完全禁止被 iframe 嵌入 (防止 clickjacking)。
- * - object-src 'none': 禁止 Flash/Java 等插件 (现代浏览器已无意义但属 hygiene)。
+ * - 主路径 script-src 保留 'unsafe-inline': Next.js 16 会注入内联 flight payload
+ *   和 bootstrap 脚本; 而改 nonce 方案会让所有页面强制动态渲染, 并且废掉本
+ *   部署赖以支撑的 EdgeOne HTML 边缘缓存 (s-maxage=86400), 代价与收益不成比例.
+ * - 主路径用 script-src-attr 'none' 补上真正有价值的这一层: 它在 script-src
+ *   之前生效, 只管内联事件属性 (onerror= 之类), 而 React 事件是委托到 root 的,
+ *   react-markdown 又过了 rehype-sanitize, 所以站内本来就没有内联 handler.
+ *   加上它, "content 里塞一个 <img onerror=...>" 这条注入路径被 CSP 直接堵死,
+ *   且不影响 Next 自己输出脚本的方式.
+ * - /admin 的 script-src 只留 'self' + 内联脚本的 sha256, 完全没有 'unsafe-inline'.
+ *   CMS bundle / locales / schema 都由 CI 打进 public/admin/vendor/ (固定 commit),
+ *   所以以前那几条 unpkg.com / fonts.gstatic.com / cdn.jsdelivr.net 放行描述的是
+ *   一个已经不存在的运行时.
+ * - frame-ancestors 'none': 完全禁止被 iframe 嵌入 (防止 clickjacking).
+ * - object-src 'none': 禁止 Flash/Java 等插件 (现代浏览器已无意义但属 hygiene).
  * - HSTS 只在 HTTPS 部署下生效; 一年 + includeSubDomains + preload 资格 (慎用 preload,
  *   一旦提交就难撤销, 公网正式域名才加, 测试域名不加)。
  *
- * 拆分: 主体 CSP 不含 unpkg.com (降低外部 CDN 劫持面), /admin/* 单独放行 Sveltia 需要的 unpkg
- *   - 主路径: script-src 'self' 'unsafe-inline' — 不含 unpkg
- *   - /admin: script-src 'self' 'unsafe-inline' https://unpkg.com — 放行 Sveltia CMS
- *   - 其他 admin 限制 (no-store / noindex) 在 /admin 路径下叠加
+ * 拆分: 主体 CSP 不含任何外部 CDN, /admin 单独一套 (同样不含外部 CDN, 但多两条
+ *   GitHub API/媒体域), 其他 admin 限制 (no-store / noindex) 在 /admin 路径下叠加。
  */
 
 // 通用安全头 (主路径)
@@ -33,20 +45,7 @@ const MAIN_SECURITY_HEADERS: { key: string; value: string }[] = [
   },
   {
     key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // 主路径不引入 unpkg — Sveltia CMS 是 /admin 后台, 不该污染主页面 CSP
-      "script-src 'self' 'unsafe-inline'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
-      "font-src 'self' data:",
-      "connect-src 'self'",
-      "worker-src 'self' blob:",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join("; "),
+    value: mainContentSecurityPolicy(),
   },
   // HTML 边缘缓存策略: 浏览器不缓存 (max-age=0), CDN 缓存 1 天 (s-maxage=86400),
   //   过期后 1 天内继续 serve stale + 后台刷新 (stale-while-revalidate=86400).
@@ -69,8 +68,9 @@ const API_HEADERS: { key: string; value: string }[] = [
   { key: "Cache-Control", value: "no-store, no-cache, must-revalidate, private" },
 ];
 
-// /admin/* 安全头 — 放宽 CSP 允许 unpkg (Sveltia CMS), 加 no-store + noindex
-//   - Sveltia CMS runtime + locales + schema 都从 unpkg.com 拉
+// /admin/* 安全头 — 加 no-store + noindex；CSP 里只留 'self' + 内联脚本哈希
+//   - CMS bundle / locales / schema 全部由 CI 打进 public/admin/vendor/（固定 commit），
+//     运行时同源，因此不再需要任何外部 CDN 放行
 //   - no-store: 不让 CDN/浏览器缓存 admin 页面 (config.yml 含仓库结构, 防泄露)
 //   - X-Robots-Tag noindex: 不让搜索引擎索引后台
 const ADMIN_SECURITY_HEADERS: { key: string; value: string }[] = [
@@ -95,26 +95,7 @@ const ADMIN_SECURITY_HEADERS: { key: string; value: string }[] = [
   },
   {
     key: "Content-Security-Policy",
-    value: [
-      "default-src 'self'",
-      // unpkg.com: Sveltia CMS 运行时脚本 (admin 是唯一允许外部 CDN 的路径)
-      "script-src 'self' 'unsafe-inline' https://unpkg.com",
-      "style-src 'self' 'unsafe-inline'",
-      // raw.githubusercontent.com: Sveltia 预览媒体
-      // avatars.githubusercontent.com: Sveltia 显示 GitHub 用户头像
-      "img-src 'self' data: blob: https://raw.githubusercontent.com https://avatars.githubusercontent.com",
-      // fonts.gstatic.com / cdn.jsdelivr.net: Sveltia CMS 字体
-      "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net",
-      // api.github.com: Sveltia GitHub backend 读写
-      // raw.githubusercontent.com: 媒体 fetch
-      // unpkg.com: Sveltia 运行时 fetch locales/*.json + schema/*
-      "connect-src 'self' data: https://api.github.com https://raw.githubusercontent.com https://unpkg.com",
-      "worker-src 'self' blob:",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-    ].join("; "),
+    value: adminContentSecurityPolicy(),
   },
 ];
 
