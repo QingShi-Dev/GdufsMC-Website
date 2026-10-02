@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { createRequire } from "node:module";
 import { copyFile, lstat, mkdir, readFile, readdir, realpath, writeFile } from "node:fs/promises";
 import { existsSync, readFileSync, realpathSync } from "node:fs";
-import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep, basename } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const CONTENT_TOOL_FILES = Object.freeze([
@@ -47,8 +47,33 @@ async function assertAncestors(path) {
 }
 
 export async function packageContentTools({ destination = join(repository, "outputs", "content-sync-tools"), sourceRoot = repository } = {}) {
-  const source = resolve(sourceRoot);
-  const target = resolve(destination);
+  // Containment is judged between two spellings of the same directory, so
+  // both must be canonicalised first. A GitHub windows-2022 runner reports
+  // its temp directory as C:\Users\RUNNER~1\AppData\Local\Temp; realpath()
+  // expands that to C:\Users\runneradmin\..., and comparing the expanded
+  // child against the un-expanded root makes path.relative() walk out five
+  // levels and report a file that is genuinely inside as an escape.
+  const source = await realpath(sourceRoot);
+  // Same reason: the destination is usually a sibling of the source, and on a
+  // runner both arrive spelled with the short temp name while the checks
+  // below compare them against realpath'd values.
+  const target = await realpath(resolve(destination)).catch(async () => {
+    // The destination does not exist yet, which is the normal case. Its
+    // deepest existing ancestor is what has to match.
+    let cursor = resolve(destination);
+    const tail = [];
+    for (;;) {
+      const parent = dirname(cursor);
+      if (parent === cursor) return resolve(destination);
+      tail.unshift(basename(cursor));
+      try {
+        await realpath(parent);
+        return join(await realpath(parent), ...tail);
+      } catch {
+        cursor = parent;
+      }
+    }
+  });
   const rel = relative(source, target);
   if (!rel || (!isAbsolute(rel) && (rel === "node_modules" || rel.startsWith("node_modules" + sep)))) {
     fail("UNSAFE_DESTINATION", "Bundle destination must not replace the source or installed dependencies");
