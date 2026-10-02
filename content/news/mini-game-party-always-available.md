@@ -6,7 +6,7 @@ category: 活动
 summary: 精选 20+ 款小游戏，即刻加入，享受每周2小时的欢乐时光
 cover: /content/news/images/game-3rd-group-photo.webp
 badge: ''
-pinned: false
+pinned: true
 ---
 
 ## 一、活动简介
