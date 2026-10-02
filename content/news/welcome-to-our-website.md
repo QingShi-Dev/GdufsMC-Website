@@ -44,6 +44,6 @@ pinned: true
 
 ![website-guide-page](/content/news/images/website-guide-page.webp)
 
-### 如您发现 Bug、体验问题或有改进建议，请及时与我联系。
+### 如您发现 Bug、体验问题或有改进的建议，请与我们联系。
 
 最后，感谢每一位使用网站的朋友，你们的每一次点击、每一条反馈，都是推动网站蜕变的重要力量。
