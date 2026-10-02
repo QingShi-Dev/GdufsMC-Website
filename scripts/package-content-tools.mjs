@@ -64,7 +64,17 @@ export async function packageContentTools({ destination = join(repository, "outp
     if (!stat.isFile() || stat.isSymbolicLink()) fail("UNSAFE_TOOL", "Fixed content tools must be ordinary files: " + path);
     const canonical = await realpath(from);
     const relativeSource = relative(source, canonical);
-    if (isAbsolute(relativeSource) || relativeSource === ".." || relativeSource.startsWith(".." + sep)) fail("UNSAFE_TOOL", "Fixed script resolves outside sourceRoot");
+    if (isAbsolute(relativeSource) || relativeSource === ".." || relativeSource.startsWith(".." + sep)) {
+      // Name both sides. A containment check that rejects a file which is
+      // genuinely inside the tree is usually the two roots being spelled
+      // differently (short vs long name, casing, symlinked temp), and the
+      // message above gives no way to tell that from a real escape.
+      fail("UNSAFE_TOOL",
+        "Fixed script resolves outside sourceRoot: " + path +
+        "\n  sourceRoot : " + source +
+        "\n  resolved   : " + canonical +
+        "\n  relative   : " + relativeSource);
+    }
     fixed.push({ path, from });
   }
 

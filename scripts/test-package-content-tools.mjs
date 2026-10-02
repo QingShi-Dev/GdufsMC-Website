@@ -2,11 +2,20 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { createRequire } from "node:module";
-import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, lstatSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { CONTENT_TOOL_DEPENDENCIES, CONTENT_TOOL_FILES, packageContentTools } from "./package-content-tools.mjs";
+
+// Printed once so a CI failure carries the environment that produced it.
+// Containment checks in packageContentTools compare two spellings of the
+// same directory, and a mismatch there is invisible unless both are shown.
+console.log("  [env] tmpdir()      = " + tmpdir());
+console.log("  [env] realpath(tmp) = " + realpathSync(tmpdir()));
+console.log("  [env] repoRoot      = " + repoRootPath());
+console.log("  [env] realpath(root)= " + realpathSync(repoRootPath()));
+function repoRootPath() { return fileURLToPath(new URL("../", import.meta.url)); }
 
 const repoRoot = fileURLToPath(new URL("../", import.meta.url));
 function temporary(t) {
