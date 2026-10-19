@@ -12,20 +12,20 @@
     "audit": "pnpm audit --prod --audit-level=high"
   },
   "dependencies": {
-    "@tabler/icons-react": "^3.45.0",
+    "@tabler/icons-react": "^3.49.0",
     "@types/js-yaml": "^4.0.9",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
     "gray-matter": "^4.0.3",
-    "js-yaml": "^5.4.2",
-    "next": "16.2.11",
-    "pinyin-pro": "^3.29.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
+    "js-yaml": "^5.5.0",
+    "next": "16.4.2",
+    "pinyin-pro": "^3.29.5",
+    "react": "19.3.1",
+    "react-dom": "19.3.1",
     "react-markdown": "^10.1.0",
     "rehype-sanitize": "^6.0.0",
     "remark-gfm": "^4.0.1",
-    "tailwind-merge": "^3.6.0"
+    "tailwind-merge": "^3.7.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -33,10 +33,10 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.11",
-    "puppeteer-core": "^25.11.0",
+    "eslint-config-next": "16.4.2",
+    "puppeteer-core": "^25.14.0",
     "remark-parse": "11.0.0",
-    "sharp": "^0.35.4",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "unified": "11.0.5"
