@@ -61,13 +61,13 @@ test("existing release archive is never overwritten", async (t) => {
   assert.equal(readFileSync(f.output, "utf8"), "keep");
 });
 
-test("BSD tar receives an explicit UTF-8 PAX header charset", async (t) => {
+test("BSD tar uses PAX without the crashing header charset option", async (t) => {
   const f = fixture(t);
   await createReleaseArchive({ ...f, commands: [process.execPath],
     run: (_command, args) => {
       if (args[0] === "--version") return { status: 0, stdout: "bsdtar 3.7.9 - libarchive" };
       assert.ok(args.includes("--format=pax"));
-      assert.ok(args.includes("--options=hdrcharset=UTF-8"));
+      assert.equal(args.includes("--options=hdrcharset=UTF-8"), false);
       writeFileSync(join(f.root, args[1]), "fixture tar");
       return { status: 0, stderr: "" };
     } });

@@ -34,10 +34,8 @@ export async function createReleaseArchive({ root, stage, output, log = () => {}
       const versionText = (version.stdout || version.stderr || "unknown").trim();
       log("archive version: " + versionText);
       // PAX stores Unicode names in UTF-8 rather than an ambient Windows
-      // code page. BSD tar also accepts an explicit header charset option;
-      // GNU tar uses UTF-8 for PAX headers and does not support --options.
+      // code page. The runner's BSD tar crashes with hdrcharset=... here.
       const formatArgs = ["--format=pax"];
-      if (/bsdtar/i.test(versionText)) formatArgs.push("--options=hdrcharset=UTF-8");
       // Avoid tar's native gzip subprocess/DLL path. Node compresses the tar
       // stream separately; both BSD tar and GNU tar can extract the result.
       const result = run(command, ["-cf", relative(root, raw), ...formatArgs, "-C", relative(root, stage), "."],
