@@ -450,9 +450,6 @@ mkdirSync(OUTPUT_ROOT, { recursive: true });
 const tarName = releaseId + ".tar.gz";
 const tarPath = join(OUTPUT_ROOT, tarName);
 
-// Use paths relative to the repo root for both -C and -f so tar does not
-// misinterpret a Windows drive letter (e.g. "G:") as a remote tape device.
-//
 // We previously produced .tar.xz (~18 MB) but xz decompression on the
 // GitHub Actions windows-2022 runner hangs for 8+ minutes (the runner's
 // tar is the GNU tar from Git for Windows, and decompressing ~7400 small
@@ -462,7 +459,7 @@ const tarPath = join(OUTPUT_ROOT, tarName);
 // and GNU tar). The artifact grows from ~18 MB to ~25 MB; at 3 MB/s that
 // is ~2 seconds longer upload, which is negligible.
 beginPhase("create release archive");
-await createReleaseArchive({ root: ROOT, stage: STAGE, output: tarPath, log: copyLog });
+await createReleaseArchive({ stage: STAGE, output: tarPath, log: copyLog });
 console.log("package-release: created tarball " + tarPath);
 
 const buf = readFileSync(tarPath);

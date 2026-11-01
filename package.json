@@ -34,6 +34,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.4.2",
+    "modern-tar": "0.8.5",
     "puppeteer-core": "^25.11.0",
     "remark-parse": "11.0.0",
     "sharp": "^0.35.5",
