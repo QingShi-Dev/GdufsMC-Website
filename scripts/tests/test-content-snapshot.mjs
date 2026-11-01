@@ -27,7 +27,6 @@ function fixture(t) {
   const root = temporary(t);
   write(root, "content/news/example.md", '---\ntitle: Example\ndate: "2026-10-01"\ncategory: 公告\ncover: /content/news/images/cover.png\n---\nVisible article body\n');
   write(root, "content/leaderboard/index.yml", "entries: []\n");
-  write(root, "data/bingo-teams/index.yml", "title: Bingo 大赛分队结果\nsubtitle: 队伍名单尚未公布\nteams: []\n");
   write(root, "content/news/images/cover.png", Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64"));
   return root;
 }
@@ -37,7 +36,6 @@ test("manifest round trip includes every ordinary file and checks commit", async
   const manifest = await createContentManifest(join(root, "content"), A);
   assert.equal(manifest.version, 1);
   assert.equal(manifest.files.length, 3);
-  assert.ok(!manifest.files.some((entry) => entry.path === "bingo-teams/index.yml"));
   assert.ok(manifest.files.every((entry) => !entry.path.startsWith("content/") && /^[a-f0-9]{64}$/.test(entry.sha256)));
   assert.deepEqual(await verifyContentManifest(join(root, "content"), manifest, A), manifest);
   await assert.rejects(() => verifyContentManifest(join(root, "content"), manifest, B), hasCode("INVALID_MANIFEST"));

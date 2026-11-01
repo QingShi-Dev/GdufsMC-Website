@@ -115,7 +115,7 @@ const ADMIN_SECURITY_HEADERS: { key: string; value: string }[] = [
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingIncludes: {
-    "/*": ["./content/**/*", "./data/bingo-teams/**/*"],
+    "/*": ["./content/**/*"],
   },
   // E2: tile images are served by Caddy from H:\GDUFSMC-web\public\images\,
   // not by Next.js. Exclude them from the standalone trace so they stay out

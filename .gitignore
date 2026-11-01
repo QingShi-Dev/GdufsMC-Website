@@ -127,3 +127,15 @@ CLAUDE.md
 /.clean.js
 /.test-compress.ps1
 /stderr.log
+
+# Files introduced after 230cb17d; keep local copies without tracking them.
+/app/api/bingo-questionnaire/route.ts
+/app/news/questionnaire/page.tsx
+/app/news/teams/page.tsx
+/components/bingo/questionnaire-form.tsx
+/data/bingo-teams/index.yml
+/lib/bingo/submissions.ts
+/lib/bingo/teams.ts
+/lib/bingo/types.ts
+/scripts/build/create-release-archive.mjs
+/scripts/tests/test-release-archive.mjs

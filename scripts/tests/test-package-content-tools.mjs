@@ -112,7 +112,6 @@ test("real installed dependency closure runs the bundled validator outside the r
   const snapshot = temporary(t);
   write(snapshot, "content/news/one.md", '---\ntitle: 独立工具包验证\ndate: "2026-10-01"\ncategory: 公告\ncover: /content/news/images/cover.png\n---\n![参考图][photo]\n\n[photo]: /content/news/images/cover.png\n');
   write(snapshot, "content/leaderboard/index.yml", "entries: []\n");
-  write(snapshot, "data/bingo-teams/index.yml", "title: Bingo 大赛分队结果\nsubtitle: 队伍名单尚未公布\nteams: []\n");
   write(snapshot, "content/news/images/cover.png", Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=", "base64"));
   const stdout = execFileSync(process.execPath, [join(target, "scripts", "verify-content-root.mjs"), snapshot, "--json"], {
     cwd: target, encoding: "utf8", windowsHide: true, timeout: 30000,

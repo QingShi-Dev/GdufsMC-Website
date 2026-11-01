@@ -67,7 +67,6 @@ function fixture(t, news = { "example.md": article() }) {
   }
   write(root, "content/news/images/cover.png", image);
   write(root, "content/leaderboard/index.yml", "entries: []\n");
-  write(root, "data/bingo-teams/index.yml", "title: Bingo 大赛分队结果\nsubtitle: 队伍名单尚未公布\nteams: []\n");
   return root;
 }
 
@@ -354,27 +353,6 @@ test("valid leaderboard accepts optional change and finite fractional scores", (
     "  - {rank: 4, player: Dave, score: 0, change: same}",
     "",
   ].join("\n"));
-  verify(root, 0);
-});
-
-test("Bingo teams under data are outside content validation", (t) => {
-  const root = fixture(t);
-  write(root, "data/bingo-teams/index.yml", [
-    "title: Bingo 大赛分队结果",
-    "subtitle: 队伍名单已公布",
-    "teams:",
-    "  - id: 1",
-    "    color: 红",
-    "    name: 红1",
-    "    members: [Alice, Bob]",
-    "  - id: 2",
-    "    color: 蓝",
-    "    name: 蓝2",
-    "    members: [Carol, Dave]",
-    "",
-  ].join("\n"));
-  verify(root, 0);
-  write(root, "data/bingo-teams/index.yml", "teams: [{id: 1, color: 蓝, name: 蓝1, members: [Alice]}]\n");
   verify(root, 0);
 });
 
