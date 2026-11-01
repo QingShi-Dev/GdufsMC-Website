@@ -22,7 +22,7 @@ import {
   writeSync,
   rmSync,
 } from "node:fs";
-import { spawnSync } from "node:child_process";
+import { createReleaseArchive } from "./create-release-archive.mjs";
 import { createHash } from "node:crypto";
 import { join, resolve, relative } from "node:path";
 import { copyReleaseTree } from "./copy-release-tree.mjs";
@@ -461,17 +461,8 @@ const tarPath = join(OUTPUT_ROOT, tarName);
 // same content and still universally supported (`-z` works on both bsdtar
 // and GNU tar). The artifact grows from ~18 MB to ~25 MB; at 3 MB/s that
 // is ~2 seconds longer upload, which is negligible.
-const stageRel = relative(ROOT, STAGE);
-const outRel = relative(ROOT, tarPath);
-
-const tarRes = spawnSync(
-  "tar",
-  ["-czf", outRel, "-C", stageRel, "."],
-  { stdio: "inherit" }
-);
-if (tarRes.status !== 0) {
-  fail("tar failed with exit code " + String(tarRes.status));
-}
+beginPhase("create release archive");
+await createReleaseArchive({ root: ROOT, stage: STAGE, output: tarPath, log: copyLog });
 console.log("package-release: created tarball " + tarPath);
 
 const buf = readFileSync(tarPath);
