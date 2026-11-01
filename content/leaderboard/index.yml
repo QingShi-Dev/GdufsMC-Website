@@ -1,19 +1,19 @@
 title: 小游戏之王积分榜
-subtitle: 更新于2026-10-17 22:15
+subtitle: 更新于2026-11-1 14:00
 entries:
+  - rank: 1
+    player: snovwvolf
+    score: 3
+    change: up
   - rank: 1
     player: YMaxxx
     score: 3
-    change: up
+    change: same
   - rank: 2
-    player: snovwvolf
-    score: 2
-    change: down
-  - rank: 3
     player: RTXKim_jo_un
     score: 1
-    change: down
-  - rank: 3
+    change: up
+  - rank: 2
     player: Y6z9J
     score: 1
     change: up
