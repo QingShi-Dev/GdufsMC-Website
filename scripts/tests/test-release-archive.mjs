@@ -92,7 +92,8 @@ test("real tar and Node gzip round-trip filenames and payloads", async (t) => {
   mkdirSync(dest);
   const result = spawnSync(commands[0], ["-xf", "release.tar.gz", "-C", "extracted"],
     { cwd: f.root, encoding: "utf8" });
-  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.equal(result.status, 0,
+    (result.stderr || result.error?.message || "archive extraction failed") + "\n" + logs.join("\n"));
   assert.equal(readFileSync(join(dest, "server.js"), "utf8"), "fixture server");
   assert.equal(readFileSync(join(dest, filename), "utf8"), "teams: []\n");
 });
