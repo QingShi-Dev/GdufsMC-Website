@@ -99,12 +99,13 @@ foreach ($zip in $zips) {
         $expected = $Matches[1]
         $actual = (Get-FileHash -LiteralPath $tarball.FullName -Algorithm SHA256).Hash
         if ($actual -ne $expected) { throw 'SHA256 mismatch; artifact retained for diagnosis.' }
-        Write-ArtifactLog 'SHA256 verified; extracting release with System32/tar.exe.'
+        Write-ArtifactLog 'SHA256 verified; extracting release with packaged extractor.'
         foreach ($file in @('deploy/publish-release.ps1', 'deploy/content-operations.ps1')) {
             if (-not (Test-Path -LiteralPath (Join-Path $art $file) -PathType Leaf)) { throw "Artifact missing $file" }
         }
         if (-not (Test-Path -LiteralPath $candidate)) { New-Item -ItemType Directory -Path $candidate | Out-Null }
-        Expand-ArtifactTar $tarball.FullName $stage
+        $extractor = Join-Path $outputs 'release-extractor/extract.mjs'
+        Expand-ArtifactTar $tarball.FullName $stage $extractor $NodePath
         if (-not (Test-Path -LiteralPath (Join-Path $stage 'server.js') -PathType Leaf)) { throw 'Candidate server.js missing.' }
         if (Test-Path -LiteralPath (Join-Path $stage 'content')) { throw 'External release must not contain top-level content/.' }
         $manifest = Read-ContentJson (Join-Path $stage 'release.json')

@@ -76,21 +76,19 @@ function Expand-ArtifactZip {
 }
 
 function Expand-ArtifactTar {
-    param([string]$Tarball, [string]$Destination)
-    $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
-    if (-not (Test-Path -LiteralPath $tar -PathType Leaf)) { throw 'Windows System32/tar.exe is missing.' }
+    param([string]$Tarball, [string]$Destination, [string]$Extractor, [string]$NodePath)
     if (Test-Path -LiteralPath $Destination) { throw "Candidate directory already exists: $Destination" }
-    # Reject traversal and links BEFORE extraction, not merely after writing them.
-    $names = @(& $tar -tf $Tarball --options=hdrcharset=UTF-8)
-    if ($LASTEXITCODE -ne 0 -or $names.Count -eq 0) { throw 'Cannot list release tarball.' }
-    foreach ($name in $names) { Assert-ArtifactEntryPath $name $Destination }
-    $details = @(& $tar -tvf $Tarball --options=hdrcharset=UTF-8)
-    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect release tarball types.' }
-    foreach ($line in $details) {
-        if ($line -cnotmatch '^[-d]') { throw "Tarball contains a link or special file: $line" }
-    }
-    New-Item -ItemType Directory -Path $Destination -ErrorAction Stop | Out-Null
-    & $tar -xf $Tarball --options=hdrcharset=UTF-8 -C $Destination
-    if ($LASTEXITCODE -ne 0) { throw "Release extraction failed (exit $LASTEXITCODE)." }
+    if (-not (Test-Path -LiteralPath $Extractor -PathType Leaf)) { throw 'Packaged release extractor is missing.' }
+    $package = Join-Path (Split-Path -Parent $Extractor) 'node_modules/modern-tar/package.json'
+    if (-not (Test-Path -LiteralPath $package -PathType Leaf)) { throw 'Packaged tar dependency is missing.' }
+    Assert-ContentNoReparse $Tarball
+    Assert-ContentNoReparse (Split-Path -Parent $Extractor) -Recurse
+    $previousPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $NodePath $Extractor $Tarball $Destination 2>&1)
+        $exitCode = $LASTEXITCODE
+    } finally { $ErrorActionPreference = $previousPreference }
+    if ($exitCode -ne 0) { throw "Release extraction failed (exit $exitCode): $($output -join ' ')" }
     Assert-ContentNoReparse $Destination -Recurse
 }

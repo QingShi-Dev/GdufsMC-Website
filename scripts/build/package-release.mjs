@@ -17,6 +17,7 @@ import {
   existsSync,
   mkdirSync,
   readFileSync,
+  copyFileSync,
   writeFileSync,
   readdirSync,
   writeSync,
@@ -469,5 +470,12 @@ const shaPath = join(OUTPUT_ROOT, releaseId + ".sha256.txt");
 writeFileSync(shaPath, shaLine);
 console.log("package-release: sha256 " + shaLine.trim());
 console.log("package-release: wrote " + shaPath);
+
+const extractor = join(OUTPUT_ROOT, "release-extractor");
+mkdirSync(extractor, { recursive: true });
+copyFileSync(join(ROOT, "scripts", "build", "extract-release-archive.mjs"), join(extractor, "extract.mjs"));
+copyReleaseTree(join(ROOT, "node_modules", "modern-tar"),
+  join(extractor, "node_modules", "modern-tar"), copyLog);
+console.log("package-release: packaged portable release extractor");
 
 console.log("package-release: DONE releaseId=" + releaseId);

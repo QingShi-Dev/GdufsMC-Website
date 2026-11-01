@@ -18,7 +18,7 @@ foreach ($file in @('content-operations.ps1', 'artifact-operations.ps1', 'publis
     Copy-Item -LiteralPath (Join-Path $sourceDeploy $file) -Destination (Join-Path $deploy $file)
 }
 Add-Content -LiteralPath (Join-Path $deploy 'content-operations.ps1') -Value "`nfunction Assert-ContentAdministrator { }"
-$testPublisherOptions = @{ ExpectedUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name }
+$testPublisherOptions = @{ ExpectedUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name; NodePath = (Get-Command node).Source }
 $powershell = Join-Path $env:SystemRoot 'System32/WindowsPowerShell/v1.0/powershell.exe'
 $tar = Join-Path $env:SystemRoot 'System32/tar.exe'
 $passed = 0
@@ -69,6 +69,11 @@ function New-FixtureZip {
     $hash = (Get-FileHash -LiteralPath $tarball -Algorithm SHA256).Hash
     if ($Mode -eq 'hash') { $hash = '0' * 64 }
     [IO.File]::WriteAllText((Join-Path $bundle 'outputs/test.sha256.txt'), "$hash  test.tar.gz`n")
+    $extractor = Join-Path $bundle 'outputs/release-extractor'
+    New-Item -ItemType Directory -Path $extractor | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo 'scripts/build/extract-release-archive.mjs') -Destination (Join-Path $extractor 'extract.mjs')
+    New-Item -ItemType Directory -Path (Join-Path $extractor 'node_modules') | Out-Null
+    Copy-Item -LiteralPath (Join-Path $repo 'node_modules/modern-tar') -Destination (Join-Path $extractor 'node_modules/modern-tar') -Recurse -Force
     if ($Mode -eq 'extra-tar') { Copy-Item -LiteralPath $tarball -Destination (Join-Path $bundle 'outputs/other.tar.gz') }
     if ($Mode -eq 'extra-sha') { Copy-Item -LiteralPath (Join-Path $bundle 'outputs/test.sha256.txt') -Destination (Join-Path $bundle 'outputs/other.sha256.txt') }
     $fakePublisher = @'
@@ -107,7 +112,7 @@ function New-WorkerFixture {
     Add-Content -LiteralPath (Join-Path $tools 'content-operations.ps1') -Value "`nfunction Assert-ContentAdministrator { }"
     Write-ContentJsonAtomic (Join-Path $tools 'config.json') @{
         root = $root; expectedUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-        pm2Home = (Join-Path $root 'pm2-home'); nodePath = 'fixture-node'; pm2Path = 'fixture-pm2'; keep = 3
+        pm2Home = (Join-Path $root 'pm2-home'); nodePath = (Get-Command node).Source; pm2Path = 'fixture-pm2'; keep = 3
     }
     return $root
 }

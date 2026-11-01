@@ -3,8 +3,10 @@ import assert from "node:assert/strict";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { spawnSync } from "node:child_process";
+import { gzipSync } from "node:zlib";
+import { packTar } from "modern-tar";
 import { createReleaseArchive } from "../build/create-release-archive.mjs";
+import { extractReleaseArchive } from "../build/extract-release-archive.mjs";
 
 function fixture(t) {
   const root = mkdtempSync(join(tmpdir(), "release-archive-test-"));
@@ -29,17 +31,28 @@ test("existing release archive is never overwritten", async (t) => {
   assert.equal(readFileSync(f.output, "utf8"), "keep");
 });
 
-test("release archive round-trips Unicode names with Windows tar", async (t) => {
+test("release archive round-trips Unicode names with the portable extractor", async (t) => {
   const f = fixture(t);
   const filename = "分队 data.yml";
   writeFileSync(join(f.stage, filename), "teams: []\n");
   await createReleaseArchive(f);
   const dest = join(f.root, "extracted");
-  mkdirSync(dest);
-  const tar = process.platform === "win32" ? join(process.env.SystemRoot || "C:/Windows", "System32", "tar.exe") : "tar";
-  const result = spawnSync(tar, ["-xf", "release.tar.gz", "--options=hdrcharset=UTF-8", "-C", "extracted"],
-    { cwd: f.root, encoding: "utf8" });
-  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  await extractReleaseArchive(f.output, dest);
   assert.equal(readFileSync(join(dest, "server.js"), "utf8"), "fixture server");
   assert.equal(readFileSync(join(dest, filename), "utf8"), "teams: []\n");
+});
+
+test("extractor rejects traversal and links before creating a destination", async (t) => {
+  const f = fixture(t);
+  for (const [index, header] of [
+    { name: "../escape.txt", type: "file", size: 1 },
+    { name: "linked.txt", type: "symlink", linkname: "server.js", size: 0 },
+  ].entries()) {
+    const body = header.type === "file" ? "x" : undefined;
+    const archive = join(f.root, `unsafe-${index}.tar.gz`);
+    writeFileSync(archive, gzipSync(await packTar([{ header, body }])));
+    const dest = join(f.root, `extracted-${index}`);
+    await assert.rejects(extractReleaseArchive(archive, dest), /Unsafe|link or special/);
+    assert.equal(existsSync(dest), false);
+  }
 });

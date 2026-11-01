@@ -183,26 +183,19 @@ jobs:
             throw "external content build leaked content/ in: $($leaked.Name -join ', ')"
           }
           Write-Host 'verified: stage has no content/ (external mode)'
-      - name: Extract release archive with Windows tar
+      - name: Extract release archive with packaged extractor
         timeout-minutes: 4
         run: |
           $ErrorActionPreference = 'Stop'
           $archive = @(Get-ChildItem outputs/*.tar.gz)
           if ($archive.Count -ne 1) { throw 'Expected one release archive' }
-          # Use Windows libarchive explicitly; do not depend on PATH's tar.
-          # It accepts drive-letter paths and auto-detects gzip compression
-          # from the file extension (-xf with no filter flag).
-          $tar = Join-Path $env:SystemRoot 'System32\tar.exe'
-          if (-not (Test-Path -LiteralPath $tar)) { throw 'Windows tar.exe not found' }
-          Write-Host "Extraction executable: $tar"
-          & $tar --version
-          if ($LASTEXITCODE -ne 0) { throw 'Cannot query tar version' }
+          $extractor = Join-Path (Get-Location) 'outputs/release-extractor/extract.mjs'
+          if (-not (Test-Path -LiteralPath $extractor -PathType Leaf)) { throw 'Packaged extractor missing' }
           # Keep the extracted runtime outside the checkout.
           $smoke = Join-Path $env:RUNNER_TEMP "release-smoke-$env:GITHUB_RUN_ID-$env:GITHUB_RUN_ATTEMPT"
-          New-Item -ItemType Directory $smoke -ErrorAction Stop | Out-Null
           Write-Host "Extracting $($archive[0].Name) ($($archive[0].Length) bytes) into $smoke"
           $timer = [System.Diagnostics.Stopwatch]::StartNew()
-          & $tar -xf $archive[0].FullName --options=hdrcharset=UTF-8 -C $smoke
+          node $extractor $archive[0].FullName $smoke
           if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed: $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $smoke 'server.js'))) { throw 'Extracted server.js missing' }
           Write-Host "Extraction completed in $($timer.Elapsed.TotalSeconds) seconds"
@@ -264,6 +257,7 @@ jobs:
           path: |
             outputs/*.tar.gz
             outputs/*.sha256.txt
+            outputs/release-extractor/**
             deploy/publish-release.ps1
             deploy/content-operations.ps1
             deploy/artifact-operations.ps1
