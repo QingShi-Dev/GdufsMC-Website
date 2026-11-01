@@ -202,7 +202,7 @@ jobs:
           New-Item -ItemType Directory $smoke -ErrorAction Stop | Out-Null
           Write-Host "Extracting $($archive[0].Name) ($($archive[0].Length) bytes) into $smoke"
           $timer = [System.Diagnostics.Stopwatch]::StartNew()
-          & $tar -xf $archive[0].FullName -C $smoke
+          & $tar -xf $archive[0].FullName --options=hdrcharset=UTF-8 -C $smoke
           if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed: $LASTEXITCODE" }
           if (-not (Test-Path -LiteralPath (Join-Path $smoke 'server.js'))) { throw 'Extracted server.js missing' }
           Write-Host "Extraction completed in $($timer.Elapsed.TotalSeconds) seconds"

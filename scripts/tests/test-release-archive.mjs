@@ -37,7 +37,7 @@ test("release archive round-trips Unicode names with Windows tar", async (t) => 
   const dest = join(f.root, "extracted");
   mkdirSync(dest);
   const tar = process.platform === "win32" ? join(process.env.SystemRoot || "C:/Windows", "System32", "tar.exe") : "tar";
-  const result = spawnSync(tar, ["-xf", "release.tar.gz", "-C", "extracted"],
+  const result = spawnSync(tar, ["-xf", "release.tar.gz", "--options=hdrcharset=UTF-8", "-C", "extracted"],
     { cwd: f.root, encoding: "utf8" });
   assert.equal(result.status, 0, result.stderr || result.error?.message);
   assert.equal(readFileSync(join(dest, "server.js"), "utf8"), "fixture server");

@@ -81,16 +81,16 @@ function Expand-ArtifactTar {
     if (-not (Test-Path -LiteralPath $tar -PathType Leaf)) { throw 'Windows System32/tar.exe is missing.' }
     if (Test-Path -LiteralPath $Destination) { throw "Candidate directory already exists: $Destination" }
     # Reject traversal and links BEFORE extraction, not merely after writing them.
-    $names = @(& $tar -tf $Tarball)
+    $names = @(& $tar -tf $Tarball --options=hdrcharset=UTF-8)
     if ($LASTEXITCODE -ne 0 -or $names.Count -eq 0) { throw 'Cannot list release tarball.' }
     foreach ($name in $names) { Assert-ArtifactEntryPath $name $Destination }
-    $details = @(& $tar -tvf $Tarball)
+    $details = @(& $tar -tvf $Tarball --options=hdrcharset=UTF-8)
     if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect release tarball types.' }
     foreach ($line in $details) {
         if ($line -cnotmatch '^[-d]') { throw "Tarball contains a link or special file: $line" }
     }
     New-Item -ItemType Directory -Path $Destination -ErrorAction Stop | Out-Null
-    & $tar -xf $Tarball -C $Destination
+    & $tar -xf $Tarball --options=hdrcharset=UTF-8 -C $Destination
     if ($LASTEXITCODE -ne 0) { throw "Release extraction failed (exit $LASTEXITCODE)." }
     Assert-ContentNoReparse $Destination -Recurse
 }
