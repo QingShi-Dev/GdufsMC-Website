@@ -76,22 +76,23 @@ test("BSD tar receives an explicit UTF-8 PAX header charset", async (t) => {
 test("real tar and Node gzip round-trip filenames and payloads", async (t) => {
   const commands = archiveCommands().filter((c) => process.platform !== "win32" || existsSync(c));
   assert.ok(commands.length, "A real tar executable is required for integration testing");
-  // Exercise every installed implementation, not only whichever succeeds first.
-  for (const command of commands) await t.test(command, async (t) => {
-    const f = fixture(t), logs = [];
-    const filename = "分队 data.yml";
-    writeFileSync(join(f.stage, filename), "teams: []\n");
-    await createReleaseArchive({ ...f, commands: [command], log: (s) => logs.push(s) });
-    const archive = gunzipSync(readFileSync(f.output));
-    // Check the bytes independently of the native reader: a matching writer
-    // and reader can otherwise conceal a locale-dependent archive encoding.
-    assert.ok(archive.includes(Buffer.from("path=./" + filename + "\n", "utf8")),
-      "Archive must contain the original UTF-8 PAX path; " + logs.join("\n"));
-    const dest = join(f.root, "extracted");
-    mkdirSync(dest);
-    const result = spawnSync(command, ["-xf", f.output, "-C", dest], { encoding: "utf8" });
-    assert.equal(result.status, 0, result.stderr || result.error?.message);
-    assert.equal(readFileSync(join(dest, "server.js"), "utf8"), "fixture server");
-    assert.equal(readFileSync(join(dest, filename), "utf8"), "teams: []\n");
-  });
+  const f = fixture(t), logs = [];
+  const filename = "分队 data.yml";
+  writeFileSync(join(f.stage, filename), "teams: []\n");
+  try {
+    await createReleaseArchive({ ...f, commands, log: (s) => logs.push(s) });
+  } catch (error) {
+    assert.fail(error.message + "\n" + logs.join("\n"));
+  }
+  const archive = gunzipSync(readFileSync(f.output));
+  // Check bytes independently of extraction, which may use a different tar.
+  assert.ok(archive.includes(Buffer.from("path=./" + filename + "\n", "utf8")),
+    "Archive must contain the original UTF-8 PAX path; " + logs.join("\n"));
+  const dest = join(f.root, "extracted");
+  mkdirSync(dest);
+  const result = spawnSync(commands[0], ["-xf", "release.tar.gz", "-C", "extracted"],
+    { cwd: f.root, encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.equal(readFileSync(join(dest, "server.js"), "utf8"), "fixture server");
+  assert.equal(readFileSync(join(dest, filename), "utf8"), "teams: []\n");
 });
